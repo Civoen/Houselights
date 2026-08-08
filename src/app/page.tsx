@@ -1,16 +1,33 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getUpcomingEvent } from "@/lib/eventHistory";
+import { PastEvent } from "@/lib/types";
+
+function formatCountdown(days: number) {
+  if (days <= 0) return "today";
+  if (days === 1) return "tomorrow";
+  return `in ${days} days`;
+}
 
 export default function Home() {
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [upcoming, setUpcoming] = useState<PastEvent | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/status")
       .then((r) => r.json())
       .then((d) => setConnected(!!d.connected))
       .catch(() => setConnected(false));
+    setUpcoming(getUpcomingEvent());
   }, []);
+
+  const days = upcoming?.eventDate
+    ? Math.round(
+        (new Date(upcoming.eventDate + "T00:00:00").getTime() - new Date(new Date().toDateString()).getTime()) /
+          86400000
+      )
+    : null;
 
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
@@ -19,7 +36,15 @@ export default function Home() {
           <span className="font-display text-2xl font-bold text-white">H</span>
         </div>
         <h1 className="font-display text-2xl font-bold mb-2">Houselights</h1>
-        <p className="text-muted text-sm mb-8">Know the artists before you see them.</p>
+
+        {upcoming && days !== null ? (
+          <p className="text-sm mb-8">
+            <span className="text-ink font-semibold">You're seeing {upcoming.headliner.name} </span>
+            <span className="text-teal font-bold">{formatCountdown(days)}</span>
+          </p>
+        ) : (
+          <p className="text-muted text-sm mb-8">Know the artists before you see them.</p>
+        )}
 
         {connected ? (
           <Link

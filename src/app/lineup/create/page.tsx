@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { Spinner } from "@/components/Spinner";
+import { addPastEvent } from "@/lib/eventHistory";
 
 export default function CreatePage() {
   const router = useRouter();
-  const { playlist, playlistName, playlistDescription, coverImageBase64, setPlaylistMeta, setCoverImage, reset } =
+  const { lineup, eventDate, playlist, playlistName, playlistDescription, coverImageBase64, setPlaylistMeta, setCoverImage, reset } =
     useLineup();
   const fileInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(playlistName);
@@ -57,6 +58,21 @@ export default function CreatePage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Something went wrong creating the playlist.");
       const url = json.playlist?.url as string;
+      const playlistId = json.playlist?.id as string;
+      const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
+      addPastEvent({
+        id: playlistId || crypto.randomUUID(),
+        name,
+        url: url || "",
+        trackCount: playlist.length,
+        totalMinutes: Math.round(totalMs / 60000),
+        artistNames: Array.from(new Set(playlist.map((t) => t.artist))),
+        headliner:
+          lineup[0]?.artist ||
+          { id: playlist[0]?.artistId || "", name: playlist[0]?.artist || "Unknown", genres: [] },
+        eventDate: eventDate || undefined,
+        createdAt: new Date().toISOString(),
+      });
       router.push(`/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}`);
     } catch (e: any) {
       setError(e.message || "Couldn't create the playlist. Try again.");
@@ -66,7 +82,7 @@ export default function CreatePage() {
   }
 
   return (
-    <main className="min-h-screen pb-40 animate-fade-slide-up">
+    <main className="min-h-screen pb-48 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
         <div className="flex items-center gap-3">
           <button
@@ -117,7 +133,7 @@ export default function CreatePage() {
         {error && <p className="text-xs text-red-600 mt-2 animate-fade-slide-up">{error}</p>}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+      <div className="fixed bottom-16 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]">
         <div className="max-w-lg mx-auto">
           <GradientButton onClick={handleDone} disabled={submitting || !name.trim()} glow={!submitting && !!name.trim()}>
             {submitting ? (

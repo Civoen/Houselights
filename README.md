@@ -69,14 +69,26 @@ installs it as a PWA (manifest + service worker are already wired up in `public/
 
 ## How playlist generation works
 
+**Important context:** Spotify's [February 2026 Development Mode changes](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)
+removed the artist top-tracks endpoint entirely and dropped the `popularity`
+field from every track/album/artist response. There is no longer a direct way
+for a Development Mode app to ask "what are this artist's most popular songs" —
+so the filters below are the closest practical approximation of the original
+design, not the original implementation.
+
 For each artist in your lineup:
 
-- **Most popular** — Spotify's artist top-tracks endpoint, sorted by popularity.
-- **Recent** — pulls the artist's full album/single catalog and sorts by release date.
-- **Deep cuts** — same catalog pull, sorted by popularity ascending, so the biggest
-  hits sink to the bottom.
+- **Most popular** — approximated via Search's relevance ordering for `artist:"Name"`
+  (Search still ranks by relevance internally even though the score isn't exposed).
+  This is a reasonable proxy but won't always match what Spotify itself would
+  call an artist's biggest hits.
+- **Recent** — pulls the artist's full album/single catalog and sorts by release date
+  (this one is unaffected by the popularity removal).
+- **Deep cuts** — same catalog pull, with anything that showed up in the "Most
+  popular" search results excluded, on the theory that what's left is less
+  obvious. No true popularity-ascending sort is possible anymore.
 - **Add specific songs** — a plain track search scoped to that artist, added on top
-  of (or instead of) the automatic picks.
+  of (or instead of) the automatic picks. Unaffected by any of this.
 
 The count you set per artist (defaults: 20 for the first artist you add, 10 for the
 rest — tweak as needed) controls how many auto-selected tracks are pulled in per
@@ -85,10 +97,20 @@ remove, reorder (drag the handle), or add more before creating the playlist.
 
 ## Known limitations / next steps
 
+- **Spotify's Feb 2026 API changes are baked into this code already** — playlist
+  creation uses `POST /me/playlists` (not the removed `/users/{id}/playlists`),
+  tracks are added via `/playlists/{id}/items` (not the renamed-away `/tracks`),
+  and nothing here calls a batch endpoint like `GET /tracks?ids=...` since those
+  were removed too. If Spotify changes things again, the
+  [changelog](https://developer.spotify.com/documentation/web-api/references/changes/february-2026)
+  is the first place to check.
+- "Most popular" and "Deep cuts" are approximations (see above) — there's no
+  path back to true popularity-based sorting until/unless Spotify reintroduces
+  that data for Development Mode apps.
 - Deep cuts and Recent fetch a fair number of Spotify endpoints per artist
-  (albums → album tracks → track details for popularity), so building a large
-  lineup can take a few seconds. Worth adding a loading state per artist if this
-  becomes annoying in practice.
+  (albums → album tracks, individually since batch fetching is gone), so
+  building a large lineup can take a few seconds. Worth adding a loading state
+  per artist if this becomes annoying in practice.
 - No offline queueing of playlist creation — the service worker caches pages for
   fast reloads, but creating a playlist still requires a live connection.
 - Cover image upload is best-effort: if it fails, the playlist is still created

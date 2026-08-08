@@ -1,8 +1,9 @@
 "use client";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
+import { haptic, HAPTIC } from "@/lib/haptics";
 
 function SuccessInner() {
   const params = useSearchParams();
@@ -12,6 +13,10 @@ function SuccessInner() {
   const name = params.get("name") || "Your playlist";
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
+
+  useEffect(() => {
+    haptic(HAPTIC.success);
+  }, []);
 
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
@@ -47,6 +52,7 @@ function SuccessInner() {
         )}
         <button
           onClick={() => {
+            haptic(HAPTIC.tap);
             reset();
             router.push("/lineup");
           }}

@@ -2,6 +2,13 @@ import { getTokens, setTokens, StoredTokens } from "./session";
 import { SpotifyArtist, SpotifyTrack, FilterType } from "./types";
 import { getEnv } from "./env";
 
+// NOTE: Spotify's February 2026 Development Mode changes removed several
+// endpoints this app used to rely on (artist top-tracks, batch track/album
+// fetches, the old playlist-for-user creation flow) and dropped the
+// `popularity` field from track/album/artist responses entirely. Everything
+// below is written against the *current* (post-migration) API surface.
+// See: https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide
+
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const API_BASE = "https://api.spotify.com/v1";
 
@@ -110,7 +117,6 @@ export async function searchArtists(query: string, accessToken: string): Promise
     name: a.name,
     genres: a.genres || [],
     image: a.images?.[a.images.length - 1]?.url,
-    followers: a.followers?.total,
   }));
 }
 
@@ -124,23 +130,53 @@ function mapTrack(t: any, artistId: string, album?: any): SpotifyTrack {
     album: album?.name || t.album?.name || "",
     albumImage: (album?.images || t.album?.images)?.[album?.images?.length - 1 || 0]?.url,
     durationMs: t.duration_ms,
-    popularity: t.popularity ?? 0,
+    // `popularity` no longer exists in Spotify's response for Development
+    // Mode apps as of Feb 2026 — kept as 0 for type compatibility only,
+    // never used for sorting anymore.
+    popularity: 0,
     releaseDate: album?.release_date || t.album?.release_date,
   };
 }
 
-export async function getUserMarket(accessToken: string): Promise<string> {
-  try {
-    const me = await spotifyFetch("/me", accessToken);
-    return me.country || "US";
-  } catch {
-    return "US";
-  }
+// Spotify's Feb 2026 changes removed `country` from GET /me, so there's no
+// way to read the account's real market anymore. US is a broad, safe default.
+export async function getUserMarket(_accessToken: string): Promise<string> {
+  return "US";
 }
 
-export async function getArtistTopTracks(artistId: string, accessToken: string, market = "US"): Promise<SpotifyTrack[]> {
-  const json = await spotifyFetch(`/artists/${artistId}/top-tracks?market=${market}`, accessToken);
-  return (json.tracks || []).map((t: any) => mapTrack(t, artistId));
+// GET /artists/{id}/top-tracks was removed entirely. There is no direct
+// per-artist "top tracks" endpoint left in the API for Development Mode
+// apps, so this approximates it using Search's relevance ordering, which
+// still correlates with popularity even though the score itself is hidden.
+export async function getArtistKnownTracks(
+  artistId: string,
+  artistName: string,
+  accessToken: string,
+  maxTracks = 30
+): Promise<SpotifyTrack[]> {
+  const tracks: SpotifyTrack[] = [];
+  const seen = new Set<string>();
+  for (let offset = 0; offset < maxTracks; offset += 10) {
+    const params = new URLSearchParams({
+      q: `artist:"${artistName}"`,
+      type: "track",
+      limit: "10",
+      offset: String(offset),
+    });
+    const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
+    const items = json.tracks?.items || [];
+    if (items.length === 0) break;
+    for (const t of items) {
+      if (t.artists?.length && !t.artists.some((a: any) => a.id === artistId)) continue;
+      const mapped = mapTrack(t, artistId);
+      const key = trackDedupeKey(mapped);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tracks.push(mapped);
+    }
+    if (items.length < 10) break;
+  }
+  return tracks;
 }
 
 export async function searchTracksForArtist(
@@ -158,6 +194,10 @@ export async function searchTracksForArtist(
   return (json.tracks?.items || []).map((t: any) => mapTrack(t, artistId));
 }
 
+// GET /artists/{id}/albums and GET /albums/{id}/tracks are both still
+// available. The old version of this function also called the now-removed
+// batch GET /tracks?ids=... just to fetch `popularity` — since that field
+// no longer exists anywhere, that extra round-trip is gone too.
 export async function getArtistCatalog(artistId: string, accessToken: string, market = "US"): Promise<SpotifyTrack[]> {
   const albumsJson = await spotifyFetch(
     `/artists/${artistId}/albums?include_groups=album,single&limit=50&market=${market}`,
@@ -171,52 +211,78 @@ export async function getArtistCatalog(artistId: string, accessToken: string, ma
     if (seenNames.has(album.name.toLowerCase())) continue;
     seenNames.add(album.name.toLowerCase());
     const tracksJson = await spotifyFetch(`/albums/${album.id}/tracks?limit=50`, accessToken);
-    const items = tracksJson.items || [];
-    const ids = items.map((t: any) => t.id).filter(Boolean);
-    if (ids.length === 0) continue;
-    const detailJson = await spotifyFetch(`/tracks?ids=${ids.join(",")}`, accessToken);
-    for (const full of detailJson.tracks || []) {
-      if (!full) continue;
-      tracks.push(mapTrack(full, artistId, album));
+    for (const t of tracksJson.items || []) {
+      tracks.push(mapTrack(t, artistId, album));
     }
   }
   return tracks;
 }
 
+// GET /tracks (batch) was removed — fetch each track individually instead.
 export async function getTracksByIds(ids: string[], accessToken: string): Promise<SpotifyTrack[]> {
   if (ids.length === 0) return [];
-  const out: SpotifyTrack[] = [];
-  for (let i = 0; i < ids.length; i += 50) {
-    const chunk = ids.slice(i, i + 50);
-    const json = await spotifyFetch(`/tracks?ids=${chunk.join(",")}`, accessToken);
-    for (const t of json.tracks || []) {
-      if (t) out.push(mapTrack(t, t.artists?.[0]?.id || ""));
-    }
-  }
-  return out;
-}
-
-export function sortForFilter(tracks: SpotifyTrack[], filter: FilterType): SpotifyTrack[] {
-  const deduped = dedupeByName(tracks);
-  if (filter === "popular") {
-    return [...deduped].sort((a, b) => b.popularity - a.popularity);
-  }
-  if (filter === "deep") {
-    return [...deduped].sort((a, b) => a.popularity - b.popularity);
-  }
-  return [...deduped].sort((a, b) => {
-    const da = a.releaseDate ? Date.parse(a.releaseDate) : 0;
-    const db = b.releaseDate ? Date.parse(b.releaseDate) : 0;
-    return db - da;
-  });
+  const results = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const t = await spotifyFetch(`/tracks/${id}`, accessToken);
+        return mapTrack(t, t.artists?.[0]?.id || "");
+      } catch {
+        return null;
+      }
+    })
+  );
+  return results.filter((t): t is SpotifyTrack => t !== null);
 }
 
 function trackDedupeKey(t: SpotifyTrack): string {
   return t.name.toLowerCase().replace(/\(.*?\)/g, "").trim() + "|" + t.artistId;
 }
 
+function sortForFilter(tracks: SpotifyTrack[], filter: FilterType): SpotifyTrack[] {
+  if (filter === "recent") {
+    return [...tracks].sort((a, b) => {
+      const da = a.releaseDate ? Date.parse(a.releaseDate) : 0;
+      const db = b.releaseDate ? Date.parse(b.releaseDate) : 0;
+      return db - da;
+    });
+  }
+  // "popular" (search-relevance order) and "deep" (catalog order, already
+  // excludes known/popular tracks — see getArtistTrackPools) both keep the
+  // order they arrive in, since there's no popularity score left to sort by.
+  return tracks;
+}
+
+// Builds one track pool per requested filter for an artist:
+// - popular: Search relevance results (closest available proxy for "top tracks")
+// - recent:  full catalog sorted by release date
+// - deep:    full catalog with anything that showed up in "popular" excluded
+export async function getArtistTrackPools(
+  artistId: string,
+  artistName: string,
+  accessToken: string,
+  filters: FilterType[],
+  market = "US"
+): Promise<Record<FilterType, SpotifyTrack[]>> {
+  const needsKnown = filters.includes("popular") || filters.includes("deep");
+  const needsCatalog = filters.includes("recent") || filters.includes("deep");
+
+  const [known, catalog] = await Promise.all([
+    needsKnown ? getArtistKnownTracks(artistId, artistName, accessToken) : Promise.resolve([] as SpotifyTrack[]),
+    needsCatalog ? getArtistCatalog(artistId, accessToken, market) : Promise.resolve([] as SpotifyTrack[]),
+  ]);
+
+  const knownKeys = new Set(known.map(trackDedupeKey));
+  const deepPool = catalog.filter((t) => !knownKeys.has(trackDedupeKey(t)));
+
+  return {
+    popular: known,
+    recent: catalog,
+    deep: deepPool.length > 0 ? deepPool : catalog,
+  };
+}
+
 export function selectTracksForFilters(
-  pools: { popular: SpotifyTrack[]; catalog: SpotifyTrack[] },
+  poolsByFilter: Record<FilterType, SpotifyTrack[]>,
   filters: FilterType[],
   count: number
 ): SpotifyTrack[] {
@@ -229,8 +295,7 @@ export function selectTracksForFilters(
 
   active.forEach((filter, i) => {
     const target = base + (i < remainder ? 1 : 0);
-    const pool = filter === "popular" ? pools.popular : pools.catalog;
-    const sorted = sortForFilter(pool, filter);
+    const sorted = sortForFilter(poolsByFilter[filter] || [], filter);
     let added = 0;
     for (const t of sorted) {
       if (added >= target) break;
@@ -242,11 +307,11 @@ export function selectTracksForFilters(
     }
   });
 
-  // if a filter's pool ran out early (e.g. very few deep cuts), top up from
-  // whichever pool still has unused tracks so the total still hits `count`
+  // if a filter's pool ran out early, top up from whatever's left so the
+  // total still hits `count`
   if (selected.length < count) {
-    const combinedPool = [...pools.popular, ...pools.catalog].sort((a, b) => b.popularity - a.popularity);
-    for (const t of combinedPool) {
+    const fallback = [...poolsByFilter.popular, ...poolsByFilter.recent, ...poolsByFilter.deep];
+    for (const t of fallback) {
       if (selected.length >= count) break;
       const key = trackDedupeKey(t);
       if (seen.has(key)) continue;
@@ -258,18 +323,6 @@ export function selectTracksForFilters(
   return selected;
 }
 
-function dedupeByName(tracks: SpotifyTrack[]): SpotifyTrack[] {
-  const seen = new Set<string>();
-  const out: SpotifyTrack[] = [];
-  for (const t of tracks) {
-    const key = t.name.toLowerCase().replace(/\(.*?\)/g, "").trim();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(t);
-  }
-  return out;
-}
-
 export async function createSpotifyPlaylist(params: {
   accessToken: string;
   name: string;
@@ -277,8 +330,9 @@ export async function createSpotifyPlaylist(params: {
   trackUris: string[];
   coverImageBase64?: string;
 }) {
-  const me = await spotifyFetch("/me", params.accessToken);
-  const playlist = await spotifyFetch(`/users/${me.id}/playlists`, params.accessToken, {
+  // POST /users/{user_id}/playlists was removed — POST /me/playlists creates
+  // it for the logged-in user directly, no need to look up a user id first.
+  const playlist = await spotifyFetch(`/me/playlists`, params.accessToken, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -288,9 +342,10 @@ export async function createSpotifyPlaylist(params: {
     }),
   });
 
+  // POST /playlists/{id}/tracks was renamed to /playlists/{id}/items.
   for (let i = 0; i < params.trackUris.length; i += 100) {
     const chunk = params.trackUris.slice(i, i + 100);
-    await spotifyFetch(`/playlists/${playlist.id}/tracks`, params.accessToken, {
+    await spotifyFetch(`/playlists/${playlist.id}/items`, params.accessToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ uris: chunk }),

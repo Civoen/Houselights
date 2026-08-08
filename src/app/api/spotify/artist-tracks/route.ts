@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getValidAccessToken,
-  getArtistTopTracks,
-  getArtistCatalog,
+  getArtistTrackPools,
   selectTracksForFilters,
   searchTracksForArtist,
   getTracksByIds,
   getUserMarket,
 } from "@/lib/spotify";
-import { FilterType, SpotifyTrack } from "@/lib/types";
+import { FilterType } from "@/lib/types";
 
 export const runtime = "edge";
 
@@ -44,22 +43,16 @@ export async function GET(req: NextRequest) {
     }
 
     const market = await getUserMarket(accessToken);
-    const needsPopular = filters.includes("popular");
-    const needsCatalog = filters.some((f) => f !== "popular");
+    const pools = await getArtistTrackPools(artistId, artistName, accessToken, filters, market);
 
-    const [popularPool, catalogPool] = await Promise.all([
-      needsPopular ? getArtistTopTracks(artistId, accessToken, market) : Promise.resolve([] as SpotifyTrack[]),
-      needsCatalog ? getArtistCatalog(artistId, accessToken, market) : Promise.resolve([] as SpotifyTrack[]),
-    ]);
-
-    if (popularPool.length === 0 && catalogPool.length === 0) {
+    if (pools.popular.length === 0 && pools.recent.length === 0) {
       return NextResponse.json(
-        { error: `No tracks found for this artist in your Spotify market (${market}).`, tracks: [] },
+        { error: "No tracks found for this artist.", tracks: [] },
         { status: 200 }
       );
     }
 
-    const tracks = selectTracksForFilters({ popular: popularPool, catalog: catalogPool }, filters, count);
+    const tracks = selectTracksForFilters(pools, filters, count);
     return NextResponse.json({ tracks });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 502 });

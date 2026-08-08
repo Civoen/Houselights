@@ -25,10 +25,22 @@ export interface LineupArtist {
   artist: SpotifyArtist;
   filters: FilterType[];
   count: number;
-  pickedTrackIds: string[];
+  pickedTracks: SpotifyTrack[];
 }
 
 export interface PlaylistTrack extends SpotifyTrack {
   sourceArtistId: string;
   handpicked: boolean;
+}
+
+export interface PastEvent {
+  id: string;
+  name: string;
+  url: string;
+  trackCount: number;
+  totalMinutes: number;
+  artistNames: string[];
+  headliner: SpotifyArtist;
+  eventDate?: string;
+  createdAt: string;
 }
