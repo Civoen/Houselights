@@ -11,7 +11,15 @@ Built for a single user for now — see the notes on Spotify's development mode 
 
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS
 - Spotify Web API (Authorization Code flow, server-side, cookie-based session)
-- Deploys to Cloudflare Workers via `@opennextjs/cloudflare`
+- API routes run on the Edge runtime (`export const runtime = "edge"`) and deploy to
+  Cloudflare Pages via `@cloudflare/next-on-pages`
+
+**Note on the adapter:** `@cloudflare/next-on-pages` is the Pages-compatible path, but
+Cloudflare and the Next.js team are steering new projects toward `@opennextjs/cloudflare`
+on Workers instead — npm flags `next-on-pages` as deprecated on install, even though it
+still works today. This project uses it because it matches an existing Pages workflow;
+if that ever changes, moving to Workers means running `@opennextjs/cloudflare` instead
+and removing the `export const runtime = "edge"` lines from the five API routes.
 
 ## 1. Register a Spotify app
 
@@ -43,26 +51,18 @@ npm run dev
 
 Open http://127.0.0.1:3000, tap **Build your lineup**, then **Connect Spotify** when prompted.
 
-## 4. Deploy to Cloudflare
+## 4. Deploy to Cloudflare Pages
 
-This project uses `@opennextjs/cloudflare`, the adapter currently recommended for
-running full Next.js apps (including API routes) on Cloudflare Workers.
+In the Cloudflare dashboard: **Workers and Pages > Create application > Pages > Connect to Git**,
+select this repo, and set:
 
-```
-npm run cf:build
-npx wrangler login
-npx wrangler secret put SPOTIFY_CLIENT_ID
-npx wrangler secret put SPOTIFY_CLIENT_SECRET
-npx wrangler secret put SESSION_SECRET
-```
+- **Build command**: `npx @cloudflare/next-on-pages`
+- **Build output directory**: `.vercel/output/static`
 
-Then set `SPOTIFY_REDIRECT_URI` and `APP_URL` as plain vars in `wrangler.jsonc`
-(or as secrets too) pointing at your `*.workers.dev` or custom domain, add that
-same redirect URI in the Spotify dashboard, and deploy:
-
-```
-npm run cf:deploy
-```
+Add your environment variables under **Settings > Environment variables** (values from
+step 2, with `SPOTIFY_REDIRECT_URI` and `APP_URL` pointing at your `*.pages.dev` domain
+or custom domain instead of `127.0.0.1`). Update the redirect URI in the Spotify
+dashboard to match, then deploy.
 
 Once deployed, visiting the site on your phone and using "Add to Home Screen"
 installs it as a PWA (manifest + service worker are already wired up in `public/`).
@@ -96,3 +96,7 @@ remove, reorder (drag the handle), or add more before creating the playlist.
 - Spotify's development mode currently caps you at 5 allowlisted users and requires
   the app owner to have Premium — fine for solo use, but worth knowing about before
   sharing this with friends.
+- All five API routes run on the Edge runtime, which is a smaller API surface than
+  full Node.js. The app doesn't currently rely on anything outside that surface, but
+  if you add a feature that needs a Node-only package, it either needs an
+  Edge-compatible alternative or a move to the Workers + OpenNext path described above.

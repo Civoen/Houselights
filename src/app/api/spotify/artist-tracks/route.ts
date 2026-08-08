@@ -9,6 +9,8 @@ import {
 } from "@/lib/spotify";
 import { FilterType } from "@/lib/types";
 
+export const runtime = "edge";
+
 export async function GET(req: NextRequest) {
   const artistId = req.nextUrl.searchParams.get("artistId");
   const artistName = req.nextUrl.searchParams.get("artistName") || "";

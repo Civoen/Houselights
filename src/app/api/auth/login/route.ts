@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthorizeUrl } from "@/lib/spotify";
 
+export const runtime = "edge";
+
 export async function GET() {
   const state = crypto.randomUUID();
   const url = getAuthorizeUrl(state);

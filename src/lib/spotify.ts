@@ -7,7 +7,7 @@ const API_BASE = "https://api.spotify.com/v1";
 function basicAuthHeader() {
   const id = process.env.SPOTIFY_CLIENT_ID!;
   const secret = process.env.SPOTIFY_CLIENT_SECRET!;
-  return "Basic " + Buffer.from(`${id}:${secret}`).toString("base64");
+  return "Basic " + btoa(`${id}:${secret}`);
 }
 
 export function getAuthorizeUrl(state: string) {

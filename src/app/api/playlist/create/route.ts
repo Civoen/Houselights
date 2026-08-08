@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidAccessToken, createSpotifyPlaylist } from "@/lib/spotify";
 
+export const runtime = "edge";
+
 export async function POST(req: NextRequest) {
   const accessToken = await getValidAccessToken();
   if (!accessToken) return NextResponse.json({ error: "not_connected" }, { status: 401 });

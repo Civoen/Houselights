@@ -7,9 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "cf:build": "npx @opennextjs/cloudflare build",
-    "cf:preview": "npx @opennextjs/cloudflare preview",
-    "cf:deploy": "npx @opennextjs/cloudflare deploy"
+    "pages:build": "npx @cloudflare/next-on-pages"
   },
   "dependencies": {
     "next": "^15.2.0",
@@ -24,7 +22,6 @@
     "tailwindcss": "^3.4.7",
     "postcss": "^8.4.40",
     "autoprefixer": "^10.4.19",
-    "@opennextjs/cloudflare": "^0.3.0",
-    "wrangler": "^3.70.0"
+    "@cloudflare/next-on-pages": "^1.13.5"
   }
 }

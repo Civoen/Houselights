@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidAccessToken, searchArtists } from "@/lib/spotify";
 
+export const runtime = "edge";
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") || "";
   if (q.trim().length < 2) return NextResponse.json({ artists: [] });
