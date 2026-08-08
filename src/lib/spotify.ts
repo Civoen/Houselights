@@ -129,8 +129,17 @@ function mapTrack(t: any, artistId: string, album?: any): SpotifyTrack {
   };
 }
 
-export async function getArtistTopTracks(artistId: string, accessToken: string): Promise<SpotifyTrack[]> {
-  const json = await spotifyFetch(`/artists/${artistId}/top-tracks?market=US`, accessToken);
+export async function getUserMarket(accessToken: string): Promise<string> {
+  try {
+    const me = await spotifyFetch("/me", accessToken);
+    return me.country || "US";
+  } catch {
+    return "US";
+  }
+}
+
+export async function getArtistTopTracks(artistId: string, accessToken: string, market = "US"): Promise<SpotifyTrack[]> {
+  const json = await spotifyFetch(`/artists/${artistId}/top-tracks?market=${market}`, accessToken);
   return (json.tracks || []).map((t: any) => mapTrack(t, artistId));
 }
 
@@ -149,9 +158,9 @@ export async function searchTracksForArtist(
   return (json.tracks?.items || []).map((t: any) => mapTrack(t, artistId));
 }
 
-export async function getArtistCatalog(artistId: string, accessToken: string): Promise<SpotifyTrack[]> {
+export async function getArtistCatalog(artistId: string, accessToken: string, market = "US"): Promise<SpotifyTrack[]> {
   const albumsJson = await spotifyFetch(
-    `/artists/${artistId}/albums?include_groups=album,single&limit=50&market=US`,
+    `/artists/${artistId}/albums?include_groups=album,single&limit=50&market=${market}`,
     accessToken
   );
   const albums = albumsJson.items || [];
@@ -187,21 +196,66 @@ export async function getTracksByIds(ids: string[], accessToken: string): Promis
   return out;
 }
 
-export function filterTracks(tracks: SpotifyTrack[], filter: FilterType, count: number): SpotifyTrack[] {
+export function sortForFilter(tracks: SpotifyTrack[], filter: FilterType): SpotifyTrack[] {
   const deduped = dedupeByName(tracks);
-  let sorted: SpotifyTrack[];
   if (filter === "popular") {
-    sorted = [...deduped].sort((a, b) => b.popularity - a.popularity);
-  } else if (filter === "deep") {
-    sorted = [...deduped].sort((a, b) => a.popularity - b.popularity);
-  } else {
-    sorted = [...deduped].sort((a, b) => {
-      const da = a.releaseDate ? Date.parse(a.releaseDate) : 0;
-      const db = b.releaseDate ? Date.parse(b.releaseDate) : 0;
-      return db - da;
-    });
+    return [...deduped].sort((a, b) => b.popularity - a.popularity);
   }
-  return sorted.slice(0, count);
+  if (filter === "deep") {
+    return [...deduped].sort((a, b) => a.popularity - b.popularity);
+  }
+  return [...deduped].sort((a, b) => {
+    const da = a.releaseDate ? Date.parse(a.releaseDate) : 0;
+    const db = b.releaseDate ? Date.parse(b.releaseDate) : 0;
+    return db - da;
+  });
+}
+
+function trackDedupeKey(t: SpotifyTrack): string {
+  return t.name.toLowerCase().replace(/\(.*?\)/g, "").trim() + "|" + t.artistId;
+}
+
+export function selectTracksForFilters(
+  pools: { popular: SpotifyTrack[]; catalog: SpotifyTrack[] },
+  filters: FilterType[],
+  count: number
+): SpotifyTrack[] {
+  const active = filters.length > 0 ? filters : (["popular"] as FilterType[]);
+  const base = Math.floor(count / active.length);
+  const remainder = count - base * active.length;
+
+  const selected: SpotifyTrack[] = [];
+  const seen = new Set<string>();
+
+  active.forEach((filter, i) => {
+    const target = base + (i < remainder ? 1 : 0);
+    const pool = filter === "popular" ? pools.popular : pools.catalog;
+    const sorted = sortForFilter(pool, filter);
+    let added = 0;
+    for (const t of sorted) {
+      if (added >= target) break;
+      const key = trackDedupeKey(t);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      selected.push(t);
+      added++;
+    }
+  });
+
+  // if a filter's pool ran out early (e.g. very few deep cuts), top up from
+  // whichever pool still has unused tracks so the total still hits `count`
+  if (selected.length < count) {
+    const combinedPool = [...pools.popular, ...pools.catalog].sort((a, b) => b.popularity - a.popularity);
+    for (const t of combinedPool) {
+      if (selected.length >= count) break;
+      const key = trackDedupeKey(t);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      selected.push(t);
+    }
+  }
+
+  return selected;
 }
 
 function dedupeByName(tracks: SpotifyTrack[]): SpotifyTrack[] {

@@ -6,16 +6,18 @@ export function Stepper({ value, onChange, min = 1, max = 100 }: { value: number
         type="button"
         aria-label="Decrease"
         onClick={() => onChange(Math.max(min, value - 1))}
-        className="w-6 h-6 rounded-full border border-lineStrong bg-surfaceAlt text-muted text-sm font-bold flex items-center justify-center"
+        className="w-6 h-6 rounded-full border border-lineStrong bg-surfaceAlt text-muted text-sm font-bold flex items-center justify-center transition-transform duration-100 active:scale-90 hover:border-teal hover:text-teal"
       >
         −
       </button>
-      <span className="w-5 text-center font-display text-sm font-bold">{value}</span>
+      <span key={value} className="w-5 text-center font-display text-sm font-bold animate-pop-in">
+        {value}
+      </span>
       <button
         type="button"
         aria-label="Increase"
         onClick={() => onChange(Math.min(max, value + 1))}
-        className="w-6 h-6 rounded-full border border-lineStrong bg-surfaceAlt text-muted text-sm font-bold flex items-center justify-center"
+        className="w-6 h-6 rounded-full border border-lineStrong bg-surfaceAlt text-muted text-sm font-bold flex items-center justify-center transition-transform duration-100 active:scale-90 hover:border-teal hover:text-teal"
       >
         +
       </button>

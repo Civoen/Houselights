@@ -10,7 +10,7 @@ interface LineupState {
   coverImageBase64?: string;
   addArtist: (artist: SpotifyArtist) => void;
   removeArtist: (artistId: string) => void;
-  setFilter: (artistId: string, filter: FilterType) => void;
+  toggleFilter: (artistId: string, filter: FilterType) => void;
   setCount: (artistId: string, count: number) => void;
   addPickedTrack: (artistId: string, trackId: string) => void;
   setPlaylist: (tracks: PlaylistTrack[]) => void;
@@ -58,7 +58,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setLineup((prev) => {
       if (prev.some((a) => a.artist.id === artist.id)) return prev;
       const isFirst = prev.length === 0;
-      return [...prev, { artist, filter: "popular", count: isFirst ? 20 : 10, pickedTrackIds: [] }];
+      return [...prev, { artist, filters: ["popular"] as FilterType[], count: isFirst ? 20 : 10, pickedTrackIds: [] }];
     });
   }, []);
 
@@ -66,8 +66,18 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setLineup((prev) => prev.filter((a) => a.artist.id !== artistId));
   }, []);
 
-  const setFilter = useCallback((artistId: string, filter: FilterType) => {
-    setLineup((prev) => prev.map((a) => (a.artist.id === artistId ? { ...a, filter } : a)));
+  const toggleFilter = useCallback((artistId: string, filter: FilterType) => {
+    setLineup((prev) =>
+      prev.map((a) => {
+        if (a.artist.id !== artistId) return a;
+        const has = a.filters.includes(filter);
+        if (has) {
+          if (a.filters.length === 1) return a; // keep at least one filter selected
+          return { ...a, filters: a.filters.filter((f) => f !== filter) };
+        }
+        return { ...a, filters: [...a.filters, filter] };
+      })
+    );
   }, []);
 
   const setCount = useCallback((artistId: string, count: number) => {
@@ -131,7 +141,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         coverImageBase64,
         addArtist,
         removeArtist,
-        setFilter,
+        toggleFilter,
         setCount,
         addPickedTrack,
         setPlaylist,

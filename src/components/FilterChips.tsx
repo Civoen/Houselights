@@ -7,24 +7,28 @@ const OPTIONS: { id: FilterType; label: string }[] = [
   { id: "deep", label: "Deep cuts" },
 ];
 
-export function FilterChips({ value, onChange }: { value: FilterType; onChange: (f: FilterType) => void }) {
+export function FilterChips({ value, onToggle }: { value: FilterType[]; onToggle: (f: FilterType) => void }) {
   return (
     <div className="flex gap-2 mb-3">
-      {OPTIONS.map((opt) => (
-        <button
-          key={opt.id}
-          type="button"
-          onClick={() => onChange(opt.id)}
-          className={
-            "flex-1 text-center py-2 rounded-lg text-xs font-bold border " +
-            (value === opt.id
-              ? "bg-grad text-white border-transparent"
-              : "bg-surfaceAlt text-muted border-line")
-          }
-        >
-          {opt.label}
-        </button>
-      ))}
+      {OPTIONS.map((opt) => {
+        const active = value.includes(opt.id);
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onToggle(opt.id)}
+            className={
+              "flex-1 text-center py-2 rounded-lg text-xs font-bold border transition-all duration-150 active:scale-95 " +
+              (active
+                ? "bg-grad text-white border-transparent"
+                : "bg-surfaceAlt text-muted border-line hover:border-teal hover:text-teal")
+            }
+          >
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

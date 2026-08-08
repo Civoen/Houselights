@@ -23,7 +23,7 @@ export interface SpotifyTrack {
 
 export interface LineupArtist {
   artist: SpotifyArtist;
-  filter: FilterType;
+  filters: FilterType[];
   count: number;
   pickedTrackIds: string[];
 }
