@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getUpcomingEvent } from "@/lib/eventHistory";
 import { PastEvent } from "@/lib/types";
 import { BrandMark } from "@/components/BrandMark";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SettingsButton } from "@/components/SettingsButton";
 
 function formatCountdown(days: number) {
   if (days <= 0) return "today";
@@ -33,7 +33,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex items-center justify-center px-6 relative">
-      <ThemeToggle className="absolute top-6 right-6 w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+      <SettingsButton className="absolute top-6 right-6 w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
       <div className="max-w-sm w-full text-center animate-fade-slide-up">
         <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center animate-lights-up">
           <BrandMark size={56} />

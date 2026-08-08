@@ -12,6 +12,7 @@ interface LineupState {
   setEventDate: (date: string) => void;
   addArtist: (artist: SpotifyArtist) => void;
   removeArtist: (artistId: string) => void;
+  restoreArtist: (entry: LineupArtist, index: number) => void;
   reorderArtist: (from: number, to: number) => void;
   toggleFilter: (artistId: string, filter: FilterType) => void;
   setCount: (artistId: string, count: number) => void;
@@ -19,6 +20,7 @@ interface LineupState {
   removePickedTrack: (artistId: string, trackId: string) => void;
   setPlaylist: (tracks: PlaylistTrack[]) => void;
   removeTrack: (index: number) => void;
+  restoreTrack: (track: PlaylistTrack, index: number) => void;
   reorderTrack: (from: number, to: number) => void;
   addTrackToPlaylist: (track: PlaylistTrack) => void;
   setPlaylistMeta: (name: string, description: string) => void;
@@ -70,6 +72,15 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
 
   const removeArtist = useCallback((artistId: string) => {
     setLineup((prev) => prev.filter((a) => a.artist.id !== artistId));
+  }, []);
+
+  const restoreArtist = useCallback((entry: LineupArtist, index: number) => {
+    setLineup((prev) => {
+      if (prev.some((a) => a.artist.id === entry.artist.id)) return prev;
+      const next = [...prev];
+      next.splice(Math.min(index, next.length), 0, entry);
+      return next;
+    });
   }, []);
 
   const reorderArtist = useCallback((from: number, to: number) => {
@@ -127,6 +138,14 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setPlaylistState((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const restoreTrack = useCallback((track: PlaylistTrack, index: number) => {
+    setPlaylistState((prev) => {
+      const next = [...prev];
+      next.splice(Math.min(index, next.length), 0, track);
+      return next;
+    });
+  }, []);
+
   const reorderTrack = useCallback((from: number, to: number) => {
     setPlaylistState((prev) => {
       const next = [...prev];
@@ -170,6 +189,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setEventDate,
         addArtist,
         removeArtist,
+        restoreArtist,
         reorderArtist,
         toggleFilter,
         setCount,
@@ -177,6 +197,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         removePickedTrack,
         setPlaylist,
         removeTrack,
+        restoreTrack,
         reorderTrack,
         addTrackToPlaylist,
         setPlaylistMeta,

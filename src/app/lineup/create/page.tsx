@@ -3,8 +3,11 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
-import { Spinner } from "@/components/Spinner";
-import { addPastEvent } from "@/lib/eventHistory";
+import { EqSpinner } from "@/components/EqSpinner";
+import { useRotatingText } from "@/lib/useRotatingText";
+import { addPastEvent, getPastEvents } from "@/lib/eventHistory";
+
+const CREATING_PHRASES = ["Packing the setlist...", "Sending it to Spotify...", "Almost there..."];
 
 export default function CreatePage() {
   const router = useRouter();
@@ -15,6 +18,8 @@ export default function CreatePage() {
   const [description, setDescription] = useState(playlistDescription);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const creatingText = useRotatingText(submitting, CREATING_PHRASES, 1200);
 
   useEffect(() => {
     if (!name) {
@@ -44,6 +49,7 @@ export default function CreatePage() {
     setSubmitting(true);
     setError(null);
     setPlaylistMeta(name, description);
+    const isFirstEver = getPastEvents().length === 0;
     try {
       const res = await fetch("/api/playlist/create", {
         method: "POST",
@@ -73,7 +79,9 @@ export default function CreatePage() {
         eventDate: eventDate || undefined,
         createdAt: new Date().toISOString(),
       });
-      router.push(`/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}`);
+      router.push(
+        `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}`
+      );
     } catch (e: any) {
       setError(e.message || "Couldn't create the playlist. Try again.");
     } finally {
@@ -138,8 +146,8 @@ export default function CreatePage() {
           <GradientButton onClick={handleDone} disabled={submitting || !name.trim()} glow={!submitting && !!name.trim()}>
             {submitting ? (
               <>
-                <Spinner />
-                Creating...
+                <EqSpinner />
+                {creatingText}
               </>
             ) : (
               "Done"

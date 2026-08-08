@@ -11,6 +11,7 @@ function SuccessInner() {
   const { playlist, reset } = useLineup();
   const url = params.get("url");
   const name = params.get("name") || "Your playlist";
+  const isFirst = params.get("first") === "1";
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
 
@@ -35,10 +36,13 @@ function SuccessInner() {
             />
           </svg>
         </div>
-        <h1 className="font-display text-xl font-bold mb-1">Added to Spotify</h1>
+        <h1 className="font-display text-xl font-bold mb-1">
+          {isFirst ? "Your first show, prepped 🎉" : "Added to Spotify"}
+        </h1>
         <p className="text-sm text-muted mb-1">{name}</p>
         <p className="text-xs text-faint mb-8">
           {playlist.length} tracks · {totalMin} min
+          {isFirst && " · welcome to Houselights"}
         </p>
         {url && (
           <a

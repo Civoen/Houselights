@@ -61,6 +61,10 @@ const config: Config = {
           "60%": { opacity: "1", transform: "scale(1.15) rotate(4deg)" },
           "100%": { opacity: "1", transform: "scale(1) rotate(0)" },
         },
+        eqBounce: {
+          "0%, 100%": { transform: "scaleY(0.35)" },
+          "50%": { transform: "scaleY(1)" },
+        },
       },
       animation: {
         "fade-slide-up": "fadeSlideUp 0.4s ease-out both",
@@ -70,6 +74,7 @@ const config: Config = {
         "ring-pop": "ringPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
         "lights-up": "lightsUp 0.8s ease-out both",
         "theme-flick": "themeFlick 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
+        "eq-bounce": "eqBounce 0.8s ease-in-out infinite",
       },
     },
   },

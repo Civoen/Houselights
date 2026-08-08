@@ -19,10 +19,10 @@ export function FilterChips({ value, onToggle }: { value: FilterType[]; onToggle
             aria-pressed={active}
             onClick={() => onToggle(opt.id)}
             className={
-              "flex-1 text-center py-2 rounded-lg text-xs font-bold border transition-all duration-150 active:scale-95 " +
+              "flex-1 text-center py-2 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 " +
               (active
-                ? "bg-grad text-white border-transparent"
-                : "bg-surfaceAlt text-muted border-line hover:border-teal hover:text-teal")
+                ? "bg-grad text-white"
+                : "bg-surfaceAlt text-muted border border-line hover:border-teal hover:text-teal")
             }
           >
             {opt.label}

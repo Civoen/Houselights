@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthorizeUrl } from "@/lib/spotify";
 
 export const runtime = "edge";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const state = crypto.randomUUID();
-  const url = getAuthorizeUrl(state);
+  const forceDialog = req.nextUrl.searchParams.get("switch") === "1";
+  const url = getAuthorizeUrl(state, forceDialog);
   const res = NextResponse.redirect(url);
   res.cookies.set("fp_oauth_state", state, {
     httpOnly: true,

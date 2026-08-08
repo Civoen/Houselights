@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { AlbumArt } from "@/components/AlbumArt";
+import { UndoToast } from "@/components/UndoToast";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
+import { useUndoToast } from "@/lib/useUndoToast";
 import { PlaylistTrack } from "@/lib/types";
 
 function fmtDuration(ms: number) {
@@ -41,13 +43,31 @@ function shuffleTracks(tracks: PlaylistTrack[]): PlaylistTrack[] {
 
 export default function PreviewPage() {
   const router = useRouter();
-  const { lineup, playlist, removeTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
+  const { lineup, playlist, removeTrack, restoreTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
   const [addArtistQuery, setAddArtistQuery] = useState("");
   const [addArtistResults, setAddArtistResults] = useState<any[]>([]);
   const [chosenArtist, setChosenArtist] = useState<{ id: string; name: string } | null>(null);
   const [addTrackQuery, setAddTrackQuery] = useState("");
   const [addTrackResults, setAddTrackResults] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+
+  const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
+    track: PlaylistTrack;
+    index: number;
+  }>();
+
+  function handleRemoveTrack(track: PlaylistTrack, index: number) {
+    haptic(HAPTIC.remove);
+    removeTrack(index);
+    showRemoveToast(`Removed ${track.name}`, { track, index });
+  }
+
+  function undoRemoveTrack() {
+    if (!removeToast) return;
+    restoreTrack(removeToast.payload.track, removeToast.payload.index);
+    dismissRemoveToast();
+    haptic(HAPTIC.add);
+  }
 
   const { dragIndex, overIndex, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
     useReorder(playlist.length, (from, to) => {
@@ -192,7 +212,7 @@ export default function PreviewPage() {
             </div>
             <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
             <button
-              onClick={() => { haptic(HAPTIC.remove); removeTrack(i); }}
+              onClick={() => handleRemoveTrack(t, i)}
               className="w-6 h-6 rounded-full bg-surface text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
             >
               ✕
@@ -268,6 +288,8 @@ export default function PreviewPage() {
           </div>
         )}
       </div>
+
+      {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveTrack} className="bottom-36" />}
 
       <div className="fixed bottom-16 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]">
         <div className="max-w-lg mx-auto">

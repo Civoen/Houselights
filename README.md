@@ -94,6 +94,30 @@ review screen — matched artists pre-checked, anything without a confident
 Spotify match shown but unselectable — before anything's actually added to
 your lineup. Nothing is added automatically without that confirmation step.
 
+## Quality of life and personality touches
+
+- **Undo on remove.** Removing an artist from the lineup or a track from the
+  preview shows a brief "Removed [name] · Undo" toast rather than deleting
+  instantly and permanently — a few seconds to reverse an accidental tap.
+- **Retry a single failed artist.** If one artist's auto-fetch fails while
+  others succeed, the warning panel lets you retry just that one artist
+  instead of regenerating the whole lineup, or continue anyway with what did
+  come through.
+- **Live estimate while building.** A rough "≈N tracks · ~Xh Ym (estimate)"
+  line appears as soon as you've added artists, based on the song counts
+  you've set — before you've generated anything, so you can tune counts
+  before committing to a fetch.
+- **Song-distribution bar.** A thin multi-colored bar under the lineup header
+  shows each artist's share of the total song count, color-matched to a small
+  dot on each artist's card so it's easy to see who's contributing what.
+- **First-playlist milestone.** The very first playlist you ever create gets
+  slightly different success-screen copy, detected by checking whether your
+  local event history was empty right before saving this one.
+- **EQ-bar loading animation.** "Generating..." and "Creating..." use an
+  animated three-bar equalizer (the same geometry as the app icon) instead of
+  a generic spinner, with the loading text itself rotating through a few
+  different phrases rather than sitting static.
+
 ## Reordering
 
 All drag-to-reorder (lineup artists, playlist tracks, Previous Events) uses

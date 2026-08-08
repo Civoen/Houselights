@@ -8,6 +8,7 @@ import { PastEvent } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
+import { SettingsButton } from "@/components/SettingsButton";
 
 export default function EventsPage() {
   const router = useRouter();
@@ -49,7 +50,10 @@ export default function EventsPage() {
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
-        <h1 className="font-display text-2xl font-bold">Previous events</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-2xl font-bold">Previous events</h1>
+          <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+        </div>
         <p className="text-sm opacity-90 mt-1">
           {events.length > 0
             ? `${events.length} show${events.length === 1 ? "" : "s"} prepped · ${totalSongs} songs queued up`

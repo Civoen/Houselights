@@ -18,7 +18,7 @@ function basicAuthHeader() {
   return "Basic " + btoa(`${id}:${secret}`);
 }
 
-export function getAuthorizeUrl(state: string) {
+export function getAuthorizeUrl(state: string, forceDialog = false) {
   const scopes = [
     "playlist-modify-public",
     "playlist-modify-private",
@@ -32,6 +32,7 @@ export function getAuthorizeUrl(state: string) {
     redirect_uri: getEnv("SPOTIFY_REDIRECT_URI")!,
     state,
   });
+  if (forceDialog) params.set("show_dialog", "true");
   return `https://accounts.spotify.com/authorize?${params.toString()}`;
 }
 
@@ -277,8 +278,8 @@ export async function getArtistTrackPools(
   market = "US"
 ): Promise<Record<FilterType, SpotifyTrack[]>> {
   const [known, catalog] = await Promise.all([
-    getArtistKnownTracks(artistId, artistName, accessToken),
-    getArtistCatalog(artistId, accessToken, market),
+    getArtistKnownTracks(artistId, artistName, accessToken).catch(() => [] as SpotifyTrack[]),
+    getArtistCatalog(artistId, accessToken, market).catch(() => [] as SpotifyTrack[]),
   ]);
 
   const knownKeys = new Set(known.map(trackDedupeKey));

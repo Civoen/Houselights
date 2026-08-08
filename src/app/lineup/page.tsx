@@ -5,18 +5,36 @@ import { useLineup } from "@/lib/lineupStore";
 import { Stepper } from "@/components/Stepper";
 import { FilterChips } from "@/components/FilterChips";
 import { GradientButton } from "@/components/GradientButton";
-import { Spinner } from "@/components/Spinner";
+import { EqSpinner } from "@/components/EqSpinner";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
+import { UndoToast } from "@/components/UndoToast";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
+import { useRotatingText } from "@/lib/useRotatingText";
+import { useUndoToast } from "@/lib/useUndoToast";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
-import { SpotifyArtist, PlaylistTrack, SpotifyTrack } from "@/lib/types";
+import { SettingsButton } from "@/components/SettingsButton";
+import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist } from "@/lib/types";
 
 interface PosterMatch {
   name: string;
   match: SpotifyArtist | null;
   selected: boolean;
 }
+
+interface PendingIssue {
+  entry: LineupArtist;
+  message: string;
+}
+
+const BAR_COLORS = ["#14CC9B", "#115067", "#F5A623", "#EF6461", "#6C63FF", "#2FB8C6", "#E14D9F", "#8BC34A"];
+
+const GENERATING_PHRASES = [
+  "Checking the setlist...",
+  "Finding the openers...",
+  "Warming up...",
+  "Counting songs...",
+];
 
 export default function LineupPage() {
   const router = useRouter();
@@ -26,6 +44,7 @@ export default function LineupPage() {
     setEventDate,
     addArtist,
     removeArtist,
+    restoreArtist,
     reorderArtist,
     toggleFilter,
     setCount,
@@ -43,6 +62,9 @@ export default function LineupPage() {
   const [pickResults, setPickResults] = useState<SpotifyTrack[]>([]);
   const [generating, setGenerating] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [pendingTracks, setPendingTracks] = useState<PlaylistTrack[] | null>(null);
+  const [pendingIssues, setPendingIssues] = useState<PendingIssue[]>([]);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [posterLoading, setPosterLoading] = useState(false);
   const [posterError, setPosterError] = useState<string | null>(null);
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
@@ -53,6 +75,32 @@ export default function LineupPage() {
       reorderArtist(from, to);
       haptic(HAPTIC.reorder);
     });
+
+  const generatingText = useRotatingText(generating, GENERATING_PHRASES, 1300);
+  const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
+    entry: LineupArtist;
+    index: number;
+  }>();
+
+  function handleRemoveArtist(entry: LineupArtist, index: number) {
+    haptic(HAPTIC.remove);
+    removeArtist(entry.artist.id);
+    showRemoveToast(`Removed ${entry.artist.name}`, { entry, index });
+  }
+
+  function undoRemoveArtist() {
+    if (!removeToast) return;
+    restoreArtist(removeToast.payload.entry, removeToast.payload.index);
+    dismissRemoveToast();
+    haptic(HAPTIC.add);
+  }
+
+  useEffect(() => {
+    setPendingTracks(null);
+    setPendingIssues([]);
+    setPreviewError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineup]);
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -148,70 +196,134 @@ export default function LineupPage() {
     setPosterReview(null);
   }
 
+  async function fetchArtistTracks(
+    entry: LineupArtist
+  ): Promise<{ tracks: PlaylistTrack[]; error?: string; authExpired?: boolean }> {
+    const params = new URLSearchParams({
+      artistId: entry.artist.id,
+      artistName: entry.artist.name,
+      filters: entry.filters.join(","),
+      count: String(entry.count),
+    });
+    const res = await fetch(`/api/spotify/artist-tracks?${params.toString()}`);
+    const includedIds = new Set<string>();
+    const tracks: PlaylistTrack[] = [];
+    let error: string | undefined;
+
+    if (res.status === 401) return { tracks: [], authExpired: true };
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.error) error = json.error;
+      for (const t of json.tracks || []) {
+        includedIds.add(t.id);
+        tracks.push({ ...t, sourceArtistId: entry.artist.id, handpicked: entry.pickedTracks.some((p) => p.id === t.id) });
+      }
+    } else {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson?.error) detail = errJson.error;
+      } catch {
+        /* body wasn't JSON, fall back to status code */
+      }
+      error = detail;
+    }
+
+    for (const t of entry.pickedTracks) {
+      if (includedIds.has(t.id)) continue;
+      includedIds.add(t.id);
+      tracks.push({ ...t, sourceArtistId: entry.artist.id, handpicked: true });
+    }
+
+    return { tracks, error };
+  }
+
   async function handlePreview() {
     if (lineup.length === 0) return;
+
+    // second tap after seeing a partial-failure warning — proceed with what we already have
+    if (pendingTracks) {
+      setPlaylist(pendingTracks);
+      setPendingTracks(null);
+      setPendingIssues([]);
+      setPreviewError(null);
+      router.push("/lineup/preview");
+      return;
+    }
+
     setGenerating(true);
     setPreviewError(null);
     const allTracks: PlaylistTrack[] = [];
-    const issues: string[] = [];
+    const failed: PendingIssue[] = [];
+
     for (const entry of lineup) {
-      const params = new URLSearchParams({
-        artistId: entry.artist.id,
-        artistName: entry.artist.name,
-        filters: entry.filters.join(","),
-        count: String(entry.count),
-      });
-      const res = await fetch(`/api/spotify/artist-tracks?${params.toString()}`);
-      const includedIds = new Set<string>();
-      if (res.status === 401) {
+      const result = await fetchArtistTracks(entry);
+      if (result.authExpired) {
         setNeedsAuth(true);
         setGenerating(false);
         setPreviewError("Your Spotify connection expired. Reconnect above and try again.");
         return;
       }
-      if (res.ok) {
-        const json = await res.json();
-        if (json.error) {
-          issues.push(`${entry.artist.name}: ${json.error}`);
-        }
-        for (const t of json.tracks || []) {
-          includedIds.add(t.id);
-          allTracks.push({ ...t, sourceArtistId: entry.artist.id, handpicked: entry.pickedTracks.some((p) => p.id === t.id) });
-        }
-      } else {
-        let detail = `HTTP ${res.status}`;
-        try {
-          const errJson = await res.json();
-          if (errJson?.error) detail = errJson.error;
-        } catch {
-          /* body wasn't JSON, fall back to status code */
-        }
-        issues.push(`${entry.artist.name}: ${detail}`);
-      }
-      // hand-picked tracks already have full data, no need to re-fetch them
-      for (const t of entry.pickedTracks) {
-        if (includedIds.has(t.id)) continue;
-        includedIds.add(t.id);
-        allTracks.push({ ...t, sourceArtistId: entry.artist.id, handpicked: true });
-      }
+      allTracks.push(...result.tracks);
+      if (result.error) failed.push({ entry, message: result.error });
     }
     setGenerating(false);
+
     if (allTracks.length === 0) {
       setPreviewError(
-        issues.length > 0
-          ? issues.join(" ")
+        failed.length > 0
+          ? failed.map((f) => `${f.entry.artist.name}: ${f.message}`).join(" ")
           : "Your lineup didn't return any tracks. Try a different filter or check the artist names."
       );
       return;
     }
+
+    // some artists returned tracks but others hit a real error — don't silently
+    // drop that error just because the playlist isn't empty. Let the person
+    // retry just the artist(s) that failed, or continue with what we have.
+    if (failed.length > 0) {
+      setPendingTracks(allTracks);
+      setPendingIssues(failed);
+      return;
+    }
+
     setPlaylist(allTracks);
     router.push("/lineup/preview");
+  }
+
+  async function retryArtist(issue: PendingIssue) {
+    setRetryingId(issue.entry.artist.id);
+    haptic(HAPTIC.tap);
+    const result = await fetchArtistTracks(issue.entry);
+    setRetryingId(null);
+
+    if (result.authExpired) {
+      setNeedsAuth(true);
+      setPreviewError("Your Spotify connection expired. Reconnect above and try again.");
+      return;
+    }
+
+    setPendingTracks((prev) => {
+      const withoutOld = (prev || []).filter((t) => t.sourceArtistId !== issue.entry.artist.id);
+      return [...withoutOld, ...result.tracks];
+    });
+
+    if (result.error) {
+      setPendingIssues((prev) => prev.map((p) => (p.entry.artist.id === issue.entry.artist.id ? { ...p, message: result.error! } : p)));
+    } else {
+      setPendingIssues((prev) => prev.filter((p) => p.entry.artist.id !== issue.entry.artist.id));
+      haptic(HAPTIC.add);
+    }
   }
 
   return (
     <main className="min-h-screen pb-48 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
-        <h1 className="font-display text-2xl font-bold mb-4">Build your lineup</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="font-display text-2xl font-bold">Build your lineup</h1>
+          <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+        </div>
         <div className="bg-white/95 rounded-2xl px-4 py-3 flex items-center gap-3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="#93A0AB" strokeWidth="2.2" />
@@ -258,7 +370,7 @@ export default function LineupPage() {
         >
           {posterLoading ? (
             <>
-              <Spinner />
+              <EqSpinner />
               Reading poster...
             </>
           ) : (
@@ -366,6 +478,35 @@ export default function LineupPage() {
           </span>
           <div className="flex-1 h-px bg-lineStrong" />
         </div>
+
+        {lineup.length > 0 && (
+          <div className="mb-3">
+            <div className="w-full h-2.5 rounded-full overflow-hidden flex bg-surfaceAlt">
+              {lineup.map((entry, i) => {
+                const total = lineup.reduce((s, e) => s + e.count, 0) || 1;
+                const pct = (entry.count / total) * 100;
+                return (
+                  <div
+                    key={entry.artist.id}
+                    style={{ width: `${pct}%`, backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }}
+                    className="h-full transition-all duration-300"
+                  />
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-faint mt-1.5">
+              ≈ {lineup.reduce((s, e) => s + e.count, 0)} tracks · ~
+              {(() => {
+                const min = Math.round(lineup.reduce((s, e) => s + e.count, 0) * 3.5);
+                const h = Math.floor(min / 60);
+                const m = min % 60;
+                return h > 0 ? `${h}h ${m}m` : `${m}m`;
+              })()}{" "}
+              (estimate)
+            </p>
+          </div>
+        )}
+
         {lineup.length > 1 && (
           <p className="text-[11px] text-faint mb-3">Drag to reorder — whoever's on top is the headliner.</p>
         )}
@@ -398,6 +539,11 @@ export default function LineupPage() {
               >
                 ⠿
               </span>
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }}
+                aria-hidden="true"
+              />
               <ArtistAvatar src={entry.artist.image} size={36} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold truncate">{entry.artist.name}</div>
@@ -406,7 +552,7 @@ export default function LineupPage() {
                 )}
               </div>
               <button
-                onClick={() => { haptic(HAPTIC.remove); removeArtist(entry.artist.id); }}
+                onClick={() => handleRemoveArtist(entry, i)}
                 className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex items-center justify-center transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
               >
                 ✕
@@ -487,19 +633,41 @@ export default function LineupPage() {
         ))}
       </div>
 
+      {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveArtist} className="bottom-36" />}
+
       <div
         className="fixed bottom-16 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]"
       >
         <div className="max-w-lg mx-auto">
-          {previewError && (
+          {pendingIssues.length > 0 && (
+            <div className="bg-surface border border-line rounded-2xl p-3 mb-3 animate-fade-slide-up">
+              {pendingIssues.map((issue) => (
+                <div key={issue.entry.artist.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <span className="text-xs text-red-600 flex-1 min-w-0 truncate">
+                    <span className="font-bold">{issue.entry.artist.name}:</span> {issue.message}
+                  </span>
+                  <button
+                    onClick={() => retryArtist(issue)}
+                    disabled={retryingId === issue.entry.artist.id}
+                    className="text-[11px] font-bold text-teal flex-shrink-0 transition-transform duration-150 active:scale-90 disabled:opacity-50"
+                  >
+                    {retryingId === issue.entry.artist.id ? "Retrying..." : "Retry"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {previewError && pendingIssues.length === 0 && (
             <p className="text-xs text-red-600 mb-2 animate-fade-slide-up">{previewError}</p>
           )}
           <GradientButton onClick={handlePreview} disabled={lineup.length === 0 || generating} glow={lineup.length > 0 && !generating}>
             {generating ? (
               <>
-                <Spinner />
-                Generating...
+                <EqSpinner />
+                {generatingText}
               </>
+            ) : pendingTracks ? (
+              "Continue anyway"
             ) : (
               "Preview playlist"
             )}
