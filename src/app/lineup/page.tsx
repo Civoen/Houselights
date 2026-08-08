@@ -6,6 +6,7 @@ import { Stepper } from "@/components/Stepper";
 import { FilterChips } from "@/components/FilterChips";
 import { GradientButton } from "@/components/GradientButton";
 import { Spinner } from "@/components/Spinner";
+import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { SpotifyArtist, PlaylistTrack } from "@/lib/types";
 
 export default function LineupPage() {
@@ -86,7 +87,14 @@ export default function LineupPage() {
           allTracks.push({ ...t, sourceArtistId: entry.artist.id, handpicked: entry.pickedTrackIds.includes(t.id) });
         }
       } else {
-        issues.push(`${entry.artist.name}: couldn't load tracks (try again in a moment).`);
+        let detail = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson?.error) detail = errJson.error;
+        } catch {
+          /* body wasn't JSON, fall back to status code */
+        }
+        issues.push(`${entry.artist.name}: ${detail}`);
       }
       const missingPicks = entry.pickedTrackIds.filter((id) => !includedIds.has(id));
       if (missingPicks.length > 0) {
@@ -113,7 +121,7 @@ export default function LineupPage() {
   }
 
   return (
-    <main className="min-h-screen pb-32 animate-fade-slide-up">
+    <main className="min-h-screen pb-40 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
         <h1 className="font-display text-2xl font-bold mb-4">Build your lineup</h1>
         <div className="bg-white/95 rounded-2xl px-4 py-3 flex items-center gap-3">
@@ -151,7 +159,7 @@ export default function LineupPage() {
             className="flex items-center gap-3 py-2 animate-fade-slide-up"
             style={{ animationDelay: `${i * 30}ms` }}
           >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal/30 to-green/30 flex-shrink-0" />
+            <ArtistAvatar src={artist.image} size={36} />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold truncate">{artist.name}</div>
               <div className="text-xs text-faint truncate">{artist.genres[0] || "Artist"}</div>
@@ -182,7 +190,7 @@ export default function LineupPage() {
             className="bg-surface border border-line rounded-2xl p-4 mb-3 animate-pop-in"
           >
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal/30 to-green/30 flex-shrink-0" />
+              <ArtistAvatar src={entry.artist.image} size={36} />
               <div className="flex-1 text-sm font-bold">{entry.artist.name}</div>
               <button
                 onClick={() => removeArtist(entry.artist.id)}
@@ -248,7 +256,7 @@ export default function LineupPage() {
         ))}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-surfaceAlt border-t border-line px-6 py-4">
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         <div className="max-w-lg mx-auto">
           {previewError && (
             <p className="text-xs text-red-600 mb-2 animate-fade-slide-up">{previewError}</p>

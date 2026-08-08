@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
+import { AlbumArt } from "@/components/AlbumArt";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -59,7 +60,7 @@ export default function PreviewPage() {
   }
 
   return (
-    <main className="min-h-screen pb-32 animate-fade-slide-up">
+    <main className="min-h-screen pb-40 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
         <div className="flex items-center gap-3 mb-2">
           <button
@@ -99,7 +100,7 @@ export default function PreviewPage() {
             }
           >
             <span className="text-faint text-sm select-none cursor-grab active:cursor-grabbing">⠿</span>
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal to-green flex-shrink-0" />
+            <AlbumArt src={t.albumImage} size={36} />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold truncate">{t.name}</div>
               <div className="text-xs text-faint truncate">
@@ -186,7 +187,7 @@ export default function PreviewPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-surfaceAlt border-t border-line px-6 py-4">
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         <div className="max-w-lg mx-auto">
           <GradientButton onClick={() => router.push("/lineup/create")} disabled={playlist.length === 0} glow={playlist.length > 0}>
             Create playlist

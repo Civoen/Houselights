@@ -66,7 +66,7 @@ export default function CreatePage() {
   }
 
   return (
-    <main className="min-h-screen pb-32 animate-fade-slide-up">
+    <main className="min-h-screen pb-40 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
         <div className="flex items-center gap-3">
           <button
@@ -117,7 +117,7 @@ export default function CreatePage() {
         {error && <p className="text-xs text-red-600 mt-2 animate-fade-slide-up">{error}</p>}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-surfaceAlt border-t border-line px-6 py-4">
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         <div className="max-w-lg mx-auto">
           <GradientButton onClick={handleDone} disabled={submitting || !name.trim()} glow={!submitting && !!name.trim()}>
             {submitting ? (

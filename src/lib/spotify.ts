@@ -103,7 +103,7 @@ async function spotifyFetch(path: string, accessToken: string, init: RequestInit
 }
 
 export async function searchArtists(query: string, accessToken: string): Promise<SpotifyArtist[]> {
-  const params = new URLSearchParams({ q: query, type: "artist", limit: "8" });
+  const params = new URLSearchParams({ q: query, type: "artist", limit: "3" });
   const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
   return (json.artists?.items || []).map((a: any) => ({
     id: a.id,
