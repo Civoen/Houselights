@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens } from "@/lib/spotify";
 import { setTokens } from "@/lib/session";
+import { getEnv } from "@/lib/env";
 
 export const runtime = "edge";
 
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
   const error = url.searchParams.get("error");
   const savedState = req.cookies.get("fp_oauth_state")?.value;
 
-  const appUrl = process.env.APP_URL || url.origin;
+  const appUrl = getEnv("APP_URL") || url.origin;
 
   if (error) {
     return NextResponse.redirect(`${appUrl}/lineup?spotify_error=${encodeURIComponent(error)}`);

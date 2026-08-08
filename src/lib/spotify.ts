@@ -1,12 +1,13 @@
 import { getTokens, setTokens, StoredTokens } from "./session";
 import { SpotifyArtist, SpotifyTrack, FilterType } from "./types";
+import { getEnv } from "./env";
 
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const API_BASE = "https://api.spotify.com/v1";
 
 function basicAuthHeader() {
-  const id = process.env.SPOTIFY_CLIENT_ID!;
-  const secret = process.env.SPOTIFY_CLIENT_SECRET!;
+  const id = getEnv("SPOTIFY_CLIENT_ID")!;
+  const secret = getEnv("SPOTIFY_CLIENT_SECRET")!;
   return "Basic " + btoa(`${id}:${secret}`);
 }
 
@@ -19,9 +20,9 @@ export function getAuthorizeUrl(state: string) {
   ].join(" ");
   const params = new URLSearchParams({
     response_type: "code",
-    client_id: process.env.SPOTIFY_CLIENT_ID!,
+    client_id: getEnv("SPOTIFY_CLIENT_ID")!,
     scope: scopes,
-    redirect_uri: process.env.SPOTIFY_REDIRECT_URI!,
+    redirect_uri: getEnv("SPOTIFY_REDIRECT_URI")!,
     state,
   });
   return `https://accounts.spotify.com/authorize?${params.toString()}`;
@@ -31,7 +32,7 @@ export async function exchangeCodeForTokens(code: string): Promise<StoredTokens>
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: process.env.SPOTIFY_REDIRECT_URI!,
+    redirect_uri: getEnv("SPOTIFY_REDIRECT_URI")!,
   });
   const res = await fetch(TOKEN_URL, {
     method: "POST",
