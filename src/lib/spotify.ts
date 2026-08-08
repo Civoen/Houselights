@@ -205,17 +205,26 @@ export async function getArtistCatalog(artistId: string, accessToken: string, ma
   );
   const albums = albumsJson.items || [];
   const seenNames = new Set<string>();
-  const tracks: SpotifyTrack[] = [];
-
-  for (const album of albums.slice(0, 12)) {
-    if (seenNames.has(album.name.toLowerCase())) continue;
-    seenNames.add(album.name.toLowerCase());
-    const tracksJson = await spotifyFetch(`/albums/${album.id}/tracks?limit=50`, accessToken);
-    for (const t of tracksJson.items || []) {
-      tracks.push(mapTrack(t, artistId, album));
-    }
+  const uniqueAlbums: any[] = [];
+  for (const album of albums) {
+    const key = album.name.toLowerCase();
+    if (seenNames.has(key)) continue;
+    seenNames.add(key);
+    uniqueAlbums.push(album);
+    if (uniqueAlbums.length >= 12) break;
   }
-  return tracks;
+
+  const perAlbum = await Promise.all(
+    uniqueAlbums.map(async (album) => {
+      try {
+        const tracksJson = await spotifyFetch(`/albums/${album.id}/tracks?limit=50`, accessToken);
+        return (tracksJson.items || []).map((t: any) => mapTrack(t, artistId, album));
+      } catch {
+        return [] as SpotifyTrack[];
+      }
+    })
+  );
+  return perAlbum.flat();
 }
 
 // GET /tracks (batch) was removed — fetch each track individually instead.
@@ -252,32 +261,33 @@ function sortForFilter(tracks: SpotifyTrack[], filter: FilterType): SpotifyTrack
   return tracks;
 }
 
-// Builds one track pool per requested filter for an artist:
-// - popular: Search relevance results (closest available proxy for "top tracks")
-// - recent:  full catalog sorted by release date
-// - deep:    full catalog with anything that showed up in "popular" excluded
+// Builds one track pool per filter for an artist. Both the search-relevance
+// pool and the full catalog are always fetched together — previously
+// "popular" only drew from search results and had nothing to fall back on,
+// which meant it silently capped out at however many unique tracks search
+// returned (often as few as 5 once re-releases/live versions were deduped),
+// no matter how many songs were actually requested. Now "popular" leads with
+// the search-matched tracks (best available popularity proxy) and pads out
+// with the rest of the catalog, so requesting more than the search pool's
+// size still returns real, unique songs instead of stalling early.
 export async function getArtistTrackPools(
   artistId: string,
   artistName: string,
   accessToken: string,
-  filters: FilterType[],
   market = "US"
 ): Promise<Record<FilterType, SpotifyTrack[]>> {
-  const needsKnown = filters.includes("popular") || filters.includes("deep");
-  const needsCatalog = filters.includes("recent") || filters.includes("deep");
-
   const [known, catalog] = await Promise.all([
-    needsKnown ? getArtistKnownTracks(artistId, artistName, accessToken) : Promise.resolve([] as SpotifyTrack[]),
-    needsCatalog ? getArtistCatalog(artistId, accessToken, market) : Promise.resolve([] as SpotifyTrack[]),
+    getArtistKnownTracks(artistId, artistName, accessToken),
+    getArtistCatalog(artistId, accessToken, market),
   ]);
 
   const knownKeys = new Set(known.map(trackDedupeKey));
-  const deepPool = catalog.filter((t) => !knownKeys.has(trackDedupeKey(t)));
+  const catalogMinusKnown = catalog.filter((t) => !knownKeys.has(trackDedupeKey(t)));
 
   return {
-    popular: known,
+    popular: [...known, ...catalogMinusKnown],
     recent: catalog,
-    deep: deepPool.length > 0 ? deepPool : catalog,
+    deep: catalogMinusKnown.length > 0 ? catalogMinusKnown : catalog,
   };
 }
 

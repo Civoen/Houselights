@@ -3,8 +3,8 @@ export function BrandMark({ size = 40, className = "" }: { size?: number; classN
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <defs>
         <linearGradient id="hlBarGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#14B8A6" />
-          <stop offset="1" stopColor="#4ADE80" />
+          <stop offset="0" stopColor="#115067" />
+          <stop offset="1" stopColor="#14CC9B" />
         </linearGradient>
       </defs>
       <rect x="3" y="5" width="4" height="14" rx="2" fill="url(#hlBarGrad)" />

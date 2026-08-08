@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     }
 
     const market = await getUserMarket(accessToken);
-    const pools = await getArtistTrackPools(artistId, artistName, accessToken, filters, market);
+    const pools = await getArtistTrackPools(artistId, artistName, accessToken, market);
 
     if (pools.popular.length === 0 && pools.recent.length === 0) {
       return NextResponse.json(

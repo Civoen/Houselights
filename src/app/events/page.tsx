@@ -7,13 +7,13 @@ import { useLineup } from "@/lib/lineupStore";
 import { PastEvent } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { haptic, HAPTIC } from "@/lib/haptics";
+import { useReorder } from "@/lib/useReorder";
 
 export default function EventsPage() {
   const router = useRouter();
   const { reset, addArtist } = useLineup();
   const [events, setEvents] = useState<PastEvent[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setEvents(getPastEvents());
@@ -29,6 +29,12 @@ export default function EventsPage() {
       return next;
     });
   }
+
+  const { dragIndex, overIndex, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
+    useReorder(events.length, (from, to) => {
+      reorder(from, to);
+      haptic(HAPTIC.reorder);
+    });
 
   function buildAgain(e: PastEvent) {
     if (!e.headliner?.id) return;
@@ -69,21 +75,27 @@ export default function EventsPage() {
         {events.map((e, i) => (
           <div
             key={e.id + e.createdAt}
-            draggable
-            onDragStart={() => setDragIndex(i)}
-            onDragOver={(ev) => ev.preventDefault()}
-            onDrop={() => {
-              if (dragIndex !== null && dragIndex !== i) { reorder(dragIndex, i); haptic(HAPTIC.reorder); }
-              setDragIndex(null);
-            }}
-            onDragEnd={() => setDragIndex(null)}
+            ref={setItemRef(i)}
             className={
               "flex items-start gap-3 bg-surface border border-line rounded-2xl p-4 mb-3 animate-fade-slide-up transition-all duration-150 " +
-              (dragIndex === i ? "opacity-40 scale-[0.98]" : "opacity-100 scale-100")
+              (dragIndex === i
+                ? "opacity-50 scale-[0.98] bg-surfaceAlt"
+                : overIndex === i && dragIndex !== null
+                ? "border-teal"
+                : "opacity-100 scale-100")
             }
             style={{ animationDelay: `${i * 30}ms` }}
           >
-            <span className="text-faint text-sm select-none cursor-grab active:cursor-grabbing pt-1">⠿</span>
+            <span
+              onPointerDown={handlePointerDown(i)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+              className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
+              style={{ touchAction: "none" }}
+            >
+              ⠿
+            </span>
             <ArtistAvatar src={e.headliner?.image} size={38} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-3 mb-1">

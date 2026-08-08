@@ -5,6 +5,8 @@ import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { AlbumArt } from "@/components/AlbumArt";
 import { haptic, HAPTIC } from "@/lib/haptics";
+import { useReorder } from "@/lib/useReorder";
+import { PlaylistTrack } from "@/lib/types";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -13,10 +15,33 @@ function fmtDuration(ms: number) {
   return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
+function orderByArtist(tracks: PlaylistTrack[], artistOrder: string[], direction: "asc" | "desc"): PlaylistTrack[] {
+  const indexMap = new Map(artistOrder.map((id, i) => [id, i]));
+  const withIndex = tracks.map((t, i) => ({
+    t,
+    i,
+    artistIndex: indexMap.get(t.sourceArtistId) ?? artistOrder.length,
+  }));
+  withIndex.sort((a, b) => {
+    const diff = direction === "asc" ? a.artistIndex - b.artistIndex : b.artistIndex - a.artistIndex;
+    if (diff !== 0) return diff;
+    return a.i - b.i;
+  });
+  return withIndex.map((x) => x.t);
+}
+
+function shuffleTracks(tracks: PlaylistTrack[]): PlaylistTrack[] {
+  const arr = [...tracks];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function PreviewPage() {
   const router = useRouter();
-  const { playlist, removeTrack, reorderTrack, addTrackToPlaylist } = useLineup();
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const { lineup, playlist, removeTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
   const [addArtistQuery, setAddArtistQuery] = useState("");
   const [addArtistResults, setAddArtistResults] = useState<any[]>([]);
   const [chosenArtist, setChosenArtist] = useState<{ id: string; name: string } | null>(null);
@@ -24,9 +49,27 @@ export default function PreviewPage() {
   const [addTrackResults, setAddTrackResults] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
 
+  const { dragIndex, overIndex, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
+    useReorder(playlist.length, (from, to) => {
+      reorderTrack(from, to);
+      haptic(HAPTIC.reorder);
+    });
+
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
   const artistCount = new Set(playlist.map((t) => t.sourceArtistId)).size;
+  const artistOrder = lineup.map((a) => a.artist.id);
+
+  function applyOrder(mode: "hype" | "headliner" | "shuffle") {
+    haptic(HAPTIC.reorder);
+    if (mode === "shuffle") {
+      setPlaylist(shuffleTracks(playlist));
+    } else if (mode === "hype") {
+      setPlaylist(orderByArtist(playlist, artistOrder, "desc"));
+    } else {
+      setPlaylist(orderByArtist(playlist, artistOrder, "asc"));
+    }
+  }
 
   async function searchArtist(q: string) {
     setAddArtistQuery(q);
@@ -84,23 +127,61 @@ export default function PreviewPage() {
           </p>
         )}
 
+        {playlist.length > 0 && (
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => applyOrder("hype")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-teal hover:text-teal"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+              Hype
+            </button>
+            <button
+              onClick={() => applyOrder("headliner")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-teal hover:text-teal"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l2.6 5.6L21 9.3l-4.5 4.2 1.2 6.2L12 16.8l-5.7 2.9 1.2-6.2L3 9.3l6.4-.7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              </svg>
+              Headliner
+            </button>
+            <button
+              onClick={() => applyOrder("shuffle")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-teal hover:text-teal"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h4l9 12h5M3 18h4l3.5-4.5M16 6h5M16 6l3-3M16 6l3 3M21 18l-3 3M21 18l-3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Shuffle
+            </button>
+          </div>
+        )}
+
         {playlist.map((t, i) => (
           <div
             key={`${t.id}-${i}`}
-            draggable
-            onDragStart={() => setDragIndex(i)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => {
-              if (dragIndex !== null && dragIndex !== i) { reorderTrack(dragIndex, i); haptic(HAPTIC.reorder); }
-              setDragIndex(null);
-            }}
-            onDragEnd={() => setDragIndex(null)}
+            ref={setItemRef(i)}
             className={
               "flex items-center gap-3 py-2 border-b border-line transition-all duration-150 " +
-              (dragIndex === i ? "opacity-40 scale-[0.98]" : "opacity-100 scale-100")
+              (dragIndex === i
+                ? "opacity-50 scale-[0.98] bg-surfaceAlt"
+                : overIndex === i && dragIndex !== null
+                ? "border-teal"
+                : "opacity-100 scale-100")
             }
           >
-            <span className="text-faint text-sm select-none cursor-grab active:cursor-grabbing">⠿</span>
+            <span
+              onPointerDown={handlePointerDown(i)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+              className="text-faint text-base select-none cursor-grab active:cursor-grabbing px-1 -mx-1"
+              style={{ touchAction: "none" }}
+            >
+              ⠿
+            </span>
             <AlbumArt src={t.albumImage} size={36} />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold truncate">{t.name}</div>

@@ -42,6 +42,12 @@ APP_URL=http://127.0.0.1:3000
 SESSION_SECRET=any-long-random-string
 ```
 
+`ANTHROPIC_API_KEY` is optional — only needed for the "Upload a poster to
+auto-add artists" feature on the lineup builder. Get one at
+[console.anthropic.com](https://console.anthropic.com). Without it, that
+button still appears but tells you it isn't configured rather than failing
+silently — everything else in the app works fine without it.
+
 ## 3. Run locally
 
 ```
@@ -67,6 +73,47 @@ dashboard to match, then deploy.
 Once deployed, visiting the site on your phone and using "Add to Home Screen"
 installs it as a PWA (manifest + service worker are already wired up in `public/`).
 
+## Lights up / Lights down (theme)
+
+The theme toggle (bottom nav, or top-right on the home screen) switches
+between a light theme ("Lights up") and a dark navy theme ("Lights down"),
+persisted to `localStorage` and defaulting to the device's OS-level
+light/dark preference on first visit. Every screen's colors are driven by
+CSS custom properties swapped via a `.dark` class on `<html>`, rather than
+per-component dark-mode classes — so if you ever add a new screen, it
+inherits the theme automatically as long as it uses the existing color
+tokens (`bg-surface`, `text-ink`, `border-line`, etc.) instead of raw hex
+values.
+
+## Poster reading
+
+Uploading a poster photo sends a resized (max 1400px) JPEG to Claude via the
+Anthropic API, asking it to list every performing artist visible on the
+image. Each detected name is then searched against Spotify, and you get a
+review screen — matched artists pre-checked, anything without a confident
+Spotify match shown but unselectable — before anything's actually added to
+your lineup. Nothing is added automatically without that confirmation step.
+
+## Reordering
+
+All drag-to-reorder (lineup artists, playlist tracks, Previous Events) uses
+the Pointer Events API rather than HTML5's native drag-and-drop. That's a
+deliberate choice, not a style preference — native `draggable`/`dragstart`
+never fires on touchscreens in any mobile browser, so an app built for phone
+use can't rely on it. Pointer Events work the same way across touch, mouse,
+and pen.
+
+On the preview screen, alongside manual drag reordering there are three
+one-tap ordering presets:
+
+- **Hype** — orders tracks by artist starting with whoever you added last,
+  working back up to the headliner, so the playlist builds toward your
+  headliner the way the actual show usually runs (openers first, headliner
+  closing).
+- **Headliner** — the reverse: headliner's songs first, then down through
+  support acts in the order you added them.
+- **Shuffle** — fully random order, ignoring artist grouping entirely.
+
 ## How playlist generation works
 
 **Important context:** Spotify's [February 2026 Development Mode changes](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)
@@ -78,10 +125,14 @@ design, not the original implementation.
 
 For each artist in your lineup:
 
-- **Most popular** — approximated via Search's relevance ordering for `artist:"Name"`
-  (Search still ranks by relevance internally even though the score isn't exposed).
-  This is a reasonable proxy but won't always match what Spotify itself would
-  call an artist's biggest hits.
+- **Most popular** — leads with Search's relevance ordering for `artist:"Name"`
+  (Search still ranks by relevance internally even though the score isn't exposed),
+  then pads out with the rest of the artist's catalog if you've asked for more
+  songs than the search results alone provide. Earlier versions of this only used
+  the search pool with nothing to fall back on, which silently capped "Most
+  popular" at however many unique songs search returned — often as few as 5 once
+  duplicate re-releases and live versions were deduped, regardless of the count
+  you'd actually set. Fixed now: it always has the full catalog to draw from.
 - **Recent** — pulls the artist's full album/single catalog and sorts by release date
   (this one is unaffected by the popularity removal).
 - **Deep cuts** — same catalog pull, with anything that showed up in the "Most
@@ -107,10 +158,12 @@ remove, reorder (drag the handle), or add more before creating the playlist.
 - "Most popular" and "Deep cuts" are approximations (see above) — there's no
   path back to true popularity-based sorting until/unless Spotify reintroduces
   that data for Development Mode apps.
-- Deep cuts and Recent fetch a fair number of Spotify endpoints per artist
-  (albums → album tracks, individually since batch fetching is gone), so
-  building a large lineup can take a few seconds. Worth adding a loading state
-  per artist if this becomes annoying in practice.
+- The artist catalog (albums → album tracks) is now always fetched for every
+  request, not just for Recent/Deep cuts, since Most popular needs it as a
+  fallback too. Album-track requests run in parallel rather than sequentially
+  to keep this reasonably fast, but a lineup with several artists can still
+  take a few seconds to generate. Worth adding a per-artist loading state if
+  this becomes annoying in practice.
 - No offline queueing of playlist creation — the service worker caches pages for
   fast reloads, but creating a playlist still requires a live connection.
 - Cover image upload is best-effort: if it fails, the playlist is still created

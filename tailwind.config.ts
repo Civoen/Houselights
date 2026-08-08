@@ -5,20 +5,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#F6F7F5",
-        surface: "#FFFFFF",
-        surfaceAlt: "#EEF1F0",
-        line: "rgba(10,31,38,0.08)",
-        lineStrong: "rgba(10,31,38,0.14)",
-        ink: "#0A1F26",
-        muted: "#64748B",
-        faint: "#93A0AB",
-        teal: "#14B8A6",
-        green: "#4ADE80",
+        bg: "var(--color-bg)",
+        surface: "var(--color-surface)",
+        surfaceAlt: "var(--color-surfaceAlt)",
+        line: "var(--color-line)",
+        lineStrong: "var(--color-lineStrong)",
+        ink: "var(--color-ink)",
+        muted: "var(--color-muted)",
+        faint: "var(--color-faint)",
+        teal: "#115067",
+        green: "#14CC9B",
         navy: "#0A1F26",
       },
       backgroundImage: {
-        grad: "linear-gradient(115deg, #14B8A6, #4ADE80)",
+        grad: "linear-gradient(115deg, #115067, #14CC9B)",
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],
@@ -56,6 +56,11 @@ const config: Config = {
           "55%": { opacity: "1", filter: "brightness(1.2)" },
           "100%": { opacity: "1", filter: "brightness(1)", transform: "scale(1)" },
         },
+        themeFlick: {
+          "0%": { opacity: "0.3", transform: "scale(0.8) rotate(-10deg)" },
+          "60%": { opacity: "1", transform: "scale(1.15) rotate(4deg)" },
+          "100%": { opacity: "1", transform: "scale(1) rotate(0)" },
+        },
       },
       animation: {
         "fade-slide-up": "fadeSlideUp 0.4s ease-out both",
@@ -64,6 +69,7 @@ const config: Config = {
         "check-draw": "checkDraw 0.5s ease-out 0.1s both",
         "ring-pop": "ringPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
         "lights-up": "lightsUp 0.8s ease-out both",
+        "theme-flick": "themeFlick 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
       },
     },
   },

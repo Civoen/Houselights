@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LineupProvider } from "@/lib/lineupStore";
+import { ThemeProvider } from "@/lib/themeStore";
 import { AppChrome } from "@/components/AppChrome";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#14B8A6",
+  themeColor: "#115067",
   width: "device-width",
   initialScale: 1,
 };
@@ -24,9 +25,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="font-body min-h-screen">
-        <LineupProvider>
-          <AppChrome>{children}</AppChrome>
-        </LineupProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var stored = localStorage.getItem('houselights_theme');
+                  var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  if (dark) document.documentElement.classList.add('dark');
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+        <ThemeProvider>
+          <LineupProvider>
+            <AppChrome>{children}</AppChrome>
+          </LineupProvider>
+        </ThemeProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `
