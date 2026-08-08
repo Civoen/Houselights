@@ -5,7 +5,7 @@ import { AppChrome } from "@/components/AppChrome";
 
 export const metadata: Metadata = {
   title: "Houselights",
-  description: "Know the artists before you see them.",
+  description: "Create better playlists.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0D9488",
+  themeColor: "#14B8A6",
   width: "device-width",
   initialScale: 1,
 };
@@ -35,6 +35,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   navigator.serviceWorker.register('/sw.js').catch(function () {});
                 });
               }
+              (function () {
+                var RELOAD_KEY = 'hl_chunk_reload_attempted';
+                function isChunkError(msg) {
+                  return typeof msg === 'string' && (
+                    msg.indexOf('ChunkLoadError') !== -1 ||
+                    msg.indexOf('Loading chunk') !== -1 ||
+                    msg.indexOf('Failed to fetch dynamically imported module') !== -1
+                  );
+                }
+                function recoverOnce() {
+                  if (sessionStorage.getItem(RELOAD_KEY)) return;
+                  sessionStorage.setItem(RELOAD_KEY, '1');
+                  window.location.reload();
+                }
+                window.addEventListener('error', function (e) {
+                  if (isChunkError(e && e.message)) recoverOnce();
+                });
+                window.addEventListener('unhandledrejection', function (e) {
+                  var msg = e && e.reason && (e.reason.message || String(e.reason));
+                  if (isChunkError(msg)) recoverOnce();
+                });
+                window.addEventListener('load', function () {
+                  setTimeout(function () {
+                    sessionStorage.removeItem(RELOAD_KEY);
+                  }, 8000);
+                });
+              })();
             `,
           }}
         />

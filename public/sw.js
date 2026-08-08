@@ -1,4 +1,4 @@
-const CACHE_NAME = "festivalprep-v1";
+const CACHE_NAME = "houselights-v2";
 const PRECACHE_URLS = ["/", "/lineup", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -27,18 +27,37 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request)
-        .then((response) => {
+  // Content-hashed build assets never change contents for a given URL, so
+  // they're safe (and fast) to serve cache-first.
+  const isHashedAsset = url.pathname.startsWith("/_next/static/");
+  if (isHashedAsset) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+        });
+      })
+    );
+    return;
+  }
+
+  // Everything else (pages, manifest, icons) — always prefer the network so
+  // a new deploy is picked up immediately. Cache is only a fallback for
+  // when there's no connection at all, not a way to skip the network.
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });

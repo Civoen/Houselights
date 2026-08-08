@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getUpcomingEvent } from "@/lib/eventHistory";
 import { PastEvent } from "@/lib/types";
+import { BrandMark } from "@/components/BrandMark";
 
 function formatCountdown(days: number) {
   if (days <= 0) return "today";
@@ -32,8 +33,8 @@ export default function Home() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
       <div className="max-w-sm w-full text-center animate-fade-slide-up">
-        <div className="w-16 h-16 rounded-full bg-grad mx-auto mb-6 flex items-center justify-center animate-lights-up">
-          <span className="font-display text-2xl font-bold text-white">H</span>
+        <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center animate-lights-up">
+          <BrandMark size={56} />
         </div>
         <h1 className="font-display text-2xl font-bold mb-2">Houselights</h1>
 
@@ -43,7 +44,7 @@ export default function Home() {
             <span className="text-teal font-bold">{formatCountdown(days)}</span>
           </p>
         ) : (
-          <p className="text-muted text-sm mb-8">Know the artists before you see them.</p>
+          <p className="text-muted text-sm mb-8">Create better playlists.</p>
         )}
 
         {connected ? (

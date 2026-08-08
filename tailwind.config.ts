@@ -5,19 +5,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#EFEDE6",
+        bg: "#F6F7F5",
         surface: "#FFFFFF",
-        surfaceAlt: "#F6F5F0",
-        line: "rgba(20,22,20,0.08)",
-        lineStrong: "rgba(20,22,20,0.14)",
-        ink: "#14181A",
-        muted: "#666F6B",
-        faint: "#9CA39F",
-        teal: "#0D9488",
-        green: "#3DDC97",
+        surfaceAlt: "#EEF1F0",
+        line: "rgba(10,31,38,0.08)",
+        lineStrong: "rgba(10,31,38,0.14)",
+        ink: "#0A1F26",
+        muted: "#64748B",
+        faint: "#93A0AB",
+        teal: "#14B8A6",
+        green: "#4ADE80",
+        navy: "#0A1F26",
       },
       backgroundImage: {
-        grad: "linear-gradient(115deg, #0D9488, #3DDC97)",
+        grad: "linear-gradient(115deg, #14B8A6, #4ADE80)",
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],

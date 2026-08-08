@@ -136,8 +136,8 @@ export default function LineupPage() {
         <h1 className="font-display text-2xl font-bold mb-4">Build your lineup</h1>
         <div className="bg-white/95 rounded-2xl px-4 py-3 flex items-center gap-3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="7" stroke="#9CA39F" strokeWidth="2.2" />
-            <path d="M21 21l-4.3-4.3" stroke="#9CA39F" strokeWidth="2.2" strokeLinecap="round" />
+            <circle cx="11" cy="11" r="7" stroke="#93A0AB" strokeWidth="2.2" />
+            <path d="M21 21l-4.3-4.3" stroke="#93A0AB" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
           <input
             value={query}
