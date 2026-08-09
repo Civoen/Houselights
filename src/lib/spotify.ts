@@ -196,7 +196,7 @@ async function searchArtistTrackRange(
 // results. Search still ranks by relevance internally even with the score
 // hidden, so early results are the closest available popularity proxy.
 export async function getArtistKnownTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
-  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 0, 20);
+  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 0, 30);
 }
 
 // "Recent" — the same search, but scoped with Spotify's year: filter to the
@@ -213,7 +213,7 @@ async function getArtistRecentTracks(artistId: string, artistName: string, acces
 // popularity-ascending sort (that data doesn't exist anymore), but a real,
 // distinct pool rather than a re-labeled copy of "popular."
 async function getArtistDeepTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
-  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 20, 50);
+  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 30, 80);
 }
 
 export async function searchTracksForArtist(
@@ -313,7 +313,7 @@ export function selectTracksForFilters(
   poolsByFilter: Record<FilterType, SpotifyTrack[]>,
   filters: FilterType[],
   count: number
-): SpotifyTrack[] {
+): { tracks: SpotifyTrack[]; shortBy: number } {
   const active = filters.length > 0 ? filters : (["popular"] as FilterType[]);
   const base = Math.floor(count / active.length);
   const remainder = count - base * active.length;
@@ -336,7 +336,9 @@ export function selectTracksForFilters(
   });
 
   // if a filter's pool ran out early, top up from whatever's left so the
-  // total still hits `count`
+  // total still hits `count` — but if the combined pool genuinely doesn't
+  // have enough distinct tracks, `shortBy` reports exactly how far short,
+  // so that can be surfaced instead of silently under-filling.
   if (selected.length < count) {
     const fallback = [...poolsByFilter.popular, ...poolsByFilter.recent, ...poolsByFilter.deep];
     for (const t of fallback) {
@@ -348,7 +350,7 @@ export function selectTracksForFilters(
     }
   }
 
-  return selected;
+  return { tracks: selected, shortBy: Math.max(0, count - selected.length) };
 }
 
 export async function createSpotifyPlaylist(params: {

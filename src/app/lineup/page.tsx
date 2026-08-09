@@ -580,22 +580,26 @@ export default function LineupPage() {
           <p className="text-sm text-faint text-center py-6">{copy.lineup.emptyLineup}</p>
         )}
 
-        {lineup.map((entry, i) => (
+        {lineup.map((entry, i) => {
+          const artistColor = BAR_COLORS[i % BAR_COLORS.length];
+          const isDropTarget = overIndex === i && dragIndex !== null;
+          return (
           <div
             key={entry.artist.id}
             ref={setItemRef(i)}
             className={
-              "bg-surface border border-line rounded-2xl p-4 mb-3 " +
+              "bg-surface border rounded-2xl p-4 mb-3 " +
               (dragIndex === i
                 ? "shadow-2xl z-20 relative"
                 : "transition-all duration-150 " +
-                  (overIndex === i && dragIndex !== null ? "border-accent" : "animate-pop-in"))
+                  (isDropTarget ? "border-accent" : "animate-pop-in"))
             }
-            style={
-              dragIndex === i
+            style={{
+              ...(dragIndex === i
                 ? { transform: `translateY(${dragOffsetY}px) scale(1.03)`, transition: "box-shadow 0.15s ease" }
-                : undefined
-            }
+                : {}),
+              ...(isDropTarget ? {} : { borderColor: artistColor }),
+            }}
           >
             <div className="flex items-center gap-3 mb-3">
               <span
@@ -699,7 +703,7 @@ export default function LineupPage() {
               </div>
             )}
           </div>
-        ))}
+        );})}
       </div>
 
       {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveArtist} className="bottom-36" />}

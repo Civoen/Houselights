@@ -54,10 +54,16 @@ export async function GET(req: NextRequest) {
 
     // Surface the real reason even when some tracks did come through, so a
     // partial failure isn't silently indistinguishable from "this artist
-    // just doesn't have more songs." Only for genuine failures — a pool
-    // that's simply smaller than the requested count because the artist
-    // doesn't have more music isn't something retrying would fix.
-    return NextResponse.json(warning ? { tracks, error: warning } : { tracks });
+    // just doesn't have more songs." Two distinct cases: an actual request
+    // failure (warning), or a genuine shortfall — search only found fewer
+    // distinct tracks than requested, which retrying won't fix but is still
+    // worth being upfront about rather than silently under-filling.
+    let message = warning;
+    if (!message && tracks.shortBy > 0) {
+      message = `Found ${tracks.tracks.length} of the ${count} requested — that's genuinely all Search could surface for this artist.`;
+    }
+
+    return NextResponse.json(message ? { tracks: tracks.tracks, error: message } : { tracks: tracks.tracks });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 502 });
   }

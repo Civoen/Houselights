@@ -12,7 +12,7 @@
 
 export const copy = {
   home: {
-    tagline: "Get hyped now.",
+    tagline: "Create better playlists.",
     ctaConnect: "Connect Spotify",
   },
 
@@ -22,7 +22,7 @@ export const copy = {
     eventDateLabel: "Event date",
     eventDateOptional: "(optional)",
 
-    quickAddLabel: "Quick add from your favourites",
+    quickAddLabel: "From your Spotify · Quick add",
     quickAddReconnect: "Reconnect Spotify",
     quickAddScopeSuffix: "to see your top artists here.",
     quickAddAllAdded: "All your top artists are already in this lineup.",

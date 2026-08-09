@@ -165,7 +165,8 @@ your lineup. Nothing is added automatically without that confirmation step.
   before committing to a fetch.
 - **Song-distribution bar.** A thin multi-colored bar under the lineup header
   shows each artist's share of the total song count, color-matched to a small
-  dot on each artist's card so it's easy to see who's contributing what.
+  dot on each artist's card and a thin outline around the whole card, so it's
+  easy to trace a segment of the bar back to the actual card it represents.
 - **First-playlist milestone.** The very first playlist you ever create gets
   slightly different success-screen copy, detected by checking whether your
   local event history was empty right before saving this one.
@@ -231,6 +232,17 @@ If one of the three searches fails for a given artist, the other two still
 work independently — a failure doesn't silently fall back to a *different*
 filter's results and pretend nothing went wrong, the way an earlier version
 of this did. You'll see the real error and can retry just that artist.
+
+**On song counts not always being hit exactly:** plain artist-name search
+isn't really built for "give me this artist's whole catalog" — for many
+artists it saturates after the first page or two, and results further out
+increasingly stop being genuine matches once filtered by exact artist ID.
+So the honest number of distinct tracks findable this way sometimes sits
+below what you asked for, especially for smaller counts of pages beyond
+~30–50 tracks deep. When that happens you'll see exactly how many were
+found versus requested, rather than a silent shortfall — retrying won't
+change the result in that case (it's a real ceiling, not a flaky request),
+but at least it's visible instead of a mystery.
 
 The count you set per artist (defaults: 20 for the first artist you add, 10 for the
 rest — tweak as needed) controls how many auto-selected tracks are pulled in per
