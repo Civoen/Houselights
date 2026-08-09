@@ -38,10 +38,6 @@ const config: Config = {
           "60%": { transform: "scale(1.06)", opacity: "1" },
           "100%": { transform: "scale(1)" },
         },
-        softGlow: {
-          "0%, 100%": { boxShadow: "0 8px 26px -10px rgba(13,148,136,0.45)" },
-          "50%": { boxShadow: "0 10px 34px -8px rgba(61,220,151,0.65)" },
-        },
         checkDraw: {
           "0%": { strokeDashoffset: "24", opacity: "0" },
           "40%": { opacity: "1" },
@@ -66,16 +62,20 @@ const config: Config = {
           "0%, 100%": { transform: "scaleY(0.35)" },
           "50%": { transform: "scaleY(1)" },
         },
+        faderDrift: {
+          "0%, 100%": { transform: "translateY(-3px)" },
+          "50%": { transform: "translateY(3px)" },
+        },
       },
       animation: {
         "fade-slide-up": "fadeSlideUp 0.4s ease-out both",
         "pop-in": "popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both",
-        "soft-glow": "softGlow 3.4s ease-in-out infinite",
         "check-draw": "checkDraw 0.5s ease-out 0.1s both",
         "ring-pop": "ringPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
         "lights-up": "lightsUp 0.8s ease-out both",
         "theme-flick": "themeFlick 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
         "eq-bounce": "eqBounce 0.8s ease-in-out infinite",
+        "fader-drift": "faderDrift 3.4s ease-in-out infinite",
       },
     },
   },

@@ -6,8 +6,9 @@ import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
 import { addPastEvent, getPastEvents } from "@/lib/eventHistory";
+import { copy } from "@/lib/copy";
 
-const CREATING_PHRASES = ["Packing the setlist...", "Sending it to Spotify...", "Almost there..."];
+const CREATING_PHRASES = copy.create.creatingPhrases;
 
 export default function CreatePage() {
   const router = useRouter();
@@ -99,7 +100,7 @@ export default function CreatePage() {
           >
             ‹
           </button>
-          <h1 className="font-display text-xl font-bold">New playlist</h1>
+          <h1 className="font-display text-xl font-bold">{copy.create.title}</h1>
         </div>
       </div>
 
@@ -114,13 +115,13 @@ export default function CreatePage() {
           }
         >
           <span className="absolute bottom-3 right-3 bg-black/55 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors hover:bg-black/70">
-            {coverImageBase64 ? "Change cover" : "Add cover"}
+            {coverImageBase64 ? copy.create.changeCover : copy.create.addCover}
           </span>
         </button>
         <input ref={fileInput} type="file" accept="image/jpeg,image/png" onChange={handleFile} className="hidden" />
 
         <label className="block text-xs font-extrabold uppercase tracking-wide text-faint mb-1.5">
-          Playlist name
+          {copy.create.playlistNameLabel}
         </label>
         <input
           value={name}
@@ -129,7 +130,7 @@ export default function CreatePage() {
         />
 
         <label className="block text-xs font-extrabold uppercase tracking-wide text-faint mb-1.5">
-          Description
+          {copy.create.descriptionLabel}
         </label>
         <textarea
           value={description}
@@ -143,14 +144,14 @@ export default function CreatePage() {
 
       <div className="fixed bottom-16 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]">
         <div className="max-w-lg mx-auto">
-          <GradientButton onClick={handleDone} disabled={submitting || !name.trim()} glow={!submitting && !!name.trim()}>
+          <GradientButton onClick={handleDone} disabled={submitting || !name.trim()}>
             {submitting ? (
               <>
                 <EqSpinner />
                 {creatingText}
               </>
             ) : (
-              "Done"
+              copy.create.doneButton
             )}
           </GradientButton>
         </div>

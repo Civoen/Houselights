@@ -9,6 +9,8 @@ import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
 import { SettingsButton } from "@/components/SettingsButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { copy } from "@/lib/copy";
 
 export default function EventsPage() {
   const router = useRouter();
@@ -51,13 +53,16 @@ export default function EventsPage() {
     <main className="min-h-screen pb-24 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
         <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-bold">Previous events</h1>
-          <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+          <h1 className="font-display text-2xl font-bold">{copy.events.title}</h1>
+          <div className="flex items-center gap-2">
+            <ThemeToggle className="w-8 h-8 rounded-full bg-white/20 text-white" />
+            <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+          </div>
         </div>
         <p className="text-sm opacity-90 mt-1">
           {events.length > 0
             ? `${events.length} show${events.length === 1 ? "" : "s"} prepped · ${totalSongs} songs queued up`
-            : "Playlists you've already sent to Spotify"}
+            : copy.events.subtitleEmpty}
         </p>
       </div>
 
@@ -65,13 +70,13 @@ export default function EventsPage() {
         {loaded && events.length === 0 && (
           <div className="text-center py-14">
             <p className="text-sm text-faint mb-5">
-              Nothing here yet — build your first lineup and it'll show up once it's live on Spotify.
+              {copy.events.emptyMessage}
             </p>
             <Link
               href="/lineup"
               className="inline-block bg-grad text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-[0.96]"
             >
-              Build your lineup
+              {copy.events.buildLineupLink}
             </Link>
           </div>
         )}
@@ -122,7 +127,7 @@ export default function EventsPage() {
                       onClick={() => buildAgain(e)}
                       className="text-[11px] font-bold text-accent transition-transform duration-150 active:scale-90"
                     >
-                      Build again
+                      {copy.events.buildAgain}
                     </button>
                   )}
                   <a
@@ -131,7 +136,7 @@ export default function EventsPage() {
                     rel="noreferrer"
                     className="text-[11px] font-bold text-muted flex items-center gap-1 transition-transform duration-150 active:scale-90"
                   >
-                    Open
+                    {copy.events.open}
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
                       <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>

@@ -79,6 +79,22 @@ dashboard to match, then deploy.
 Once deployed, visiting the site on your phone and using "Add to Home Screen"
 installs it as a PWA (manifest + service worker are already wired up in `public/`).
 
+## Editing the site's text
+
+Every piece of static UI copy — titles, button labels, hints, placeholders,
+empty states — lives in one file: `src/lib/copy.ts`. Edit strings there
+directly (in GitHub's web editor, or locally) and push — no need to touch
+any component to reword something. It's organized by screen (`copy.home`,
+`copy.lineup`, `copy.preview`, etc.), and each string has a plain-English key
+so it's easy to find what you're looking for.
+
+A few things are deliberately *not* in that file: text assembled from
+multiple dynamic pieces at once — like "Removed {track name}" undo toasts,
+or the per-artist error list on the lineup builder — lives next to the logic
+that builds it, since editing those safely means understanding the
+surrounding code, not just swapping words. Everything else routes through
+`copy.ts`.
+
 ## Quick add from your top artists
 
 The lineup builder shows a horizontal row of your own top artists (via

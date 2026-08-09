@@ -4,13 +4,14 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { haptic, HAPTIC } from "@/lib/haptics";
+import { copy } from "@/lib/copy";
 
 function SuccessInner() {
   const params = useSearchParams();
   const router = useRouter();
   const { playlist, reset } = useLineup();
   const url = params.get("url");
-  const name = params.get("name") || "Your playlist";
+  const name = params.get("name") || copy.success.fallbackName;
   const isFirst = params.get("first") === "1";
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
@@ -37,21 +38,21 @@ function SuccessInner() {
           </svg>
         </div>
         <h1 className="font-display text-xl font-bold mb-1">
-          {isFirst ? "Your first show, prepped 🎉" : "Added to Spotify"}
+          {isFirst ? copy.success.firstTitle : copy.success.title}
         </h1>
         <p className="text-sm text-muted mb-1">{name}</p>
         <p className="text-xs text-faint mb-8">
           {playlist.length} tracks · {totalMin} min
-          {isFirst && " · welcome to Houselights"}
+          {isFirst && ` · ${copy.success.firstSuffix}`}
         </p>
         {url && (
           <a
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="block w-full bg-grad text-white py-4 rounded-2xl font-extrabold text-sm mb-3 transition-all duration-150 hover:brightness-[1.05] active:scale-[0.97] animate-soft-glow"
+            className="block w-full bg-grad text-white py-4 rounded-2xl font-extrabold text-sm mb-3 transition-all duration-150 hover:brightness-[1.05] hover:scale-[1.02] active:scale-[0.97]"
           >
-            Open in Spotify
+            {copy.success.openInSpotify}
           </a>
         )}
         <button
@@ -62,7 +63,7 @@ function SuccessInner() {
           }}
           className="block w-full border border-lineStrong text-muted py-3.5 rounded-2xl font-bold text-sm transition-all duration-150 hover:bg-surfaceAlt active:scale-[0.97]"
         >
-          Build another
+          {copy.success.buildAnother}
         </button>
       </div>
     </main>

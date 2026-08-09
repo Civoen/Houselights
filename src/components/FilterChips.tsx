@@ -1,10 +1,11 @@
 "use client";
 import { FilterType } from "@/lib/types";
+import { copy } from "@/lib/copy";
 
 const OPTIONS: { id: FilterType; label: string }[] = [
-  { id: "popular", label: "Most popular" },
-  { id: "recent", label: "Recent" },
-  { id: "deep", label: "Deep cuts" },
+  { id: "popular", label: copy.filters.popular },
+  { id: "recent", label: copy.filters.recent },
+  { id: "deep", label: copy.filters.deep },
 ];
 
 export function FilterChips({ value, onToggle }: { value: FilterType[]; onToggle: (f: FilterType) => void }) {

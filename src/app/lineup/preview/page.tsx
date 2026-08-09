@@ -9,6 +9,7 @@ import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
 import { useUndoToast } from "@/lib/useUndoToast";
 import { PlaylistTrack } from "@/lib/types";
+import { copy } from "@/lib/copy";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -133,7 +134,7 @@ export default function PreviewPage() {
           >
             ‹
           </button>
-          <h1 className="font-display text-xl font-bold">Preview playlist</h1>
+          <h1 className="font-display text-xl font-bold">{copy.preview.title}</h1>
         </div>
         <p className="text-sm opacity-90 ml-10">
           {playlist.length} tracks · {totalMin} min · {artistCount} artists
@@ -143,13 +144,13 @@ export default function PreviewPage() {
       <div className="px-6 py-4 max-w-lg mx-auto">
         {playlist.length === 0 && (
           <p className="text-sm text-faint text-center py-10">
-            Your lineup didn't return any tracks. Go back and adjust your filters or song counts.
+            {copy.preview.emptyState}
           </p>
         )}
 
         {playlist.length > 0 && (
           <p className="text-[11px] text-faint mb-3">
-            Tap <span className="text-accent">▶</span> next to a track to listen on Spotify before you commit to it.
+            {copy.preview.previewHintPrefix} <span className="text-accent">▶</span> {copy.preview.previewHintSuffix}
           </p>
         )}
 
@@ -162,7 +163,7 @@ export default function PreviewPage() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
               </svg>
-              Hype
+              {copy.preview.hype}
             </button>
             <button
               onClick={() => applyOrder("headliner")}
@@ -171,7 +172,7 @@ export default function PreviewPage() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3l2.6 5.6L21 9.3l-4.5 4.2 1.2 6.2L12 16.8l-5.7 2.9 1.2-6.2L3 9.3l6.4-.7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
-              Headliner
+              {copy.preview.headliner}
             </button>
             <button
               onClick={() => applyOrder("shuffle")}
@@ -180,7 +181,7 @@ export default function PreviewPage() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M3 6h4l9 12h5M3 18h4l3.5-4.5M16 6h5M16 6l3-3M16 6l3 3M21 18l-3 3M21 18l-3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Shuffle
+              {copy.preview.shuffle}
             </button>
           </div>
         )}
@@ -248,7 +249,7 @@ export default function PreviewPage() {
           <span className="w-6 h-6 rounded-full border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
             {showAdd ? "−" : "+"}
           </span>
-          Add a song
+          {copy.preview.addSong}
         </button>
 
         {showAdd && (
@@ -259,7 +260,7 @@ export default function PreviewPage() {
                   autoFocus
                   value={addArtistQuery}
                   onChange={(e) => searchArtist(e.target.value)}
-                  placeholder="Search an artist"
+                  placeholder={copy.preview.searchArtistPlaceholder}
                   className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {addArtistResults.map((a, i) => (
@@ -270,7 +271,7 @@ export default function PreviewPage() {
                     style={{ animationDelay: `${i * 25}ms` }}
                   >
                     <span className="text-xs font-semibold">{a.name}</span>
-                    <span className="text-[11px] text-accent font-bold">Select</span>
+                    <span className="text-[11px] text-accent font-bold">{copy.preview.select}</span>
                   </button>
                 ))}
               </>
@@ -279,14 +280,14 @@ export default function PreviewPage() {
                 <div className="flex items-center justify-between mb-2 animate-pop-in">
                   <span className="text-xs font-bold">{chosenArtist.name}</span>
                   <button onClick={() => setChosenArtist(null)} className="text-[11px] text-faint transition-opacity active:opacity-60">
-                    Change
+                    {copy.preview.change}
                   </button>
                 </div>
                 <input
                   autoFocus
                   value={addTrackQuery}
                   onChange={(e) => searchTrack(e.target.value)}
-                  placeholder="Search a song title"
+                  placeholder={copy.preview.searchSongPlaceholder}
                   className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {addTrackResults.map((t, i) => (
@@ -300,7 +301,7 @@ export default function PreviewPage() {
                       onClick={() => { haptic(HAPTIC.add); addTrackToPlaylist({ ...t, sourceArtistId: chosenArtist.id, handpicked: true }); }}
                       className="text-[11px] font-bold text-accent flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
                     >
-                      Add
+                      {copy.preview.add}
                     </button>
                   </div>
                 ))}
@@ -314,8 +315,8 @@ export default function PreviewPage() {
 
       <div className="fixed bottom-16 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]">
         <div className="max-w-lg mx-auto">
-          <GradientButton onClick={() => router.push("/lineup/create")} disabled={playlist.length === 0} glow={playlist.length > 0}>
-            Create playlist
+          <GradientButton onClick={() => router.push("/lineup/create")} disabled={playlist.length === 0}>
+            {copy.preview.createButton}
           </GradientButton>
         </div>
       </div>

@@ -7,9 +7,35 @@ export function BrandMark({ size = 40, className = "" }: { size?: number; classN
       <rect x="6" width="28" height="205" rx="14" fill="url(#hlLogoGradA)" />
       <rect x="102" width="28" height="205" rx="14" fill="url(#hlLogoGradB)" />
       <rect x="54" y="40" width="28" height="125" rx="14" fill="url(#hlLogoGradC)" />
-      <rect y="82" width="40" height="29" rx="5" fill="url(#hlLogoGradD)" />
-      <rect x="48" y="116" width="40" height="29" rx="5" fill="url(#hlLogoGradE)" />
-      <rect x="96" y="53" width="40" height="29" rx="5" fill="url(#hlLogoGradF)" />
+      <rect
+        y="82"
+        width="40"
+        height="29"
+        rx="5"
+        fill="url(#hlLogoGradD)"
+        className="animate-fader-drift origin-center"
+        style={{ animationDelay: "0s", animationDuration: "3.2s" }}
+      />
+      <rect
+        x="48"
+        y="116"
+        width="40"
+        height="29"
+        rx="5"
+        fill="url(#hlLogoGradE)"
+        className="animate-fader-drift origin-center"
+        style={{ animationDelay: "0.5s", animationDuration: "3.8s" }}
+      />
+      <rect
+        x="96"
+        y="53"
+        width="40"
+        height="29"
+        rx="5"
+        fill="url(#hlLogoGradF)"
+        className="animate-fader-drift origin-center"
+        style={{ animationDelay: "1s", animationDuration: "3.5s" }}
+      />
       <defs>
         <linearGradient id="hlLogoGradA" x1="14.5556" y1="205" x2="16.0212" y2="0.00491954" gradientUnits="userSpaceOnUse">
           <stop stopColor="#115067" />

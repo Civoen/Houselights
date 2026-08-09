@@ -14,7 +14,9 @@ import { useRotatingText } from "@/lib/useRotatingText";
 import { useUndoToast } from "@/lib/useUndoToast";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
 import { SettingsButton } from "@/components/SettingsButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist } from "@/lib/types";
+import { copy } from "@/lib/copy";
 
 interface PosterMatch {
   name: string;
@@ -29,12 +31,7 @@ interface PendingIssue {
 
 const BAR_COLORS = ["#14CC9B", "#115067", "#F5A623", "#EF6461", "#6C63FF", "#2FB8C6", "#E14D9F", "#8BC34A"];
 
-const GENERATING_PHRASES = [
-  "Checking the setlist...",
-  "Finding the openers...",
-  "Warming up...",
-  "Counting songs...",
-];
+const GENERATING_PHRASES = copy.lineup.generatingPhrases;
 
 export default function LineupPage() {
   const router = useRouter();
@@ -215,35 +212,40 @@ export default function LineupPage() {
   async function fetchArtistTracks(
     entry: LineupArtist
   ): Promise<{ tracks: PlaylistTrack[]; error?: string; authExpired?: boolean }> {
-    const params = new URLSearchParams({
-      artistId: entry.artist.id,
-      artistName: entry.artist.name,
-      filters: entry.filters.join(","),
-      count: String(entry.count),
-    });
-    const res = await fetch(`/api/spotify/artist-tracks?${params.toString()}`);
     const includedIds = new Set<string>();
     const tracks: PlaylistTrack[] = [];
     let error: string | undefined;
 
-    if (res.status === 401) return { tracks: [], authExpired: true };
-
-    if (res.ok) {
-      const json = await res.json();
-      if (json.error) error = json.error;
-      for (const t of json.tracks || []) {
-        includedIds.add(t.id);
-        tracks.push({ ...t, sourceArtistId: entry.artist.id, handpicked: entry.pickedTracks.some((p) => p.id === t.id) });
-      }
+    if (!entry.artist.id) {
+      error = "This artist is missing its Spotify ID — try removing and re-adding them.";
     } else {
-      let detail = `HTTP ${res.status}`;
-      try {
-        const errJson = await res.json();
-        if (errJson?.error) detail = errJson.error;
-      } catch {
-        /* body wasn't JSON, fall back to status code */
+      const params = new URLSearchParams({
+        artistId: entry.artist.id,
+        artistName: entry.artist.name,
+        filters: entry.filters.join(","),
+        count: String(entry.count),
+      });
+      const res = await fetch(`/api/spotify/artist-tracks?${params.toString()}`);
+
+      if (res.status === 401) return { tracks: [], authExpired: true };
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.error) error = json.error;
+        for (const t of json.tracks || []) {
+          includedIds.add(t.id);
+          tracks.push({ ...t, sourceArtistId: entry.artist.id, handpicked: entry.pickedTracks.some((p) => p.id === t.id) });
+        }
+      } else {
+        let detail = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson?.error) detail = errJson.error;
+        } catch {
+          /* body wasn't JSON, fall back to status code */
+        }
+        error = detail;
       }
-      error = detail;
     }
 
     for (const t of entry.pickedTracks) {
@@ -337,8 +339,11 @@ export default function LineupPage() {
     <main className="min-h-screen pb-48 animate-fade-slide-up">
       <div className="bg-grad text-white px-6 pt-10 pb-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="font-display text-2xl font-bold">Build your lineup</h1>
-          <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+          <h1 className="font-display text-2xl font-bold">{copy.lineup.title}</h1>
+          <div className="flex items-center gap-2">
+            <ThemeToggle className="w-8 h-8 rounded-full bg-white/20 text-white" />
+            <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+          </div>
         </div>
         <div className="bg-white/95 rounded-2xl px-4 py-3 flex items-center gap-3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -348,7 +353,7 @@ export default function LineupPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search artists on Spotify"
+            placeholder={copy.lineup.searchPlaceholder}
             className="flex-1 bg-transparent outline-none text-sm text-navy placeholder:text-slate-400"
           />
         </div>
@@ -361,8 +366,8 @@ export default function LineupPage() {
               <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" />
               <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
-            Event date
-            <span className="text-faint font-normal">(optional)</span>
+            {copy.lineup.eventDateLabel}
+            <span className="text-faint font-normal">{copy.lineup.eventDateOptional}</span>
           </div>
           <input
             type="date"
@@ -375,7 +380,7 @@ export default function LineupPage() {
         {query.trim().length < 2 && (topArtists.length > 0 || topArtistsNeedsScope) && (
           <div className="mb-4">
             <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">
-              From your Spotify · Quick add
+              {copy.lineup.quickAddLabel}
             </div>
             {topArtists.filter((a) => !lineup.some((e) => e.artist.id === a.id)).length > 0 ? (
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
@@ -405,12 +410,12 @@ export default function LineupPage() {
             ) : topArtistsNeedsScope ? (
               <p className="text-[11px] text-faint">
                 <a href="/api/auth/login" className="text-accent font-bold">
-                  Reconnect Spotify
+                  {copy.lineup.quickAddReconnect}
                 </a>{" "}
-                to see your top artists here.
+                {copy.lineup.quickAddScopeSuffix}
               </p>
             ) : (
-              <p className="text-[11px] text-faint">All your top artists are already in this lineup.</p>
+              <p className="text-[11px] text-faint">{copy.lineup.quickAddAllAdded}</p>
             )}
           </div>
         )}
@@ -430,7 +435,7 @@ export default function LineupPage() {
           {posterLoading ? (
             <>
               <EqSpinner />
-              Reading poster...
+              {copy.lineup.posterUploadLoading}
             </>
           ) : (
             <>
@@ -439,7 +444,7 @@ export default function LineupPage() {
                 <circle cx="9" cy="10" r="1.6" fill="currentColor" />
                 <path d="M4 17l5-5 4 4 3-3 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Upload a poster to auto-add artists
+              {copy.lineup.posterUploadIdle}
             </>
           )}
         </button>
@@ -450,7 +455,7 @@ export default function LineupPage() {
         {posterReview && (
           <div className="bg-surface border border-line rounded-2xl p-4 mb-4 animate-pop-in">
             <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-3">
-              Found on your poster
+              {copy.lineup.posterFoundHeading}
             </div>
             {posterReview.map((item, i) => (
               <button
@@ -474,7 +479,7 @@ export default function LineupPage() {
                 <ArtistAvatar src={item.match?.image} size={30} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold truncate">{item.match?.name || item.name}</div>
-                  {!item.match && <div className="text-[10px] text-faint">No Spotify match found</div>}
+                  {!item.match && <div className="text-[10px] text-faint">{copy.lineup.posterNoMatch}</div>}
                 </div>
               </button>
             ))}
@@ -483,14 +488,14 @@ export default function LineupPage() {
                 onClick={() => setPosterReview(null)}
                 className="flex-1 py-2.5 rounded-xl border border-lineStrong text-muted text-xs font-bold transition-all active:scale-95"
               >
-                Cancel
+                {copy.lineup.posterCancel}
               </button>
               <GradientButton
                 onClick={confirmPosterAdd}
                 disabled={!posterReview.some((p) => p.selected)}
                 className="flex-1 py-2.5 text-xs"
               >
-                Add {posterReview.filter((p) => p.selected).length} artist
+                {copy.lineup.posterAddOne} {posterReview.filter((p) => p.selected).length} artist
                 {posterReview.filter((p) => p.selected).length === 1 ? "" : "s"}
               </GradientButton>
             </div>
@@ -499,17 +504,17 @@ export default function LineupPage() {
 
         {needsAuth && (
           <div className="bg-surface border border-line rounded-2xl p-4 mb-4 text-center animate-pop-in">
-            <p className="text-sm text-muted mb-3">Connect Spotify to search for artists.</p>
+            <p className="text-sm text-muted mb-3">{copy.lineup.connectPrompt}</p>
             <a
               href="/api/auth/login"
               className="inline-block bg-grad text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-[0.96]"
             >
-              Connect Spotify
+              {copy.lineup.connectButton}
             </a>
           </div>
         )}
 
-        {loading && <p className="text-xs text-faint mb-2">Searching...</p>}
+        {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
 
         {results.map((artist, i) => (
           <div
@@ -520,7 +525,7 @@ export default function LineupPage() {
             <ArtistAvatar src={artist.image} size={36} />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold truncate">{artist.name}</div>
-              <div className="text-xs text-faint truncate">{artist.genres[0] || "Artist"}</div>
+              <div className="text-xs text-faint truncate">{artist.genres[0] || copy.lineup.artistFallbackGenre}</div>
             </div>
             <button
               onClick={() => { haptic(HAPTIC.add); addArtist(artist); }}
@@ -533,7 +538,7 @@ export default function LineupPage() {
 
         <div className="flex items-center gap-2 mt-5 mb-1">
           <span className="text-xs font-extrabold uppercase tracking-wide text-faint">
-            Your lineup · {lineup.length}
+            {copy.lineup.lineupLabel} · {lineup.length}
           </span>
           <div className="flex-1 h-px bg-lineStrong" />
         </div>
@@ -561,17 +566,17 @@ export default function LineupPage() {
                 const m = min % 60;
                 return h > 0 ? `${h}h ${m}m` : `${m}m`;
               })()}{" "}
-              (estimate)
+              {copy.lineup.estimateSuffix}
             </p>
           </div>
         )}
 
         {lineup.length > 1 && (
-          <p className="text-[11px] text-faint mb-3">Drag to reorder — whoever's on top is the headliner.</p>
+          <p className="text-[11px] text-faint mb-3">{copy.lineup.dragHint}</p>
         )}
 
         {lineup.length === 0 && (
-          <p className="text-sm text-faint text-center py-6">Search for an artist above to get started.</p>
+          <p className="text-sm text-faint text-center py-6">{copy.lineup.emptyLineup}</p>
         )}
 
         {lineup.map((entry, i) => (
@@ -611,7 +616,7 @@ export default function LineupPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold truncate">{entry.artist.name}</div>
                 {i === 0 && lineup.length > 1 && (
-                  <div className="text-[10px] font-extrabold uppercase tracking-wide text-accent">Headliner</div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wide text-accent">{copy.lineup.headlinerTag}</div>
                 )}
               </div>
               <button
@@ -623,7 +628,7 @@ export default function LineupPage() {
             </div>
             <FilterChips value={entry.filters} onToggle={(f) => toggleFilter(entry.artist.id, f)} />
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-faint font-semibold">Songs to add</span>
+              <span className="text-xs text-faint font-semibold">{copy.lineup.songsToAddLabel}</span>
               <Stepper value={entry.count} onChange={(v) => setCount(entry.artist.id, v)} />
             </div>
             <button
@@ -637,7 +642,7 @@ export default function LineupPage() {
               <span className="w-5 h-5 rounded-full border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
                 {pickingFor === entry.artist.id ? "−" : "+"}
               </span>
-              Add specific songs
+              {copy.lineup.addSpecificSongs}
               {entry.pickedTracks.length > 0 && (
                 <span className="ml-auto bg-accent/10 text-accent text-[10px] font-extrabold px-2 py-0.5 rounded-md animate-pop-in">
                   {entry.pickedTracks.length} picked
@@ -650,7 +655,7 @@ export default function LineupPage() {
                 {entry.pickedTracks.length > 0 && (
                   <div className="mb-3 pb-3 border-b border-line">
                     <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">
-                      Picked songs
+                      {copy.lineup.pickedSongsLabel}
                     </div>
                     {entry.pickedTracks.map((t) => (
                       <div key={t.id} className="flex items-center justify-between py-1">
@@ -659,7 +664,7 @@ export default function LineupPage() {
                           onClick={() => { haptic(HAPTIC.remove); removePickedTrack(entry.artist.id, t.id); }}
                           className="text-[11px] text-faint flex-shrink-0 ml-2 transition-colors active:text-red-500"
                         >
-                          Remove
+                          {copy.lineup.remove}
                         </button>
                       </div>
                     ))}
@@ -672,7 +677,7 @@ export default function LineupPage() {
                     setPickQuery(e.target.value);
                     runTrackSearch(entry.artist.id, entry.artist.name, e.target.value);
                   }}
-                  placeholder="Search a song title"
+                  placeholder={copy.lineup.searchSongPlaceholder}
                   className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {pickResults.map((t, i) => (
@@ -686,7 +691,7 @@ export default function LineupPage() {
                       onClick={() => { haptic(HAPTIC.add); addPickedTrack(entry.artist.id, t); }}
                       className="text-[11px] font-bold text-accent flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
                     >
-                      Add
+                      {copy.lineup.add}
                     </button>
                   </div>
                 ))}
@@ -714,7 +719,7 @@ export default function LineupPage() {
                     disabled={retryingId === issue.entry.artist.id}
                     className="text-[11px] font-bold text-accent flex-shrink-0 transition-transform duration-150 active:scale-90 disabled:opacity-50"
                   >
-                    {retryingId === issue.entry.artist.id ? "Retrying..." : "Retry"}
+                    {retryingId === issue.entry.artist.id ? copy.lineup.retrying : copy.lineup.retry}
                   </button>
                 </div>
               ))}
@@ -723,16 +728,16 @@ export default function LineupPage() {
           {previewError && pendingIssues.length === 0 && (
             <p className="text-xs text-red-600 mb-2 animate-fade-slide-up">{previewError}</p>
           )}
-          <GradientButton onClick={handlePreview} disabled={lineup.length === 0 || generating} glow={lineup.length > 0 && !generating}>
+          <GradientButton onClick={handlePreview} disabled={lineup.length === 0 || generating}>
             {generating ? (
               <>
                 <EqSpinner />
                 {generatingText}
               </>
             ) : pendingTracks ? (
-              "Continue anyway"
+              copy.lineup.ctaContinueAnyway
             ) : (
-              "Preview playlist"
+              copy.lineup.ctaPreview
             )}
           </GradientButton>
         </div>
