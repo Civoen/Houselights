@@ -129,6 +129,35 @@ that exact track in the Spotify app (`open.spotify.com/track/{id}`) — a real
 way to spot-check a song before committing to it, just via a quick
 app-switch rather than an inline clip.
 
+## Notch and home indicator (safe areas)
+
+`viewport-fit=cover` is set in the root layout's viewport config — without
+it, iOS doesn't render web content edge-to-edge under the notch/status bar
+at all, and every `env(safe-area-inset-*)` value used anywhere in the app
+(the bottom nav's padding, the header bars' top padding) silently evaluates
+to `0`, since Safari only activates those variables once `viewport-fit=cover`
+is present. That was the cause of the colored header bars stopping short of
+the true top edge, and the bottom nav sitting flush against the bottom edge
+instead of clearing the home indicator. Every screen's colored header now
+pads its top by `env(safe-area-inset-top)` plus the original spacing, and
+the sticky CTA bars (Preview playlist, Create playlist, Done) position
+themselves relative to the nav's real height — nav height plus
+`env(safe-area-inset-bottom)` — rather than a fixed guess, so they stay
+correctly stacked above the nav even as that safe-area padding changes
+across devices.
+
+## Staying logged in
+
+Session cookies (`fp_access_token`, `fp_refresh_token`, `fp_token_expiry`)
+are set with a 180-day `maxAge`. Earlier versions of this didn't set one at
+all, which meant they defaulted to browser session cookies — wiped whenever
+the browser or PWA process fully closes, which is exactly what "close the
+app and reopen it later" looks like. Spotify's refresh token doesn't expire
+on its own, so that missing `maxAge` was the actual limiting factor on
+staying logged in, not anything on Spotify's side. Every silent token
+refresh re-writes the cookies and resets the 180-day clock, so opening the
+app at least once every six months should keep you logged in indefinitely.
+
 ## Lights up / Lights down (theme)
 
 The theme toggle (bottom nav, or top-right on the home screen) switches

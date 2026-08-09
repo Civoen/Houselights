@@ -59,7 +59,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
-      <div className="bg-grad text-white px-6 pt-10 pb-6">
+      <div className="bg-grad text-white px-6 pb-6 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
         <div className="flex items-center justify-between">
           <h1 className="font-display text-2xl font-bold">{copy.nextUp.title}</h1>
           <div className="flex items-center gap-2">

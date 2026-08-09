@@ -10,6 +10,14 @@ export interface StoredTokens {
   expiresAt: number;
 }
 
+// Spotify's refresh token itself doesn't expire on its own — it stays valid
+// until revoked. Without an explicit maxAge, these cookies default to
+// session cookies that get wiped whenever the browser/PWA process ends,
+// which is exactly what "closing and reopening the app" looks like — so the
+// actual limiting factor on staying logged in was this cookie config, not
+// anything on Spotify's side. 180 days is generous but not indefinite.
+const SIX_MONTHS = 60 * 60 * 24 * 180;
+
 export async function setTokens(tokens: StoredTokens) {
   const store = await cookies();
   const common = {
@@ -17,6 +25,7 @@ export async function setTokens(tokens: StoredTokens) {
     secure: true,
     sameSite: "lax" as const,
     path: "/",
+    maxAge: SIX_MONTHS,
   };
   store.set(ACCESS_COOKIE, tokens.accessToken, common);
   store.set(REFRESH_COOKIE, tokens.refreshToken, common);

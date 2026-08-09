@@ -337,7 +337,7 @@ export default function LineupPage() {
 
   return (
     <main className="min-h-screen pb-48 animate-fade-slide-up">
-      <div className="bg-grad text-white px-6 pt-10 pb-6">
+      <div className="bg-grad text-white px-6 pb-6 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-2xl font-bold">{copy.lineup.title}</h1>
           <div className="flex items-center gap-2">
@@ -709,7 +709,7 @@ export default function LineupPage() {
       {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveArtist} className="bottom-36" />}
 
       <div
-        className="fixed bottom-16 left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]"
+        className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]"
       >
         <div className="max-w-lg mx-auto">
           {pendingIssues.length > 0 && (
