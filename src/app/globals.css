@@ -15,6 +15,7 @@
   --color-ink: #0A1F26;
   --color-muted: #64748B;
   --color-faint: #93A0AB;
+  --color-accent: #115067;
 }
 
 .dark {
@@ -26,6 +27,7 @@
   --color-ink: #F6F7F5;
   --color-muted: #9FB0BB;
   --color-faint: #6C8894;
+  --color-accent: #2EDCB0;
 }
 
 body {

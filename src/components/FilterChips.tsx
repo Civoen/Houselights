@@ -22,7 +22,7 @@ export function FilterChips({ value, onToggle }: { value: FilterType[]; onToggle
               "flex-1 text-center py-2 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 " +
               (active
                 ? "bg-grad text-white"
-                : "bg-surfaceAlt text-muted border border-line hover:border-teal hover:text-teal")
+                : "bg-surfaceAlt text-muted border border-line hover:border-accent hover:text-accent")
             }
           >
             {opt.label}

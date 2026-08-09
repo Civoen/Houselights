@@ -41,7 +41,7 @@ export default function SettingsPage() {
           className="w-full flex items-center justify-between bg-surface border border-line rounded-2xl px-4 py-4 mb-6 transition-transform duration-150 active:scale-[0.98]"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-surfaceAlt flex items-center justify-center text-teal">
+            <div className="w-9 h-9 rounded-full bg-surfaceAlt flex items-center justify-center text-accent">
               {isDark ? (
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="2" />

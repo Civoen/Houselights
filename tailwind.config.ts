@@ -16,6 +16,7 @@ const config: Config = {
         teal: "#115067",
         green: "#14CC9B",
         navy: "#0A1F26",
+        accent: "var(--color-accent)",
       },
       backgroundImage: {
         grad: "linear-gradient(115deg, #115067, #14CC9B)",

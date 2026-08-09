@@ -24,6 +24,7 @@ export function getAuthorizeUrl(state: string, forceDialog = false) {
     "playlist-modify-private",
     "ugc-image-upload",
     "user-read-private",
+    "user-top-read",
   ].join(" ");
   const params = new URLSearchParams({
     response_type: "code",
@@ -114,6 +115,21 @@ export async function searchArtists(query: string, accessToken: string): Promise
   const params = new URLSearchParams({ q: query, type: "artist", limit: "3" });
   const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
   return (json.artists?.items || []).map((a: any) => ({
+    id: a.id,
+    name: a.name,
+    genres: a.genres || [],
+    image: a.images?.[a.images.length - 1]?.url,
+  }));
+}
+
+// GET /me/top/{type} is one of the few personalization endpoints still
+// available for Development Mode apps post Feb-2026 changes. Requires the
+// user-top-read scope — accounts that connected before this scope was added
+// will need to reconnect once for this to start working.
+export async function getTopArtists(accessToken: string, limit = 8): Promise<SpotifyArtist[]> {
+  const params = new URLSearchParams({ limit: String(limit), time_range: "medium_term" });
+  const json = await spotifyFetch(`/me/top/artists?${params.toString()}`, accessToken);
+  return (json.items || []).map((a: any) => ({
     id: a.id,
     name: a.name,
     genres: a.genres || [],
@@ -271,24 +287,43 @@ function sortForFilter(tracks: SpotifyTrack[], filter: FilterType): SpotifyTrack
 // the search-matched tracks (best available popularity proxy) and pads out
 // with the rest of the catalog, so requesting more than the search pool's
 // size still returns real, unique songs instead of stalling early.
+export interface ArtistPoolsResult {
+  pools: Record<FilterType, SpotifyTrack[]>;
+  warning?: string;
+}
+
 export async function getArtistTrackPools(
   artistId: string,
   artistName: string,
   accessToken: string,
   market = "US"
-): Promise<Record<FilterType, SpotifyTrack[]>> {
-  const [known, catalog] = await Promise.all([
-    getArtistKnownTracks(artistId, artistName, accessToken).catch(() => [] as SpotifyTrack[]),
-    getArtistCatalog(artistId, accessToken, market).catch(() => [] as SpotifyTrack[]),
+): Promise<ArtistPoolsResult> {
+  const [knownResult, catalogResult] = await Promise.allSettled([
+    getArtistKnownTracks(artistId, artistName, accessToken),
+    getArtistCatalog(artistId, accessToken, market),
   ]);
+
+  const known = knownResult.status === "fulfilled" ? knownResult.value : [];
+  const catalog = catalogResult.status === "fulfilled" ? catalogResult.value : [];
+
+  const failures: string[] = [];
+  if (knownResult.status === "rejected") {
+    failures.push(`search lookup failed (${knownResult.reason?.message || knownResult.reason})`);
+  }
+  if (catalogResult.status === "rejected") {
+    failures.push(`catalog lookup failed (${catalogResult.reason?.message || catalogResult.reason})`);
+  }
 
   const knownKeys = new Set(known.map(trackDedupeKey));
   const catalogMinusKnown = catalog.filter((t) => !knownKeys.has(trackDedupeKey(t)));
 
   return {
-    popular: [...known, ...catalogMinusKnown],
-    recent: catalog,
-    deep: catalogMinusKnown.length > 0 ? catalogMinusKnown : catalog,
+    pools: {
+      popular: [...known, ...catalogMinusKnown],
+      recent: catalog,
+      deep: catalogMinusKnown.length > 0 ? catalogMinusKnown : catalog,
+    },
+    warning: failures.length > 0 ? failures.join("; ") : undefined,
   };
 }
 

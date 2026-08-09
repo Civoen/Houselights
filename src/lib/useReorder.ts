@@ -8,6 +8,8 @@ import { useRef, useState, useCallback } from "react";
 export function useReorder(itemCount: number, onReorder: (from: number, to: number) => void) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const startYRef = useRef(0);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   itemRefs.current.length = itemCount;
 
@@ -23,6 +25,8 @@ export function useReorder(itemCount: number, onReorder: (from: number, to: numb
       if (e.pointerType === "mouse" && e.button !== 0) return;
       setDragIndex(index);
       setOverIndex(index);
+      setDragOffsetY(0);
+      startYRef.current = e.clientY;
       try {
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       } catch {
@@ -36,6 +40,7 @@ export function useReorder(itemCount: number, onReorder: (from: number, to: numb
     setDragIndex((current) => {
       if (current === null) return current;
       const y = e.clientY;
+      setDragOffsetY(y - startYRef.current);
       let closest: number | null = null;
       let closestDist = Infinity;
       itemRefs.current.forEach((el, i) => {
@@ -63,11 +68,13 @@ export function useReorder(itemCount: number, onReorder: (from: number, to: numb
       });
       return null;
     });
+    setDragOffsetY(0);
   }, [onReorder]);
 
   return {
     dragIndex,
     overIndex,
+    dragOffsetY,
     setItemRef,
     handlePointerDown,
     handlePointerMove,

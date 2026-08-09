@@ -69,7 +69,7 @@ export default function PreviewPage() {
     haptic(HAPTIC.add);
   }
 
-  const { dragIndex, overIndex, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
+  const { dragIndex, overIndex, dragOffsetY, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
     useReorder(playlist.length, (from, to) => {
       reorderTrack(from, to);
       haptic(HAPTIC.reorder);
@@ -148,10 +148,16 @@ export default function PreviewPage() {
         )}
 
         {playlist.length > 0 && (
+          <p className="text-[11px] text-faint mb-3">
+            Tap <span className="text-accent">▶</span> next to a track to listen on Spotify before you commit to it.
+          </p>
+        )}
+
+        {playlist.length > 0 && (
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => applyOrder("hype")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-teal hover:text-teal"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-accent hover:text-accent"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -160,7 +166,7 @@ export default function PreviewPage() {
             </button>
             <button
               onClick={() => applyOrder("headliner")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-teal hover:text-teal"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-accent hover:text-accent"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3l2.6 5.6L21 9.3l-4.5 4.2 1.2 6.2L12 16.8l-5.7 2.9 1.2-6.2L3 9.3l6.4-.7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
@@ -169,7 +175,7 @@ export default function PreviewPage() {
             </button>
             <button
               onClick={() => applyOrder("shuffle")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-teal hover:text-teal"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-accent hover:text-accent"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M3 6h4l9 12h5M3 18h4l3.5-4.5M16 6h5M16 6l3-3M16 6l3 3M21 18l-3 3M21 18l-3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -184,12 +190,15 @@ export default function PreviewPage() {
             key={`${t.id}-${i}`}
             ref={setItemRef(i)}
             className={
-              "flex items-center gap-3 py-2 border-b border-line transition-all duration-150 " +
+              "flex items-center gap-3 py-2 border-b border-line rounded-xl px-2 -mx-2 " +
               (dragIndex === i
-                ? "opacity-50 scale-[0.98] bg-surfaceAlt"
-                : overIndex === i && dragIndex !== null
-                ? "border-teal"
-                : "opacity-100 scale-100")
+                ? "bg-surface shadow-2xl relative z-20"
+                : "transition-all duration-150 " + (overIndex === i && dragIndex !== null ? "border-accent" : ""))
+            }
+            style={
+              dragIndex === i
+                ? { transform: `translateY(${dragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
+                : undefined
             }
           >
             <span
@@ -211,6 +220,18 @@ export default function PreviewPage() {
               </div>
             </div>
             <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
+            <a
+              href={`https://open.spotify.com/track/${t.id}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Listen to ${t.name} on Spotify`}
+              className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </a>
             <button
               onClick={() => handleRemoveTrack(t, i)}
               className="w-6 h-6 rounded-full bg-surface text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
@@ -222,9 +243,9 @@ export default function PreviewPage() {
 
         <button
           onClick={() => setShowAdd((s) => !s)}
-          className="flex items-center gap-2 text-sm font-bold text-teal pt-4 transition-opacity active:opacity-60"
+          className="flex items-center gap-2 text-sm font-bold text-accent pt-4 transition-opacity active:opacity-60"
         >
-          <span className="w-6 h-6 rounded-full border border-dashed border-teal flex items-center justify-center transition-transform duration-200">
+          <span className="w-6 h-6 rounded-full border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
             {showAdd ? "−" : "+"}
           </span>
           Add a song
@@ -239,7 +260,7 @@ export default function PreviewPage() {
                   value={addArtistQuery}
                   onChange={(e) => searchArtist(e.target.value)}
                   placeholder="Search an artist"
-                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-teal/30"
+                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {addArtistResults.map((a, i) => (
                   <button
@@ -249,7 +270,7 @@ export default function PreviewPage() {
                     style={{ animationDelay: `${i * 25}ms` }}
                   >
                     <span className="text-xs font-semibold">{a.name}</span>
-                    <span className="text-[11px] text-teal font-bold">Select</span>
+                    <span className="text-[11px] text-accent font-bold">Select</span>
                   </button>
                 ))}
               </>
@@ -266,7 +287,7 @@ export default function PreviewPage() {
                   value={addTrackQuery}
                   onChange={(e) => searchTrack(e.target.value)}
                   placeholder="Search a song title"
-                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-teal/30"
+                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {addTrackResults.map((t, i) => (
                   <div
@@ -277,7 +298,7 @@ export default function PreviewPage() {
                     <span className="text-xs truncate">{t.name}</span>
                     <button
                       onClick={() => { haptic(HAPTIC.add); addTrackToPlaylist({ ...t, sourceArtistId: chosenArtist.id, handpicked: true }); }}
-                      className="text-[11px] font-bold text-teal flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
+                      className="text-[11px] font-bold text-accent flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
                     >
                       Add
                     </button>

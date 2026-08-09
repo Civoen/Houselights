@@ -16,7 +16,7 @@ export function BottomNav() {
         href="/lineup"
         className={
           "flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-bold transition-colors " +
-          (isNewEvent ? "text-teal" : "text-faint")
+          (isNewEvent ? "text-accent" : "text-faint")
         }
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -28,7 +28,7 @@ export function BottomNav() {
         href="/events"
         className={
           "flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-bold transition-colors " +
-          (isEvents ? "text-teal" : "text-faint")
+          (isEvents ? "text-accent" : "text-faint")
         }
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">

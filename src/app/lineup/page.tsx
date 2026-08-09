@@ -69,8 +69,10 @@ export default function LineupPage() {
   const [posterError, setPosterError] = useState<string | null>(null);
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
   const posterInputRef = useRef<HTMLInputElement>(null);
+  const [topArtists, setTopArtists] = useState<SpotifyArtist[]>([]);
+  const [topArtistsNeedsScope, setTopArtistsNeedsScope] = useState(false);
 
-  const { dragIndex, overIndex, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
+  const { dragIndex, overIndex, dragOffsetY, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
     useReorder(lineup.length, (from, to) => {
       reorderArtist(from, to);
       haptic(HAPTIC.reorder);
@@ -101,6 +103,20 @@ export default function LineupPage() {
     setPreviewError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineup]);
+
+  useEffect(() => {
+    fetch("/api/spotify/top-artists")
+      .then(async (res) => {
+        if (res.status === 401) return;
+        const json = await res.json();
+        if (json.error === "insufficient_scope") {
+          setTopArtistsNeedsScope(true);
+        } else if (Array.isArray(json.artists)) {
+          setTopArtists(json.artists);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -333,7 +349,7 @@ export default function LineupPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search artists on Spotify"
-            className="flex-1 bg-transparent outline-none text-sm text-ink placeholder:text-faint"
+            className="flex-1 bg-transparent outline-none text-sm text-navy placeholder:text-slate-400"
           />
         </div>
       </div>
@@ -356,6 +372,49 @@ export default function LineupPage() {
           />
         </div>
 
+        {query.trim().length < 2 && (topArtists.length > 0 || topArtistsNeedsScope) && (
+          <div className="mb-4">
+            <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">
+              From your Spotify · Quick add
+            </div>
+            {topArtists.filter((a) => !lineup.some((e) => e.artist.id === a.id)).length > 0 ? (
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                {topArtists
+                  .filter((a) => !lineup.some((e) => e.artist.id === a.id))
+                  .map((artist) => (
+                    <button
+                      key={artist.id}
+                      onClick={() => {
+                        haptic(HAPTIC.add);
+                        addArtist(artist);
+                      }}
+                      className="flex flex-col items-center gap-1.5 flex-shrink-0 w-16 transition-transform duration-150 active:scale-95"
+                    >
+                      <div className="relative">
+                        <ArtistAvatar src={artist.image} size={52} />
+                        <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-grad text-white text-xs font-bold flex items-center justify-center border-2 border-bg">
+                          +
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold text-muted text-center truncate w-full">
+                        {artist.name}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            ) : topArtistsNeedsScope ? (
+              <p className="text-[11px] text-faint">
+                <a href="/api/auth/login" className="text-accent font-bold">
+                  Reconnect Spotify
+                </a>{" "}
+                to see your top artists here.
+              </p>
+            ) : (
+              <p className="text-[11px] text-faint">All your top artists are already in this lineup.</p>
+            )}
+          </div>
+        )}
+
         <input
           ref={posterInputRef}
           type="file"
@@ -366,7 +425,7 @@ export default function LineupPage() {
         <button
           onClick={() => posterInputRef.current?.click()}
           disabled={posterLoading}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-teal text-teal text-xs font-bold mb-4 transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-accent text-accent text-xs font-bold mb-4 transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
         >
           {posterLoading ? (
             <>
@@ -520,12 +579,16 @@ export default function LineupPage() {
             key={entry.artist.id}
             ref={setItemRef(i)}
             className={
-              "bg-surface border border-line rounded-2xl p-4 mb-3 transition-all duration-150 " +
+              "bg-surface border border-line rounded-2xl p-4 mb-3 " +
               (dragIndex === i
-                ? "opacity-50 scale-[0.98] shadow-lg z-10 relative"
-                : overIndex === i && dragIndex !== null
-                ? "border-teal"
-                : "opacity-100 scale-100 animate-pop-in")
+                ? "shadow-2xl z-20 relative"
+                : "transition-all duration-150 " +
+                  (overIndex === i && dragIndex !== null ? "border-accent" : "animate-pop-in"))
+            }
+            style={
+              dragIndex === i
+                ? { transform: `translateY(${dragOffsetY}px) scale(1.03)`, transition: "box-shadow 0.15s ease" }
+                : undefined
             }
           >
             <div className="flex items-center gap-3 mb-3">
@@ -548,7 +611,7 @@ export default function LineupPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold truncate">{entry.artist.name}</div>
                 {i === 0 && lineup.length > 1 && (
-                  <div className="text-[10px] font-extrabold uppercase tracking-wide text-teal">Headliner</div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wide text-accent">Headliner</div>
                 )}
               </div>
               <button
@@ -569,14 +632,14 @@ export default function LineupPage() {
                 setPickQuery("");
                 setPickResults([]);
               }}
-              className="flex items-center gap-2 text-xs font-bold text-teal pt-2 border-t border-line w-full transition-opacity duration-150 active:opacity-60"
+              className="flex items-center gap-2 text-xs font-bold text-accent pt-2 border-t border-line w-full transition-opacity duration-150 active:opacity-60"
             >
-              <span className="w-5 h-5 rounded-full border border-dashed border-teal flex items-center justify-center transition-transform duration-200">
+              <span className="w-5 h-5 rounded-full border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
                 {pickingFor === entry.artist.id ? "−" : "+"}
               </span>
               Add specific songs
               {entry.pickedTracks.length > 0 && (
-                <span className="ml-auto bg-teal/10 text-teal text-[10px] font-extrabold px-2 py-0.5 rounded-md animate-pop-in">
+                <span className="ml-auto bg-accent/10 text-accent text-[10px] font-extrabold px-2 py-0.5 rounded-md animate-pop-in">
                   {entry.pickedTracks.length} picked
                 </span>
               )}
@@ -610,7 +673,7 @@ export default function LineupPage() {
                     runTrackSearch(entry.artist.id, entry.artist.name, e.target.value);
                   }}
                   placeholder="Search a song title"
-                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-teal/30"
+                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {pickResults.map((t, i) => (
                   <div
@@ -621,7 +684,7 @@ export default function LineupPage() {
                     <span className="text-xs truncate">{t.name}</span>
                     <button
                       onClick={() => { haptic(HAPTIC.add); addPickedTrack(entry.artist.id, t); }}
-                      className="text-[11px] font-bold text-teal flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
+                      className="text-[11px] font-bold text-accent flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
                     >
                       Add
                     </button>
@@ -649,7 +712,7 @@ export default function LineupPage() {
                   <button
                     onClick={() => retryArtist(issue)}
                     disabled={retryingId === issue.entry.artist.id}
-                    className="text-[11px] font-bold text-teal flex-shrink-0 transition-transform duration-150 active:scale-90 disabled:opacity-50"
+                    className="text-[11px] font-bold text-accent flex-shrink-0 transition-transform duration-150 active:scale-90 disabled:opacity-50"
                   >
                     {retryingId === issue.entry.artist.id ? "Retrying..." : "Retry"}
                   </button>

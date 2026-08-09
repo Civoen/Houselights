@@ -48,6 +48,12 @@ auto-add artists" feature on the lineup builder. Get one at
 button still appears but tells you it isn't configured rather than failing
 silently — everything else in the app works fine without it.
 
+**If you connected before this version**, reconnect once (Settings > Switch
+account, or just log out and reconnect) — the app now requests the
+`user-top-read` scope for the "quick add from your top artists" row on the
+lineup builder, and existing sessions won't have that permission until you
+re-authorize.
+
 ## 3. Run locally
 
 ```
@@ -72,6 +78,28 @@ dashboard to match, then deploy.
 
 Once deployed, visiting the site on your phone and using "Add to Home Screen"
 installs it as a PWA (manifest + service worker are already wired up in `public/`).
+
+## Quick add from your top artists
+
+The lineup builder shows a horizontal row of your own top artists (via
+`GET /me/top/artists`, one of the few personalization endpoints still
+available for Development Mode apps) when the search box is empty, so you
+can one-tap add artists you always want prepped rather than typing every
+name. Requires the `user-top-read` scope — see the reconnect note above if
+this shows a "Reconnect Spotify" prompt instead of your artists.
+
+## No inline 30-second previews — here's why
+
+Spotify deprecated `preview_url` for all newly-created apps back in
+November 2024 — it's not a bug or something this app is doing wrong, every
+track object simply comes back with that field `null` now, permanently, with
+no documented way to opt back in. Building an inline player around it would
+mean shipping a button that never actually works.
+
+Instead, each track on the Preview screen has a small play icon that opens
+that exact track in the Spotify app (`open.spotify.com/track/{id}`) — a real
+way to spot-check a song before committing to it, just via a quick
+app-switch rather than an inline clip.
 
 ## Lights up / Lights down (theme)
 

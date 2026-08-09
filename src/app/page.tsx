@@ -43,7 +43,7 @@ export default function Home() {
         {upcoming && days !== null ? (
           <p className="text-sm mb-8">
             <span className="text-ink font-semibold">You're seeing {upcoming.headliner.name} </span>
-            <span className="text-teal font-bold">{formatCountdown(days)}</span>
+            <span className="text-ink font-bold">{formatCountdown(days)}</span>
           </p>
         ) : (
           <p className="text-muted text-sm mb-8">Create better playlists.</p>
@@ -57,17 +57,12 @@ export default function Home() {
             Build your lineup
           </Link>
         ) : (
-          <>
-            <a
-              href="/api/auth/login"
-              className="inline-block w-full bg-grad text-white py-4 rounded-2xl font-extrabold text-sm transition-all duration-150 hover:brightness-[1.05] active:scale-[0.97] animate-soft-glow"
-            >
-              Connect Spotify
-            </a>
-            <p className="text-xs text-faint mt-3">
-              You'll need Spotify Premium, and your account added to this app's allowlist.
-            </p>
-          </>
+          <a
+            href="/api/auth/login"
+            className="inline-block w-full bg-grad text-white py-4 rounded-2xl font-extrabold text-sm transition-all duration-150 hover:brightness-[1.05] active:scale-[0.97] animate-soft-glow"
+          >
+            Connect Spotify
+          </a>
         )}
 
         {connected && (

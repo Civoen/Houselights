@@ -31,7 +31,7 @@ export default function EventsPage() {
     });
   }
 
-  const { dragIndex, overIndex, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
+  const { dragIndex, overIndex, dragOffsetY, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
     useReorder(events.length, (from, to) => {
       reorder(from, to);
       haptic(HAPTIC.reorder);
@@ -81,14 +81,17 @@ export default function EventsPage() {
             key={e.id + e.createdAt}
             ref={setItemRef(i)}
             className={
-              "flex items-start gap-3 bg-surface border border-line rounded-2xl p-4 mb-3 animate-fade-slide-up transition-all duration-150 " +
+              "flex items-start gap-3 bg-surface border border-line rounded-2xl p-4 mb-3 " +
               (dragIndex === i
-                ? "opacity-50 scale-[0.98] bg-surfaceAlt"
-                : overIndex === i && dragIndex !== null
-                ? "border-teal"
-                : "opacity-100 scale-100")
+                ? "shadow-2xl relative z-20"
+                : "animate-fade-slide-up transition-all duration-150 " +
+                  (overIndex === i && dragIndex !== null ? "border-accent" : ""))
             }
-            style={{ animationDelay: `${i * 30}ms` }}
+            style={
+              dragIndex === i
+                ? { transform: `translateY(${dragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
+                : { animationDelay: `${i * 30}ms` }
+            }
           >
             <span
               onPointerDown={handlePointerDown(i)}
@@ -117,7 +120,7 @@ export default function EventsPage() {
                   {e.headliner?.id && (
                     <button
                       onClick={() => buildAgain(e)}
-                      className="text-[11px] font-bold text-teal transition-transform duration-150 active:scale-90"
+                      className="text-[11px] font-bold text-accent transition-transform duration-150 active:scale-90"
                     >
                       Build again
                     </button>

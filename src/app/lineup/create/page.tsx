@@ -125,7 +125,7 @@ export default function CreatePage() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full bg-surface border border-lineStrong rounded-xl px-4 py-3 text-sm font-semibold mb-4 outline-none transition-shadow focus:ring-2 focus:ring-teal/30"
+          className="w-full bg-surface border border-lineStrong rounded-xl px-4 py-3 text-sm font-semibold mb-4 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
         />
 
         <label className="block text-xs font-extrabold uppercase tracking-wide text-faint mb-1.5">
@@ -135,7 +135,7 @@ export default function CreatePage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="w-full bg-surface border border-lineStrong rounded-xl px-4 py-3 text-sm mb-2 outline-none resize-none transition-shadow focus:ring-2 focus:ring-teal/30"
+          className="w-full bg-surface border border-lineStrong rounded-xl px-4 py-3 text-sm mb-2 outline-none resize-none transition-shadow focus:ring-2 focus:ring-accent/30"
         />
 
         {error && <p className="text-xs text-red-600 mt-2 animate-fade-slide-up">{error}</p>}

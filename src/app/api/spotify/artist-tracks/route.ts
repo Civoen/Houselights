@@ -43,17 +43,23 @@ export async function GET(req: NextRequest) {
     }
 
     const market = await getUserMarket(accessToken);
-    const pools = await getArtistTrackPools(artistId, artistName, accessToken, market);
+    const { pools, warning } = await getArtistTrackPools(artistId, artistName, accessToken, market);
 
     if (pools.popular.length === 0 && pools.recent.length === 0) {
       return NextResponse.json(
-        { error: "No tracks found for this artist.", tracks: [] },
+        { error: warning || "No tracks found for this artist.", tracks: [] },
         { status: 200 }
       );
     }
 
     const tracks = selectTracksForFilters(pools, filters, count);
-    return NextResponse.json({ tracks });
+
+    // Surface the real reason even when some tracks did come through, so a
+    // partial failure isn't silently indistinguishable from "this artist
+    // just doesn't have more songs." Only for genuine failures — a pool
+    // that's simply smaller than the requested count because the artist
+    // doesn't have more music isn't something retrying would fix.
+    return NextResponse.json(warning ? { tracks, error: warning } : { tracks });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 502 });
   }
