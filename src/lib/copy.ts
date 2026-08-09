@@ -14,8 +14,6 @@ export const copy = {
   home: {
     tagline: "Create better playlists.",
     ctaConnect: "Connect Spotify",
-    ctaReady: "Get Ready",
-    connectedLabel: "Connected to Spotify",
   },
 
   lineup: {
@@ -126,8 +124,16 @@ export const copy = {
       "Switching account sends you back through Spotify's login screen, so you can sign in with a different account if you have more than one.",
   },
 
+  nextUp: {
+    title: "Next Up",
+    subtitleEmpty: "Nothing on the horizon yet",
+    subtitleSuffix: "on the horizon",
+    emptyMessage: "No dated shows coming up — add a date next time you build a lineup and it'll show up here.",
+    buildLineupLink: "Build your lineup",
+  },
+
   nav: {
-    home: "Home",
+    nextUp: "Next Up",
     newEvent: "New event",
     previousEvents: "Previous events",
   },

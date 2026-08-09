@@ -155,31 +155,27 @@ function mapTrack(t: any, artistId: string, album?: any): SpotifyTrack {
   };
 }
 
-// Spotify's Feb 2026 changes removed `country` from GET /me, so there's no
-// way to read the account's real market anymore. US is a broad, safe default.
-export async function getUserMarket(_accessToken: string): Promise<string> {
-  return "US";
-}
-
-// GET /artists/{id}/top-tracks was removed entirely. There is no direct
-// per-artist "top tracks" endpoint left in the API for Development Mode
-// apps, so this approximates it using Search's relevance ordering, which
-// still correlates with popularity even though the score itself is hidden.
-export async function getArtistKnownTracks(
+// GET /artists/{id}/top-tracks was removed entirely, and — as of testing in
+// August 2026 — GET /artists/{id}/albums (and by extension the whole catalog
+// browsing path this app used to rely on) now returns a misleading 400
+// "Invalid limit" error for Development Mode apps specifically. The real
+// cause isn't a bad parameter; Spotify has gated bulk catalog browsing
+// behind Extended Quota Mode, which requires being a registered
+// organization with 250k+ monthly active users — not achievable for a
+// personal app. So: no catalog endpoints anywhere below. Everything is
+// built from GET /search, which is confirmed working, using different
+// slices of it as proxies for "popular," "recent," and "deep cuts."
+async function searchArtistTrackRange(
   artistId: string,
-  artistName: string,
   accessToken: string,
-  maxTracks = 30
+  query: string,
+  offsetStart: number,
+  offsetEnd: number
 ): Promise<SpotifyTrack[]> {
   const tracks: SpotifyTrack[] = [];
   const seen = new Set<string>();
-  for (let offset = 0; offset < maxTracks; offset += 10) {
-    const params = new URLSearchParams({
-      q: `artist:"${artistName}"`,
-      type: "track",
-      limit: "10",
-      offset: String(offset),
-    });
+  for (let offset = offsetStart; offset < offsetEnd; offset += 10) {
+    const params = new URLSearchParams({ q: query, type: "track", limit: "10", offset: String(offset) });
     const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
     const items = json.tracks?.items || [];
     if (items.length === 0) break;
@@ -196,6 +192,30 @@ export async function getArtistKnownTracks(
   return tracks;
 }
 
+// "Most popular" — the first couple pages of plain relevance-ranked search
+// results. Search still ranks by relevance internally even with the score
+// hidden, so early results are the closest available popularity proxy.
+export async function getArtistKnownTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
+  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 0, 20);
+}
+
+// "Recent" — the same search, but scoped with Spotify's year: filter to the
+// last couple of years, which is a real recency signal rather than a guess.
+async function getArtistRecentTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
+  const currentYear = new Date().getFullYear();
+  const query = `artist:"${artistName}" year:${currentYear - 2}-${currentYear}`;
+  return searchArtistTrackRange(artistId, accessToken, query, 0, 20);
+}
+
+// "Deep cuts" — later pages of the same plain search. Relevance ranking
+// degrades the further you page in, so results here are, on average,
+// genuinely less prominent than the "popular" slice — not a perfect
+// popularity-ascending sort (that data doesn't exist anymore), but a real,
+// distinct pool rather than a re-labeled copy of "popular."
+async function getArtistDeepTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
+  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 20, 50);
+}
+
 export async function searchTracksForArtist(
   artistId: string,
   artistName: string,
@@ -208,40 +228,19 @@ export async function searchTracksForArtist(
     limit: "10",
   });
   const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
-  return (json.tracks?.items || []).map((t: any) => mapTrack(t, artistId));
-}
-
-// GET /artists/{id}/albums and GET /albums/{id}/tracks are both still
-// available. The old version of this function also called the now-removed
-// batch GET /tracks?ids=... just to fetch `popularity` — since that field
-// no longer exists anywhere, that extra round-trip is gone too.
-export async function getArtistCatalog(artistId: string, accessToken: string, market = "US"): Promise<SpotifyTrack[]> {
-  const albumsJson = await spotifyFetch(
-    `/artists/${artistId}/albums?include_groups=album,single&limit=50&market=${market}`,
-    accessToken
-  );
-  const albums = albumsJson.items || [];
-  const seenNames = new Set<string>();
-  const uniqueAlbums: any[] = [];
-  for (const album of albums) {
-    const key = album.name.toLowerCase();
-    if (seenNames.has(key)) continue;
-    seenNames.add(key);
-    uniqueAlbums.push(album);
-    if (uniqueAlbums.length >= 12) break;
+  // The same song often appears multiple times (album version, single,
+  // deluxe reissue, remaster) — dedupe so "Add specific songs" shows each
+  // distinct title once, keeping the first (most relevant) match.
+  const seen = new Set<string>();
+  const tracks: SpotifyTrack[] = [];
+  for (const t of json.tracks?.items || []) {
+    const mapped = mapTrack(t, artistId);
+    const key = trackDedupeKey(mapped);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tracks.push(mapped);
   }
-
-  const perAlbum = await Promise.all(
-    uniqueAlbums.map(async (album) => {
-      try {
-        const tracksJson = await spotifyFetch(`/albums/${album.id}/tracks?limit=50`, accessToken);
-        return (tracksJson.items || []).map((t: any) => mapTrack(t, artistId, album));
-      } catch {
-        return [] as SpotifyTrack[];
-      }
-    })
-  );
-  return perAlbum.flat();
+  return tracks;
 }
 
 // GET /tracks (batch) was removed — fetch each track individually instead.
@@ -264,29 +263,15 @@ function trackDedupeKey(t: SpotifyTrack): string {
   return t.name.toLowerCase().replace(/\(.*?\)/g, "").trim() + "|" + t.artistId;
 }
 
-function sortForFilter(tracks: SpotifyTrack[], filter: FilterType): SpotifyTrack[] {
-  if (filter === "recent") {
-    return [...tracks].sort((a, b) => {
-      const da = a.releaseDate ? Date.parse(a.releaseDate) : 0;
-      const db = b.releaseDate ? Date.parse(b.releaseDate) : 0;
-      return db - da;
-    });
-  }
-  // "popular" (search-relevance order) and "deep" (catalog order, already
-  // excludes known/popular tracks — see getArtistTrackPools) both keep the
-  // order they arrive in, since there's no popularity score left to sort by.
+// All three pools already arrive in a meaningful order (relevance for
+// popular/deep, actual recency for recent via the year: filter), so there's
+// nothing left to re-sort here — this used to re-sort "recent" by
+// `releaseDate`, but that field only ever came from the now-dead catalog
+// path and is no longer populated.
+function sortForFilter(tracks: SpotifyTrack[], _filter: FilterType): SpotifyTrack[] {
   return tracks;
 }
 
-// Builds one track pool per filter for an artist. Both the search-relevance
-// pool and the full catalog are always fetched together — previously
-// "popular" only drew from search results and had nothing to fall back on,
-// which meant it silently capped out at however many unique tracks search
-// returned (often as few as 5 once re-releases/live versions were deduped),
-// no matter how many songs were actually requested. Now "popular" leads with
-// the search-matched tracks (best available popularity proxy) and pads out
-// with the rest of the catalog, so requesting more than the search pool's
-// size still returns real, unique songs instead of stalling early.
 export interface ArtistPoolsResult {
   pools: Record<FilterType, SpotifyTrack[]>;
   warning?: string;
@@ -295,34 +280,31 @@ export interface ArtistPoolsResult {
 export async function getArtistTrackPools(
   artistId: string,
   artistName: string,
-  accessToken: string,
-  market = "US"
+  accessToken: string
 ): Promise<ArtistPoolsResult> {
-  const [knownResult, catalogResult] = await Promise.allSettled([
+  const [popularResult, recentResult, deepResult] = await Promise.allSettled([
     getArtistKnownTracks(artistId, artistName, accessToken),
-    getArtistCatalog(artistId, accessToken, market),
+    getArtistRecentTracks(artistId, artistName, accessToken),
+    getArtistDeepTracks(artistId, artistName, accessToken),
   ]);
 
-  const known = knownResult.status === "fulfilled" ? knownResult.value : [];
-  const catalog = catalogResult.status === "fulfilled" ? catalogResult.value : [];
+  const popular = popularResult.status === "fulfilled" ? popularResult.value : [];
+  const recent = recentResult.status === "fulfilled" ? recentResult.value : [];
+  const deep = deepResult.status === "fulfilled" ? deepResult.value : [];
 
   const failures: string[] = [];
-  if (knownResult.status === "rejected") {
-    failures.push(`search lookup failed (${knownResult.reason?.message || knownResult.reason})`);
+  if (popularResult.status === "rejected") {
+    failures.push(`popular lookup failed (${popularResult.reason?.message || popularResult.reason})`);
   }
-  if (catalogResult.status === "rejected") {
-    failures.push(`catalog lookup failed (${catalogResult.reason?.message || catalogResult.reason})`);
+  if (recentResult.status === "rejected") {
+    failures.push(`recent lookup failed (${recentResult.reason?.message || recentResult.reason})`);
   }
-
-  const knownKeys = new Set(known.map(trackDedupeKey));
-  const catalogMinusKnown = catalog.filter((t) => !knownKeys.has(trackDedupeKey(t)));
+  if (deepResult.status === "rejected") {
+    failures.push(`deep cuts lookup failed (${deepResult.reason?.message || deepResult.reason})`);
+  }
 
   return {
-    pools: {
-      popular: [...known, ...catalogMinusKnown],
-      recent: catalog,
-      deep: catalogMinusKnown.length > 0 ? catalogMinusKnown : catalog,
-    },
+    pools: { popular, recent, deep },
     warning: failures.length > 0 ? failures.join("; ") : undefined,
   };
 }

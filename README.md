@@ -79,6 +79,18 @@ dashboard to match, then deploy.
 Once deployed, visiting the site on your phone and using "Add to Home Screen"
 installs it as a PWA (manifest + service worker are already wired up in `public/`).
 
+## Next Up
+
+The first nav tab (`/`) does double duty: when you're not connected, it's the
+same Connect Spotify gate it's always been. Once connected, it becomes a
+Reminders-style list of every upcoming *dated* show — every event you've
+created with an Event Date set that's still in the future — sorted
+soonest-first, each row showing the headliner, support acts, and a plain
+"in N days" countdown, tapping through to that playlist on Spotify. Events
+without a date, or with a past date, don't show up here (they're still in
+Previous Events). If nothing's dated yet, it points you at the lineup
+builder instead of sitting empty.
+
 ## Editing the site's text
 
 Every piece of static UI copy — titles, button labels, hints, placeholders,
@@ -186,28 +198,39 @@ one-tap ordering presets:
 
 **Important context:** Spotify's [February 2026 Development Mode changes](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)
 removed the artist top-tracks endpoint entirely and dropped the `popularity`
-field from every track/album/artist response. There is no longer a direct way
-for a Development Mode app to ask "what are this artist's most popular songs" —
-so the filters below are the closest practical approximation of the original
-design, not the original implementation.
+field from every track/album/artist response. As of testing in August 2026,
+it's gone further than that: `GET /artists/{id}/albums` — and with it, any
+approach based on browsing an artist's album catalog — now returns a
+misleading `400 "Invalid limit"` error for Development Mode apps. The real
+cause isn't a bad parameter; Spotify has gated bulk catalog browsing behind
+Extended Quota Mode, which requires being a registered organization with
+250k+ monthly active users. Not achievable for a personal app, and not
+something retrying or fixing a request parameter can work around.
 
-For each artist in your lineup:
+So: **no catalog endpoints anywhere in this codebase.** Every filter below is
+built entirely from `GET /search`, which is confirmed working, using
+different slices of it as proxies:
 
-- **Most popular** — leads with Search's relevance ordering for `artist:"Name"`
-  (Search still ranks by relevance internally even though the score isn't exposed),
-  then pads out with the rest of the artist's catalog if you've asked for more
-  songs than the search results alone provide. Earlier versions of this only used
-  the search pool with nothing to fall back on, which silently capped "Most
-  popular" at however many unique songs search returned — often as few as 5 once
-  duplicate re-releases and live versions were deduped, regardless of the count
-  you'd actually set. Fixed now: it always has the full catalog to draw from.
-- **Recent** — pulls the artist's full album/single catalog and sorts by release date
-  (this one is unaffected by the popularity removal).
-- **Deep cuts** — same catalog pull, with anything that showed up in the "Most
-  popular" search results excluded, on the theory that what's left is less
-  obvious. No true popularity-ascending sort is possible anymore.
-- **Add specific songs** — a plain track search scoped to that artist, added on top
-  of (or instead of) the automatic picks. Unaffected by any of this.
+- **Most popular** — the first couple of pages (offset 0–20) of plain
+  relevance-ranked search results for `artist:"Name"`. Search still ranks by
+  relevance internally even with the score hidden, so early results are the
+  closest available popularity proxy.
+- **Recent** — the same search, scoped with Spotify's `year:` query filter
+  to the last couple of years — a real recency signal, not a guess.
+- **Deep cuts** — later pages of the same plain search (offset 20–50).
+  Relevance ranking degrades the further you page in, so this is a genuinely
+  distinct, less-prominent pool — not a perfect popularity-ascending sort
+  (that data doesn't exist anymore), but not a re-labeled copy of "Most
+  popular" either.
+- **Add specific songs** — a plain track search scoped to that artist,
+  deduplicated so the same song (album version, single, deluxe reissue)
+  doesn't show up multiple times in the results, added on top of (or instead
+  of) the automatic picks.
+
+If one of the three searches fails for a given artist, the other two still
+work independently — a failure doesn't silently fall back to a *different*
+filter's results and pretend nothing went wrong, the way an earlier version
+of this did. You'll see the real error and can retry just that artist.
 
 The count you set per artist (defaults: 20 for the first artist you add, 10 for the
 rest — tweak as needed) controls how many auto-selected tracks are pulled in per
@@ -226,12 +249,15 @@ remove, reorder (drag the handle), or add more before creating the playlist.
 - "Most popular" and "Deep cuts" are approximations (see above) — there's no
   path back to true popularity-based sorting until/unless Spotify reintroduces
   that data for Development Mode apps.
-- The artist catalog (albums → album tracks) is now always fetched for every
-  request, not just for Recent/Deep cuts, since Most popular needs it as a
-  fallback too. Album-track requests run in parallel rather than sequentially
-  to keep this reasonably fast, but a lineup with several artists can still
-  take a few seconds to generate. Worth adding a per-artist loading state if
-  this becomes annoying in practice.
+- "Most popular," "Recent," and "Deep cuts" are all approximations built
+  from search (see above) — there's no path back to true catalog browsing or
+  popularity-based sorting for a personal app until/unless Spotify changes
+  its Extended Quota Mode requirements.
+- Each artist now makes up to 3 sets of paginated search requests (one per
+  filter) rather than the old catalog-browsing calls, which is actually
+  fewer total requests than before — but a lineup with several artists can
+  still take a few seconds to generate. Worth adding a per-artist loading
+  state if this becomes annoying in practice.
 - No offline queueing of playlist creation — the service worker caches pages for
   fast reloads, but creating a playlist still requires a live connection.
 - Cover image upload is best-effort: if it fails, the playlist is still created

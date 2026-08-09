@@ -379,13 +379,14 @@ export default function LineupPage() {
 
         {query.trim().length < 2 && (topArtists.length > 0 || topArtistsNeedsScope) && (
           <div className="mb-4">
-            <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">
+            <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2 text-center">
               {copy.lineup.quickAddLabel}
             </div>
             {topArtists.filter((a) => !lineup.some((e) => e.artist.id === a.id)).length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              <div className="flex justify-between gap-1">
                 {topArtists
                   .filter((a) => !lineup.some((e) => e.artist.id === a.id))
+                  .slice(0, 6)
                   .map((artist) => (
                     <button
                       key={artist.id}
@@ -393,15 +394,15 @@ export default function LineupPage() {
                         haptic(HAPTIC.add);
                         addArtist(artist);
                       }}
-                      className="flex flex-col items-center gap-1.5 flex-shrink-0 w-16 transition-transform duration-150 active:scale-95"
+                      className="flex flex-col items-center gap-1 w-12 flex-shrink-0 transition-transform duration-150 active:scale-95"
                     >
                       <div className="relative">
-                        <ArtistAvatar src={artist.image} size={52} />
-                        <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-grad text-white text-xs font-bold flex items-center justify-center border-2 border-bg">
+                        <ArtistAvatar src={artist.image} size={40} />
+                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-grad text-white text-[10px] font-bold flex items-center justify-center border-2 border-bg">
                           +
                         </span>
                       </div>
-                      <span className="text-[10px] font-semibold text-muted text-center truncate w-full">
+                      <span className="text-[9px] font-semibold text-muted text-center truncate w-full">
                         {artist.name}
                       </span>
                     </button>

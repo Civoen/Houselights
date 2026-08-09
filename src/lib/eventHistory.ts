@@ -24,11 +24,14 @@ export function savePastEvents(events: PastEvent[]) {
   localStorage.setItem(KEY, JSON.stringify(events));
 }
 
-export function getUpcomingEvent(): PastEvent | null {
+export function getUpcomingEvents(): PastEvent[] {
   const events = getPastEvents();
   const todayStr = new Date().toISOString().slice(0, 10);
   const upcoming = events.filter((e) => e.eventDate && e.eventDate >= todayStr && e.headliner?.name);
-  if (upcoming.length === 0) return null;
   upcoming.sort((a, b) => (a.eventDate! < b.eventDate! ? -1 : 1));
-  return upcoming[0];
+  return upcoming;
+}
+
+export function getUpcomingEvent(): PastEvent | null {
+  return getUpcomingEvents()[0] || null;
 }

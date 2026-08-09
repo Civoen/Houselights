@@ -5,7 +5,6 @@ import {
   selectTracksForFilters,
   searchTracksForArtist,
   getTracksByIds,
-  getUserMarket,
 } from "@/lib/spotify";
 import { FilterType } from "@/lib/types";
 
@@ -42,8 +41,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ tracks: results });
     }
 
-    const market = await getUserMarket(accessToken);
-    const { pools, warning } = await getArtistTrackPools(artistId, artistName, accessToken, market);
+    const { pools, warning } = await getArtistTrackPools(artistId, artistName, accessToken);
 
     if (pools.popular.length === 0 && pools.recent.length === 0) {
       return NextResponse.json(
