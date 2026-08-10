@@ -26,9 +26,10 @@ export function AlbumArt({
     <img
       src={src}
       alt=""
+      draggable={false}
       onError={() => setFailed(true)}
       className={"rounded-lg object-cover flex-shrink-0 " + className}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, WebkitUserDrag: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
     />
   );
 }

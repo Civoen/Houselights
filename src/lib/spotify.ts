@@ -24,7 +24,6 @@ export function getAuthorizeUrl(state: string, forceDialog = false) {
     "playlist-modify-private",
     "ugc-image-upload",
     "user-read-private",
-    "user-top-read",
   ].join(" ");
   const params = new URLSearchParams({
     response_type: "code",
@@ -115,21 +114,6 @@ export async function searchArtists(query: string, accessToken: string): Promise
   const params = new URLSearchParams({ q: query, type: "artist", limit: "3" });
   const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
   return (json.artists?.items || []).map((a: any) => ({
-    id: a.id,
-    name: a.name,
-    genres: a.genres || [],
-    image: a.images?.[a.images.length - 1]?.url,
-  }));
-}
-
-// GET /me/top/{type} is one of the few personalization endpoints still
-// available for Development Mode apps post Feb-2026 changes. Requires the
-// user-top-read scope — accounts that connected before this scope was added
-// will need to reconnect once for this to start working.
-export async function getTopArtists(accessToken: string, limit = 8): Promise<SpotifyArtist[]> {
-  const params = new URLSearchParams({ limit: String(limit), time_range: "medium_term" });
-  const json = await spotifyFetch(`/me/top/artists?${params.toString()}`, accessToken);
-  return (json.items || []).map((a: any) => ({
     id: a.id,
     name: a.name,
     genres: a.genres || [],

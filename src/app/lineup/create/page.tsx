@@ -5,7 +5,7 @@ import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
-import { addPastEvent, getPastEvents } from "@/lib/eventHistory";
+import { addEvent, getAllEvents } from "@/lib/eventHistory";
 import { copy } from "@/lib/copy";
 
 const CREATING_PHRASES = copy.create.creatingPhrases;
@@ -50,7 +50,7 @@ export default function CreatePage() {
     setSubmitting(true);
     setError(null);
     setPlaylistMeta(name, description);
-    const isFirstEver = getPastEvents().length === 0;
+    const isFirstEver = getAllEvents().length === 0;
     try {
       const res = await fetch("/api/playlist/create", {
         method: "POST",
@@ -67,7 +67,7 @@ export default function CreatePage() {
       const url = json.playlist?.url as string;
       const playlistId = json.playlist?.id as string;
       const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
-      addPastEvent({
+      addEvent({
         id: playlistId || crypto.randomUUID(),
         name,
         url: url || "",

@@ -82,3 +82,93 @@ export function useReorder(itemCount: number, onReorder: (from: number, to: numb
     handlePointerCancel: finishDrag,
   };
 }
+
+// Same Pointer Events approach as useReorder, but scoped to groups — items
+// are addressed as (groupId, localIndex) instead of a single flat index, and
+// a drag started in one group can only be dropped within that same group.
+// Used for reordering an artist's songs inside its expanded group without
+// letting the drag spill into a neighboring artist's list.
+export function useGroupedReorder(onReorder: (groupId: string, from: number, to: number) => void) {
+  const [dragGroupId, setDragGroupId] = useState<string | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const startYRef = useRef(0);
+  const itemRefs = useRef<Record<string, (HTMLElement | null)[]>>({});
+
+  const setItemRef = useCallback(
+    (groupId: string, index: number) => (el: HTMLElement | null) => {
+      if (!itemRefs.current[groupId]) itemRefs.current[groupId] = [];
+      itemRefs.current[groupId][index] = el;
+    },
+    []
+  );
+
+  const handlePointerDown = useCallback(
+    (groupId: string, index: number) => (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      setDragGroupId(groupId);
+      setDragIndex(index);
+      setOverIndex(index);
+      setDragOffsetY(0);
+      startYRef.current = e.clientY;
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    },
+    []
+  );
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    setDragGroupId((currentGroup) => {
+      if (currentGroup === null) return currentGroup;
+      const y = e.clientY;
+      setDragOffsetY(y - startYRef.current);
+      const refs = itemRefs.current[currentGroup] || [];
+      let closest: number | null = null;
+      let closestDist = Infinity;
+      refs.forEach((el, i) => {
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        const dist = Math.abs(y - mid);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = i;
+        }
+      });
+      if (closest !== null) setOverIndex(closest);
+      return currentGroup;
+    });
+  }, []);
+
+  const finishDrag = useCallback(() => {
+    setDragGroupId((groupId) => {
+      setDragIndex((from) => {
+        setOverIndex((to) => {
+          if (groupId !== null && from !== null && to !== null && from !== to) {
+            onReorder(groupId, from, to);
+          }
+          return null;
+        });
+        return null;
+      });
+      return null;
+    });
+    setDragOffsetY(0);
+  }, [onReorder]);
+
+  return {
+    dragGroupId,
+    dragIndex,
+    overIndex,
+    dragOffsetY,
+    setItemRef,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp: finishDrag,
+    handlePointerCancel: finishDrag,
+  };
+}

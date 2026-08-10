@@ -67,9 +67,9 @@ const config: Config = {
           "50%": { transform: "translateY(3px)" },
         },
         pillSqueeze: {
-          "0%": { transform: "scaleX(0.7) scaleY(1.18)" },
-          "45%": { transform: "scaleX(1.28) scaleY(0.86)" },
-          "70%": { transform: "scaleX(0.93) scaleY(1.05)" },
+          "0%": { transform: "scaleX(0.88) scaleY(1.08)" },
+          "45%": { transform: "scaleX(1.1) scaleY(0.94)" },
+          "70%": { transform: "scaleX(0.97) scaleY(1.02)" },
           "100%": { transform: "scaleX(1) scaleY(1)" },
         },
       },

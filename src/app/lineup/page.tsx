@@ -18,6 +18,7 @@ import { SettingsButton } from "@/components/SettingsButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { fmtMinutes } from "@/lib/format";
 
 interface PosterMatch {
   name: string;
@@ -31,7 +32,7 @@ interface PendingIssue {
   target: number;
 }
 
-const BAR_COLORS = ["#14CC9B", "#115067", "#F5A623", "#EF6461", "#6C63FF", "#2FB8C6", "#E14D9F", "#8BC34A"];
+const BAR_COLORS = ["#14CC9B", "#4FA8E8", "#F5A623", "#EF6461", "#6C63FF", "#2FB8C6", "#E14D9F", "#8BC34A"];
 const GENERATING_PHRASES = copy.lineup.generatingPhrases;
 const AVG_TRACK_MINUTES = 3.5;
 
@@ -47,12 +48,6 @@ const TIME_PRESETS = [
 function computeTotalTargetSongs(mode: PlaylistSizeMode, value: number): number {
   if (mode === "songs") return Math.max(1, Math.round(value));
   return Math.max(1, Math.round(value / AVG_TRACK_MINUTES));
-}
-
-function fmtMinutes(min: number) {
-  const h = Math.floor(min / 60);
-  const m = Math.round(min % 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
 // Largest-remainder rounding: gives each artist a whole-number target
@@ -79,8 +74,6 @@ export default function LineupPage() {
   const router = useRouter();
   const {
     lineup,
-    eventDate,
-    setEventDate,
     playlistSizeMode,
     playlistSizeValue,
     setPlaylistSize,
@@ -111,8 +104,6 @@ export default function LineupPage() {
   const [posterError, setPosterError] = useState<string | null>(null);
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
   const posterInputRef = useRef<HTMLInputElement>(null);
-  const [topArtists, setTopArtists] = useState<SpotifyArtist[]>([]);
-  const [topArtistsNeedsScope, setTopArtistsNeedsScope] = useState(false);
 
   const { dragIndex, overIndex, dragOffsetY, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
     useReorder(lineup.length, (from, to) => {
@@ -145,20 +136,6 @@ export default function LineupPage() {
     setPreviewError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineup]);
-
-  useEffect(() => {
-    fetch("/api/spotify/top-artists")
-      .then(async (res) => {
-        if (res.status === 401) return;
-        const json = await res.json();
-        if (json.error === "insufficient_scope") {
-          setTopArtistsNeedsScope(true);
-        } else if (Array.isArray(json.artists)) {
-          setTopArtists(json.artists);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -436,29 +413,12 @@ export default function LineupPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={copy.lineup.searchPlaceholder}
-            className="flex-1 bg-transparent outline-none text-sm text-navy placeholder:text-slate-400"
+            className="flex-1 bg-transparent outline-none text-[16px] text-ink placeholder:text-slate-400"
           />
         </div>
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
-        <div className="flex items-center justify-between gap-3 bg-surface rounded-2xl px-4 py-3 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            {copy.lineup.eventDateLabel}
-            <span className="text-faint font-normal">{copy.lineup.eventDateOptional}</span>
-          </div>
-          <input
-            type="date"
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            className="bg-transparent text-xs font-semibold text-ink outline-none"
-          />
-        </div>
-
         <div className="bg-surface rounded-2xl p-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-muted">{copy.lineup.playlistSizeLabel}</span>
@@ -474,72 +434,34 @@ export default function LineupPage() {
           />
           {playlistSizeMode === "songs" ? (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-faint">{copy.lineup.totalSongsLabel}</span>
+              <div>
+                <span className="text-xs text-faint block">{copy.lineup.totalSongsLabel}</span>
+                <span className="text-[11px] text-faint">≈ {fmtMinutes(totalTargetMinutes)}</span>
+              </div>
               <Stepper value={playlistSizeValue} onChange={(v) => setPlaylistSize("songs", v)} min={5} max={300} step={5} />
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {TIME_PRESETS.map((preset) => (
-                <button
-                  key={preset.v}
-                  onClick={() => setPlaylistSize("time", preset.v)}
-                  className={
-                    "px-3 py-1.5 rounded-full text-[11px] font-bold transition-all " +
-                    (playlistSizeValue === preset.v
-                      ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
-                      : "bg-surfaceAlt text-muted")
-                  }
-                >
-                  {preset.l}
-                </button>
-              ))}
+            <div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {TIME_PRESETS.map((preset) => (
+                  <button
+                    key={preset.v}
+                    onClick={() => setPlaylistSize("time", preset.v)}
+                    className={
+                      "px-3 py-1.5 rounded-full text-[11px] font-bold transition-all " +
+                      (playlistSizeValue === preset.v
+                        ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
+                        : "bg-surfaceAlt text-muted")
+                    }
+                  >
+                    {preset.l}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-faint">≈ {totalTargetSongs} songs</span>
             </div>
           )}
         </div>
-
-        {query.trim().length < 2 && (topArtists.length > 0 || topArtistsNeedsScope) && (
-          <div className="mb-4">
-            <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2 text-center">
-              {copy.lineup.quickAddLabel}
-            </div>
-            {topArtists.filter((a) => !lineup.some((e) => e.artist.id === a.id)).length > 0 ? (
-              <div className="flex justify-between gap-1">
-                {topArtists
-                  .filter((a) => !lineup.some((e) => e.artist.id === a.id))
-                  .slice(0, 6)
-                  .map((artist) => (
-                    <button
-                      key={artist.id}
-                      onClick={() => {
-                        haptic(HAPTIC.add);
-                        addArtist(artist);
-                      }}
-                      className="flex flex-col items-center gap-1 w-12 flex-shrink-0 transition-transform duration-150 active:scale-95"
-                    >
-                      <div className="relative">
-                        <ArtistAvatar src={artist.image} size={40} />
-                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-grad text-white text-[10px] font-bold flex items-center justify-center border-2 border-bg">
-                          +
-                        </span>
-                      </div>
-                      <span className="text-[9px] font-semibold text-muted text-center truncate w-full">
-                        {artist.name}
-                      </span>
-                    </button>
-                  ))}
-              </div>
-            ) : topArtistsNeedsScope ? (
-              <p className="text-[11px] text-faint">
-                <a href="/api/auth/login" className="text-accent font-bold">
-                  {copy.lineup.quickAddReconnect}
-                </a>{" "}
-                {copy.lineup.quickAddScopeSuffix}
-              </p>
-            ) : (
-              <p className="text-[11px] text-faint">{copy.lineup.quickAddAllAdded}</p>
-            )}
-          </div>
-        )}
 
         <input
           ref={posterInputRef}

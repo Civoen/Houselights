@@ -1,16 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { AlbumArt } from "@/components/AlbumArt";
+import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { haptic, HAPTIC } from "@/lib/haptics";
-import { useReorder } from "@/lib/useReorder";
+import { useReorder, useGroupedReorder } from "@/lib/useReorder";
 import { useUndoToast } from "@/lib/useUndoToast";
 import { PlaylistTrack } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { fmtMinutes } from "@/lib/format";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -34,18 +36,16 @@ function orderByArtist(tracks: PlaylistTrack[], artistOrder: string[], direction
   return withIndex.map((x) => x.t);
 }
 
-function shuffleTracks(tracks: PlaylistTrack[]): PlaylistTrack[] {
-  const arr = [...tracks];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+interface ArtistGroup {
+  id: string;
+  name: string;
+  image?: string;
+  tracks: { track: PlaylistTrack; index: number }[];
 }
 
 export default function PreviewPage() {
   const router = useRouter();
-  const { lineup, playlist, removeTrack, restoreTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
+  const { lineup, playlist, eventDate, setEventDate, removeTrack, restoreTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
   const [addArtistQuery, setAddArtistQuery] = useState("");
   const [addArtistResults, setAddArtistResults] = useState<any[]>([]);
   const [chosenArtist, setChosenArtist] = useState<{ id: string; name: string } | null>(null);
@@ -53,6 +53,7 @@ export default function PreviewPage() {
   const [addTrackResults, setAddTrackResults] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [orderMode, setOrderMode] = useState<string>("headliner");
+  const [expandedArtists, setExpandedArtists] = useState<Set<string>>(new Set());
 
   const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
     track: PlaylistTrack;
@@ -83,17 +84,78 @@ export default function PreviewPage() {
   const artistCount = new Set(playlist.map((t) => t.sourceArtistId)).size;
   const artistOrder = lineup.map((a) => a.artist.id);
 
-  function applyOrder(mode: "hype" | "headliner" | "shuffle") {
+  function handleOrderChange(mode: "hype" | "headliner" | "artists") {
     haptic(HAPTIC.reorder);
     setOrderMode(mode);
-    if (mode === "shuffle") {
-      setPlaylist(shuffleTracks(playlist));
-    } else if (mode === "hype") {
+    if (mode === "hype") {
       setPlaylist(orderByArtist(playlist, artistOrder, "desc"));
-    } else {
+    } else if (mode === "headliner") {
       setPlaylist(orderByArtist(playlist, artistOrder, "asc"));
     }
+    // "artists" doesn't reorder the playlist — it just changes how the
+    // list is presented, grouped by artist instead of as a flat sequence.
   }
+
+  function toggleArtistExpanded(artistId: string) {
+    haptic(HAPTIC.tap);
+    setExpandedArtists((prev) => {
+      const next = new Set(prev);
+      if (next.has(artistId)) next.delete(artistId);
+      else next.add(artistId);
+      return next;
+    });
+  }
+
+  // Groups tracks by source artist, ordered to match the lineup (headliner
+  // first). Hand-picked tracks from an artist outside the original lineup
+  // still get their own group rather than being silently dropped.
+  const artistGroups: ArtistGroup[] = (() => {
+    const byArtist = new Map<string, { track: PlaylistTrack; index: number }[]>();
+    playlist.forEach((t, i) => {
+      const arr = byArtist.get(t.sourceArtistId) || [];
+      arr.push({ track: t, index: i });
+      byArtist.set(t.sourceArtistId, arr);
+    });
+    const groups: ArtistGroup[] = [];
+    const seen = new Set<string>();
+    lineup.forEach((entry) => {
+      const tracks = byArtist.get(entry.artist.id);
+      if (tracks && tracks.length > 0) {
+        groups.push({ id: entry.artist.id, name: entry.artist.name, image: entry.artist.image, tracks });
+        seen.add(entry.artist.id);
+      }
+    });
+    byArtist.forEach((tracks, artistId) => {
+      if (!seen.has(artistId) && tracks.length > 0) {
+        groups.push({ id: artistId, name: tracks[0].track.artist, tracks });
+      }
+    });
+    return groups;
+  })();
+
+  const artistGroupsRef = useRef(artistGroups);
+  useEffect(() => {
+    artistGroupsRef.current = artistGroups;
+  });
+
+  const {
+    dragGroupId,
+    dragIndex: groupDragIndex,
+    overIndex: groupOverIndex,
+    dragOffsetY: groupDragOffsetY,
+    setItemRef: setGroupItemRef,
+    handlePointerDown: handleGroupPointerDown,
+    handlePointerMove: handleGroupPointerMove,
+    handlePointerUp: handleGroupPointerUp,
+    handlePointerCancel: handleGroupPointerCancel,
+  } = useGroupedReorder((groupId, fromLocal, toLocal) => {
+    const group = artistGroupsRef.current.find((g) => g.id === groupId);
+    if (!group) return;
+    const fromGlobal = group.tracks[fromLocal].index;
+    const toGlobal = group.tracks[toLocal].index;
+    reorderTrack(fromGlobal, toGlobal);
+    haptic(HAPTIC.reorder);
+  });
 
   async function searchArtist(q: string) {
     setAddArtistQuery(q);
@@ -138,11 +200,28 @@ export default function PreviewPage() {
         </button>
         <h1 className="font-display text-3xl font-bold tracking-tight mb-1">{copy.preview.title}</h1>
         <p className="text-sm text-muted font-medium">
-          {playlist.length} tracks · {totalMin} min · {artistCount} artists
+          {playlist.length} tracks · {fmtMinutes(totalMin)} · {artistCount} artists
         </p>
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
+        <div className="flex items-center justify-between gap-3 bg-surface rounded-2xl px-4 py-3 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            {copy.lineup.eventDateLabel}
+            <span className="text-faint font-normal">{copy.lineup.eventDateOptional}</span>
+          </div>
+          <input
+            type="date"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+            className="bg-transparent text-xs font-semibold text-ink outline-none"
+          />
+        </div>
+
         {playlist.length === 0 && (
           <p className="text-sm text-faint text-center py-10">
             {copy.preview.emptyState}
@@ -159,16 +238,16 @@ export default function PreviewPage() {
           <SegmentedControl
             className="mb-4"
             value={orderMode}
-            onChange={(id) => applyOrder(id as "hype" | "headliner" | "shuffle")}
+            onChange={(id) => handleOrderChange(id as "hype" | "headliner" | "artists")}
             options={[
               { id: "hype", label: copy.preview.hype },
               { id: "headliner", label: copy.preview.headliner },
-              { id: "shuffle", label: copy.preview.shuffle },
+              { id: "artists", label: copy.preview.artists },
             ]}
           />
         )}
 
-        {playlist.length > 0 && (
+        {playlist.length > 0 && orderMode !== "artists" && (
           <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] px-3 mb-4">
             {playlist.map((t, i) => (
               <div
@@ -193,8 +272,8 @@ export default function PreviewPage() {
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
                   onPointerCancel={handlePointerCancel}
-                  className="text-faint text-base select-none cursor-grab active:cursor-grabbing px-1 -mx-1"
-                  style={{ touchAction: "none" }}
+                  className="text-faint text-base select-none cursor-grab active:cursor-grabbing flex items-center justify-center w-7 h-7 -mx-1 flex-shrink-0"
+                  style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none" } as React.CSSProperties}
                 >
                   ⠿
                 </span>
@@ -227,6 +306,107 @@ export default function PreviewPage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {playlist.length > 0 && orderMode === "artists" && (
+          <div className="mb-4">
+            {artistGroups.map((group) => {
+              const expanded = expandedArtists.has(group.id);
+              return (
+                <div
+                  key={group.id}
+                  className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] mb-2 overflow-hidden"
+                >
+                  <button
+                    onClick={() => toggleArtistExpanded(group.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5"
+                  >
+                    <ArtistAvatar src={group.image} size={36} />
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="text-sm font-bold truncate">{group.name}</div>
+                      <div className="text-xs text-faint">
+                        {group.tracks.length} song{group.tracks.length === 1 ? "" : "s"} added
+                      </div>
+                    </div>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      className="transition-transform duration-200 text-faint flex-shrink-0"
+                      style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                    >
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+
+                  {expanded && (
+                    <div className="px-3 pb-1 animate-fade-slide-up">
+                      {group.tracks.map(({ track: t, index: i }, localIndex) => {
+                        const isDragging = dragGroupId === group.id && groupDragIndex === localIndex;
+                        const isDropTarget = dragGroupId === group.id && groupOverIndex === localIndex && groupDragIndex !== null;
+                        return (
+                          <div
+                            key={`${t.id}-${i}`}
+                            ref={setGroupItemRef(group.id, localIndex)}
+                            className={
+                              "flex items-center gap-3 py-2.5 rounded-xl px-1 " +
+                              (isDragging
+                                ? "bg-surfaceAlt shadow-xl relative z-20"
+                                : "transition-all duration-150 border-t border-line " +
+                                  (isDropTarget ? "ring-2 ring-accent" : ""))
+                            }
+                            style={
+                              isDragging
+                                ? { transform: `translateY(${groupDragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
+                                : undefined
+                            }
+                          >
+                            <span
+                              onPointerDown={handleGroupPointerDown(group.id, localIndex)}
+                              onPointerMove={handleGroupPointerMove}
+                              onPointerUp={handleGroupPointerUp}
+                              onPointerCancel={handleGroupPointerCancel}
+                              className="text-faint text-base select-none cursor-grab active:cursor-grabbing flex items-center justify-center w-7 h-7 -mx-1 flex-shrink-0"
+                              style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none" } as React.CSSProperties}
+                            >
+                              ⠿
+                            </span>
+                            <AlbumArt src={t.albumImage} size={32} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold truncate">{t.name}</div>
+                              <div className="text-xs text-faint truncate">
+                                {t.handpicked ? "Handpicked" : "\u00A0"}
+                              </div>
+                            </div>
+                            <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
+                            <a
+                              href={`https://open.spotify.com/track/${t.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label={`Listen to ${t.name} on Spotify`}
+                              className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </a>
+                            <button
+                              onClick={() => handleRemoveTrack(t, i)}
+                              className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

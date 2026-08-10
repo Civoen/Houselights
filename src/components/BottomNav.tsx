@@ -6,14 +6,15 @@ import { haptic, HAPTIC } from "@/lib/haptics";
 
 const TABS = [
   {
-    href: "/",
-    key: "nextUp",
-    label: copy.nav.nextUp,
-    match: (p: string) => p === "/",
+    href: "/playlists",
+    key: "playlists",
+    label: copy.nav.playlists,
+    match: (p: string) => p.startsWith("/playlists"),
     icon: (
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="2" />
-        <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M4 6h13M4 12h13M4 18h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <circle cx="19.5" cy="17" r="2.2" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M21.5 17V8.5l-2 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -29,13 +30,14 @@ const TABS = [
     ),
   },
   {
-    href: "/events",
-    key: "previousEvents",
-    label: copy.nav.previousEvents,
-    match: (p: string) => p.startsWith("/events"),
+    href: "/lanyards",
+    key: "lanyards",
+    label: copy.nav.lanyards,
+    match: (p: string) => p.startsWith("/lanyards"),
     icon: (
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" style={{ transform: "scaleX(-1)" }}>
-        <path d="M7 4.5v15l13-7.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <rect x="8" y="3" width="8" height="7" rx="3.5" stroke="currentColor" strokeWidth="1.8" />
+        <circle cx="12" cy="15" r="6" stroke="currentColor" strokeWidth="1.8" />
       </svg>
     ),
   },
@@ -49,16 +51,16 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 bg-surface border-t border-line"
+      className="fixed bottom-0 left-0 right-0 z-30 nav-frosted border-t border-line"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="relative flex items-stretch px-2 h-16">
         <div
-          className="absolute top-[-10px] h-[74px] rounded-full bg-grad shadow-[0_10px_24px_-8px_rgba(17,80,103,0.6)] pointer-events-none"
+          className="absolute top-0 h-16 rounded-full bg-grad shadow-[0_6px_16px_-6px_rgba(17,80,103,0.5)] pointer-events-none"
           style={{
             left: `calc(${activeIndex * tabWidthPct}% + 8px)`,
             width: `calc(${tabWidthPct}% - 16px)`,
-            transition: "left 0.5s cubic-bezier(0.34,1.56,0.64,1), width 0.5s cubic-bezier(0.34,1.56,0.64,1)",
+            transition: "left 0.45s cubic-bezier(0.3,1.2,0.4,1), width 0.45s cubic-bezier(0.3,1.2,0.4,1)",
           }}
         >
           <div key={activeIndex} className="w-full h-full rounded-full animate-pill-squeeze" />

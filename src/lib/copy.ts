@@ -34,11 +34,6 @@ export const copy = {
     timePreset180: "3 hr",
     timePreset300: "5 hr",
 
-    quickAddLabel: "From your Spotify · Quick add",
-    quickAddReconnect: "Reconnect Spotify",
-    quickAddScopeSuffix: "to see your top artists here.",
-    quickAddAllAdded: "All your top artists are already in this lineup.",
-
     posterUploadIdle: "Upload a poster to auto-add artists",
     posterUploadLoading: "Reading poster...",
     posterFoundHeading: "Found on your poster",
@@ -85,7 +80,7 @@ export const copy = {
     previewHintSuffix: "next to a track to listen on Spotify before you commit to it.",
     hype: "Hype",
     headliner: "Headliner",
-    shuffle: "Shuffle",
+    artists: "Artists",
     addSong: "Add a song",
     searchArtistPlaceholder: "Search an artist",
     select: "Select",
@@ -114,13 +109,15 @@ export const copy = {
     fallbackName: "Your playlist",
   },
 
-  events: {
-    title: "Previous events",
+  playlists: {
+    title: "Playlists",
     subtitleEmpty: "Playlists you've already sent to Spotify",
     emptyMessage: "Nothing here yet — build your first lineup and it'll show up once it's live on Spotify.",
     buildLineupLink: "Build your lineup",
     buildAgain: "Build again",
     open: "Open",
+    previousEventsLabel: "Previous events",
+    previousEventsEmpty: "No past shows yet.",
   },
 
   settings: {
@@ -146,9 +143,13 @@ export const copy = {
   },
 
   nav: {
-    nextUp: "Next Up",
     newEvent: "New event",
-    previousEvents: "Previous events",
+    playlists: "Playlists",
+    lanyards: "Lanyards",
+  },
+
+  lanyards: {
+    title: "Lanyards",
   },
 
   filters: {
