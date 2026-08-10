@@ -6,11 +6,16 @@ import { getAllEvents, saveAllEvents, getPastDatedEvents, getUpcomingEvents } fr
 import { useLineup } from "@/lib/lineupStore";
 import { PastEvent } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
+import { UndoToast } from "@/components/UndoToast";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
+import { useSwipeReveal } from "@/lib/useSwipeReveal";
 import { SettingsButton } from "@/components/SettingsButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { copy } from "@/lib/copy";
+import { fmtMinutes } from "@/lib/format";
+
+const SWIPE_REVEAL_WIDTH = 76;
 
 function daysUntil(dateStr: string) {
   return Math.round(
@@ -44,6 +49,9 @@ export default function PlaylistsPage() {
   const [pastEvents, setPastEvents] = useState<PastEvent[]>([]);
   const [showPrevious, setShowPrevious] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [removedPlaylist, setRemovedPlaylist] = useState<{ event: PastEvent; index: number } | null>(null);
+
+  const swipe = useSwipeReveal(SWIPE_REVEAL_WIDTH);
 
   useEffect(() => {
     setEvents(getAllEvents());
@@ -74,6 +82,32 @@ export default function PlaylistsPage() {
     reset();
     addArtist(e.headliner);
     router.push("/lineup");
+  }
+
+  function handleRemovePlaylist(event: PastEvent, index: number) {
+    haptic(HAPTIC.remove);
+    swipe.close();
+    setEvents((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      saveAllEvents(next);
+      return next;
+    });
+    setRemovedPlaylist({ event, index });
+  }
+
+  // No auto-dismiss timer here on purpose — this stays up until the user
+  // either undoes it or navigates away (which unmounts this page and clears
+  // the state naturally), matching what was asked for.
+  function undoRemovePlaylist() {
+    if (!removedPlaylist) return;
+    haptic(HAPTIC.add);
+    setEvents((prev) => {
+      const next = [...prev];
+      next.splice(removedPlaylist.index, 0, removedPlaylist.event);
+      saveAllEvents(next);
+      return next;
+    });
+    setRemovedPlaylist(null);
   }
 
   const totalSongs = events.reduce((s, e) => s + e.trackCount, 0);
@@ -203,71 +237,87 @@ export default function PlaylistsPage() {
         )}
 
         {events.map((e, i) => (
-          <div
-            key={e.id + e.createdAt}
-            ref={setItemRef(i)}
-            className={
-              "flex items-start gap-3 bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] " +
-              (dragIndex === i
-                ? "shadow-2xl relative z-20"
-                : "animate-fade-slide-up transition-all duration-150 " +
-                  (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
-            }
-            style={
-              dragIndex === i
-                ? { transform: `translateY(${dragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
-                : { animationDelay: `${i * 30}ms` }
-            }
-          >
-            <span
-              onPointerDown={handlePointerDown(i)}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
-              className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
-              style={{ touchAction: "none" }}
+          <div key={e.id + e.createdAt} className={"relative rounded-2xl mb-3 " + (dragIndex === i ? "" : "overflow-hidden")}>
+            <button
+              onClick={() => handleRemovePlaylist(e, i)}
+              aria-label={`Remove ${e.name}`}
+              className="absolute right-0 top-0 bottom-0 w-[76px] bg-red-500 text-white flex items-center justify-center text-lg font-bold"
             >
-              ⠿
-            </span>
-            <ArtistAvatar src={e.headliner?.image} size={38} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <div className="text-sm font-bold truncate">{e.name}</div>
-                <span className="text-[11px] text-faint flex-shrink-0">
-                  {new Date(e.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
-                </span>
-              </div>
-              <div className="text-xs text-faint mb-2 truncate">{e.artistNames.join(", ")}</div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-muted font-semibold flex-shrink-0">
-                  {e.trackCount} tracks · {e.totalMinutes} min
-                </span>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  {e.headliner?.id && (
-                    <button
-                      onClick={() => buildAgain(e)}
-                      className="text-[11px] font-bold text-accent transition-transform duration-150 active:scale-90"
-                    >
-                      {copy.playlists.buildAgain}
-                    </button>
-                  )}
-                  <a
-                    href={e.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] font-bold text-muted flex items-center gap-1 transition-transform duration-150 active:scale-90"
-                  >
-                    {copy.playlists.open}
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                      <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </a>
+              ✕
+            </button>
+
+            <div
+              ref={setItemRef(i)}
+              onPointerDown={swipe.handlePointerDown(e.id + e.createdAt)}
+              onPointerMove={swipe.handlePointerMove}
+              onPointerUp={swipe.handlePointerUp}
+              onPointerCancel={swipe.handlePointerCancel}
+              onClick={(ev) => {
+                if ((ev.target as HTMLElement).closest("[data-no-swipe]")) return;
+                if (swipe.consumeWasDragging()) return;
+                window.open(e.url, "_blank", "noopener,noreferrer");
+              }}
+              className={
+                "relative flex items-start gap-3 bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] cursor-pointer " +
+                (dragIndex === i
+                  ? "shadow-2xl z-20"
+                  : "animate-fade-slide-up transition-all duration-150 " +
+                    (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
+              }
+              style={{
+                touchAction: "pan-y",
+                transform: `translateY(${dragIndex === i ? dragOffsetY : 0}px) translateX(${swipe.offsetFor(e.id + e.createdAt)}px)${dragIndex === i ? " scale(1.02)" : ""}`,
+                transition: dragIndex === i ? "box-shadow 0.15s ease" : "transform 0.2s ease",
+                animationDelay: dragIndex === i ? undefined : `${i * 30}ms`,
+              }}
+            >
+              {swipe.openId === e.id + e.createdAt && (
+                <div
+                  className="absolute inset-0 z-10 rounded-2xl"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    swipe.close();
+                  }}
+                />
+              )}
+              <span
+                data-no-swipe
+                onPointerDown={handlePointerDown(i)}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
+                style={{ touchAction: "none" }}
+              >
+                ⠿
+              </span>
+              <ArtistAvatar src={e.headliner?.image} size={38} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <div className="text-sm font-bold truncate">{e.name}</div>
+                  <span className="text-[11px] text-faint flex-shrink-0">
+                    {new Date(e.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                  </span>
                 </div>
+                <div className="text-xs text-muted font-semibold mb-3">
+                  {e.trackCount} tracks · {fmtMinutes(e.totalMinutes)}
+                </div>
+                {e.headliner?.id && (
+                  <button
+                    data-no-swipe
+                    onClick={() => buildAgain(e)}
+                    className="w-full text-xs font-bold text-accent bg-accent/10 rounded-xl py-2.5 transition-transform duration-150 active:scale-95"
+                  >
+                    {copy.playlists.buildAgain}
+                  </button>
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {removedPlaylist && <UndoToast message={`Removed ${removedPlaylist.event.name}`} onUndo={undoRemovePlaylist} className="bottom-24" />}
     </main>
   );
 }

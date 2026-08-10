@@ -9,8 +9,8 @@ export function UndoToast({
   className?: string;
 }) {
   return (
-    <div className={"fixed left-1/2 -translate-x-1/2 z-40 animate-fade-slide-up " + className}>
-      <div className="bg-navy text-white text-xs font-semibold pl-4 pr-2 py-2.5 rounded-full shadow-lg flex items-center gap-3 whitespace-nowrap">
+    <div className={"fixed left-1/2 -translate-x-1/2 z-40 " + className}>
+      <div className="animate-fade-slide-up bg-navy text-white text-xs font-semibold pl-4 pr-2 py-2.5 rounded-full shadow-lg flex items-center gap-3 whitespace-nowrap">
         <span>{message}</span>
         <button
           onClick={onUndo}

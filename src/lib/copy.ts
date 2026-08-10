@@ -62,9 +62,7 @@ export const copy = {
     add: "Add",
 
     ctaPreview: "Preview playlist",
-    ctaContinueAnyway: "Continue anyway",
-    retry: "Retry",
-    retrying: "Retrying...",
+    shortfallDisclaimer: "A complete song list isn't always possible — some artists may come up short depending on what's available.",
     generatingPhrases: [
       "Checking the setlist...",
       "Finding the openers...",
@@ -115,7 +113,6 @@ export const copy = {
     emptyMessage: "Nothing here yet — build your first lineup and it'll show up once it's live on Spotify.",
     buildLineupLink: "Build your lineup",
     buildAgain: "Build again",
-    open: "Open",
     previousEventsLabel: "Previous events",
     previousEventsEmpty: "No past shows yet.",
   },
@@ -154,7 +151,6 @@ export const copy = {
 
   filters: {
     popular: "Most popular",
-    recent: "Recent",
-    deep: "Deep cuts",
+    setlist: "Setlist",
   },
 };

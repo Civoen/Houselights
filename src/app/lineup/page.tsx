@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
+import { ARTIST_COLORS } from "@/lib/artistColors";
 
 interface PosterMatch {
   name: string;
@@ -26,13 +27,6 @@ interface PosterMatch {
   selected: boolean;
 }
 
-interface PendingIssue {
-  entry: LineupArtist;
-  message: string;
-  target: number;
-}
-
-const BAR_COLORS = ["#14CC9B", "#4FA8E8", "#F5A623", "#EF6461", "#6C63FF", "#2FB8C6", "#E14D9F", "#8BC34A"];
 const GENERATING_PHRASES = copy.lineup.generatingPhrases;
 const AVG_TRACK_MINUTES = 3.5;
 
@@ -96,10 +90,6 @@ export default function LineupPage() {
   const [pickQuery, setPickQuery] = useState("");
   const [pickResults, setPickResults] = useState<SpotifyTrack[]>([]);
   const [generating, setGenerating] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [pendingTracks, setPendingTracks] = useState<PlaylistTrack[] | null>(null);
-  const [pendingIssues, setPendingIssues] = useState<PendingIssue[]>([]);
-  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [posterLoading, setPosterLoading] = useState(false);
   const [posterError, setPosterError] = useState<string | null>(null);
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
@@ -129,13 +119,6 @@ export default function LineupPage() {
     dismissRemoveToast();
     haptic(HAPTIC.add);
   }
-
-  useEffect(() => {
-    setPendingTracks(null);
-    setPendingIssues([]);
-    setPreviewError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineup]);
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -283,18 +266,7 @@ export default function LineupPage() {
   async function handlePreview() {
     if (lineup.length === 0) return;
 
-    // second tap after seeing a partial-failure warning — proceed with what we already have
-    if (pendingTracks) {
-      setPlaylist(pendingTracks);
-      setPendingTracks(null);
-      setPendingIssues([]);
-      setPreviewError(null);
-      router.push("/lineup/preview");
-      return;
-    }
-
     setGenerating(true);
-    setPreviewError(null);
 
     const totalTarget = computeTotalTargetSongs(playlistSizeMode, playlistSizeValue);
     const targets = computeArtistTargets(lineup, totalTarget);
@@ -305,7 +277,6 @@ export default function LineupPage() {
       if (result.authExpired) {
         setNeedsAuth(true);
         setGenerating(false);
-        setPreviewError("Your Spotify connection expired. Reconnect above and try again.");
         return;
       }
       outcomes.push({ entry, tracks: result.tracks, requested: target, error: result.error });
@@ -328,7 +299,6 @@ export default function LineupPage() {
           if (bumped.authExpired) {
             setNeedsAuth(true);
             setGenerating(false);
-            setPreviewError("Your Spotify connection expired. Reconnect above and try again.");
             return;
           }
           const existingIds = new Set(allTracks.map((t) => t.id));
@@ -341,53 +311,13 @@ export default function LineupPage() {
     }
 
     setGenerating(false);
-
-    const failed: PendingIssue[] = outcomes
-      .filter((o) => o.error)
-      .map((o) => ({ entry: o.entry, message: o.error!, target: o.requested }));
-
-    if (allTracks.length === 0) {
-      setPreviewError(
-        failed.length > 0
-          ? failed.map((f) => `${f.entry.artist.name}: ${f.message}`).join(" ")
-          : "Your lineup didn't return any tracks. Try a different filter or check the artist names."
-      );
-      return;
-    }
-
-    if (failed.length > 0) {
-      setPendingTracks(allTracks);
-      setPendingIssues(failed);
-      return;
-    }
-
+    // A shortfall here (some artist(s) didn't have enough matching tracks)
+    // no longer blocks or requires a second confirmation tap — the
+    // standing disclaimer above the button already sets that expectation.
+    // An entirely empty result still routes through; the preview page has
+    // its own empty-state message for that case.
     setPlaylist(allTracks);
     router.push("/lineup/preview");
-  }
-
-  async function retryArtist(issue: PendingIssue) {
-    setRetryingId(issue.entry.artist.id);
-    haptic(HAPTIC.tap);
-    const result = await fetchArtistTracks(issue.entry, issue.target);
-    setRetryingId(null);
-
-    if (result.authExpired) {
-      setNeedsAuth(true);
-      setPreviewError("Your Spotify connection expired. Reconnect above and try again.");
-      return;
-    }
-
-    setPendingTracks((prev) => {
-      const withoutOld = (prev || []).filter((t) => t.sourceArtistId !== issue.entry.artist.id);
-      return [...withoutOld, ...result.tracks];
-    });
-
-    if (result.error) {
-      setPendingIssues((prev) => prev.map((p) => (p.entry.artist.id === issue.entry.artist.id ? { ...p, message: result.error! } : p)));
-    } else {
-      setPendingIssues((prev) => prev.filter((p) => p.entry.artist.id !== issue.entry.artist.id));
-      haptic(HAPTIC.add);
-    }
   }
 
   const totalWeight = lineup.reduce((s, e) => s + e.weight, 0) || 1;
@@ -419,6 +349,34 @@ export default function LineupPage() {
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
+        {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
+
+        {results.length > 0 && (
+          <div className="bg-surface rounded-2xl px-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
+            {results.map((artist, i) => (
+              <div
+                key={artist.id}
+                className={
+                  "flex items-center gap-3 py-2.5 animate-fade-slide-up " + (i > 0 ? "border-t border-line" : "")
+                }
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                <ArtistAvatar src={artist.image} size={36} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold truncate">{artist.name}</div>
+                  <div className="text-xs text-faint truncate">{artist.genres[0] || copy.lineup.artistFallbackGenre}</div>
+                </div>
+                <button
+                  onClick={() => { haptic(HAPTIC.add); addArtist(artist); }}
+                  className="w-7 h-7 rounded-full bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
+                >
+                  +
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="bg-surface rounded-2xl p-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-muted">{copy.lineup.playlistSizeLabel}</span>
@@ -557,28 +515,6 @@ export default function LineupPage() {
           </div>
         )}
 
-        {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
-
-        {results.map((artist, i) => (
-          <div
-            key={artist.id}
-            className="flex items-center gap-3 py-2 animate-fade-slide-up"
-            style={{ animationDelay: `${i * 30}ms` }}
-          >
-            <ArtistAvatar src={artist.image} size={36} />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold truncate">{artist.name}</div>
-              <div className="text-xs text-faint truncate">{artist.genres[0] || copy.lineup.artistFallbackGenre}</div>
-            </div>
-            <button
-              onClick={() => { haptic(HAPTIC.add); addArtist(artist); }}
-              className="w-7 h-7 rounded-full bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
-            >
-              +
-            </button>
-          </div>
-        ))}
-
         <div className="flex items-center gap-2 mt-5 mb-1">
           <span className="text-xs font-extrabold uppercase tracking-wide text-faint">
             {copy.lineup.lineupLabel} · {lineup.length}
@@ -594,7 +530,7 @@ export default function LineupPage() {
                 return (
                   <div
                     key={entry.artist.id}
-                    style={{ width: `${pct}%`, backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }}
+                    style={{ width: `${pct}%`, backgroundColor: ARTIST_COLORS[i % ARTIST_COLORS.length] }}
                     className="h-full transition-all duration-300"
                   />
                 );
@@ -615,7 +551,7 @@ export default function LineupPage() {
         )}
 
         {lineup.map((entry, i) => {
-          const artistColor = BAR_COLORS[i % BAR_COLORS.length];
+          const artistColor = ARTIST_COLORS[i % ARTIST_COLORS.length];
           const isDropTarget = overIndex === i && dragIndex !== null;
           const sharePct = Math.round((entry.weight / totalWeight) * 100);
           return (
@@ -649,7 +585,7 @@ export default function LineupPage() {
               </span>
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }}
+                style={{ backgroundColor: ARTIST_COLORS[i % ARTIST_COLORS.length] }}
                 aria-hidden="true"
               />
               <ArtistAvatar src={entry.artist.image} size={36} />
@@ -746,29 +682,7 @@ export default function LineupPage() {
       {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveArtist} className="bottom-36" />}
 
       <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
-        {pendingIssues.length > 0 && (
-          <div className="bg-surface rounded-2xl p-3 mb-3 shadow-[0_16px_36px_-16px_rgba(10,31,38,0.35)] animate-fade-slide-up">
-            {pendingIssues.map((issue) => (
-              <div key={issue.entry.artist.id} className="flex items-center justify-between gap-3 py-1.5">
-                <span className="text-xs text-red-600 flex-1 min-w-0 truncate">
-                  <span className="font-bold">{issue.entry.artist.name}:</span> {issue.message}
-                </span>
-                <button
-                  onClick={() => retryArtist(issue)}
-                  disabled={retryingId === issue.entry.artist.id}
-                  className="text-[11px] font-bold text-accent flex-shrink-0 transition-transform duration-150 active:scale-90 disabled:opacity-50"
-                >
-                  {retryingId === issue.entry.artist.id ? copy.lineup.retrying : copy.lineup.retry}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        {previewError && pendingIssues.length === 0 && (
-          <p className="text-xs text-red-600 mb-2 bg-surface rounded-xl px-3 py-2 shadow-[0_10px_24px_-14px_rgba(10,31,38,0.3)] animate-fade-slide-up">
-            {previewError}
-          </p>
-        )}
+        <p className="text-[11px] text-faint text-center mb-2 px-2">{copy.lineup.shortfallDisclaimer}</p>
         <GradientButton
           onClick={handlePreview}
           disabled={lineup.length === 0 || generating}
@@ -779,8 +693,6 @@ export default function LineupPage() {
               <EqSpinner />
               {generatingText}
             </>
-          ) : pendingTracks ? (
-            copy.lineup.ctaContinueAnyway
           ) : (
             copy.lineup.ctaPreview
           )}

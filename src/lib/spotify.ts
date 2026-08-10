@@ -1,6 +1,7 @@
 import { getTokens, setTokens, StoredTokens } from "./session";
 import { SpotifyArtist, SpotifyTrack, FilterType } from "./types";
 import { getEnv } from "./env";
+import { resolveArtistMbid, getRecentSetlistSongTitles } from "./setlistfm";
 
 // NOTE: Spotify's February 2026 Development Mode changes removed several
 // endpoints this app used to rely on (artist top-tracks, batch track/album
@@ -176,28 +177,62 @@ async function searchArtistTrackRange(
   return tracks;
 }
 
-// "Most popular" — the first couple pages of plain relevance-ranked search
+// "Most popular" — the first several pages of plain relevance-ranked search
 // results. Search still ranks by relevance internally even with the score
 // hidden, so early results are the closest available popularity proxy.
+// Paged to 50 rather than 30 — a prolific artist's relevance results often
+// contain near-duplicates (remasters, deluxe reissues) that dedup collapses
+// away, so a shallower page count under-fills before it even gets to
+// genuinely distinct tracks.
 export async function getArtistKnownTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
-  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 0, 30);
+  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 0, 50);
 }
 
-// "Recent" — the same search, but scoped with Spotify's year: filter to the
-// last couple of years, which is a real recency signal rather than a guess.
-async function getArtistRecentTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
-  const currentYear = new Date().getFullYear();
-  const query = `artist:"${artistName}" year:${currentYear - 2}-${currentYear}`;
-  return searchArtistTrackRange(artistId, accessToken, query, 0, 20);
+// A second, differently-shaped query used only to top up a pool that's
+// still short after the field-restricted artist:"Name" search above.
+// Spotify's search ranks field-restricted queries (artist:"X") and plain
+// free-text queries (just the artist's name) somewhat differently, so this
+// genuinely surfaces additional distinct tracks sometimes, rather than
+// just re-finding the same ones — worth the extra request only when
+// there's an actual shortfall to fill.
+async function getArtistSupplementalTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
+  return searchArtistTrackRange(artistId, accessToken, artistName, 0, 50);
 }
 
-// "Deep cuts" — later pages of the same plain search. Relevance ranking
-// degrades the further you page in, so results here are, on average,
-// genuinely less prominent than the "popular" slice — not a perfect
-// popularity-ascending sort (that data doesn't exist anymore), but a real,
-// distinct pool rather than a re-labeled copy of "popular."
-async function getArtistDeepTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
-  return searchArtistTrackRange(artistId, accessToken, `artist:"${artistName}"`, 30, 80);
+// "Setlist" — resolves what this artist has actually been playing live
+// recently, via setlist.fm, then matches each song title back to a real
+// Spotify track. Titles that don't cleanly resolve (typos, live-only
+// mashups, songs setlist.fm has but Spotify's search can't match) are
+// just skipped rather than failing the whole pool.
+async function getArtistSetlistTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
+  const mbid = await resolveArtistMbid(artistName);
+  if (!mbid) return [];
+  const titles = await getRecentSetlistSongTitles(mbid);
+  if (titles.length === 0) return [];
+
+  const seen = new Set<string>();
+  const tracks: SpotifyTrack[] = [];
+  const resolved = await Promise.all(
+    titles.map(async (title) => {
+      try {
+        const params = new URLSearchParams({ q: `track:${title} artist:${artistName}`, type: "track", limit: "5" });
+        const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
+        const items: any[] = json.tracks?.items || [];
+        const match = items.find((t) => t.artists?.some((a: any) => a.id === artistId));
+        return match ? mapTrack(match, artistId) : null;
+      } catch {
+        return null; // one bad title shouldn't sink the whole setlist lookup
+      }
+    })
+  );
+  for (const t of resolved) {
+    if (!t) continue;
+    const key = trackDedupeKey(t);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tracks.push(t);
+  }
+  return tracks;
 }
 
 export async function searchTracksForArtist(
@@ -247,17 +282,17 @@ function trackDedupeKey(t: SpotifyTrack): string {
   return t.name.toLowerCase().replace(/\(.*?\)/g, "").trim() + "|" + t.artistId;
 }
 
-// All three pools already arrive in a meaningful order (relevance for
-// popular/deep, actual recency for recent via the year: filter), so there's
-// nothing left to re-sort here — this used to re-sort "recent" by
-// `releaseDate`, but that field only ever came from the now-dead catalog
-// path and is no longer populated.
+// Both pools already arrive in a meaningful order (relevance for popular,
+// most-recent-shows-first for setlist), so there's nothing left to re-sort
+// here — this used to re-sort "recent" by `releaseDate`, but that field
+// only ever came from the now-dead catalog path and is no longer populated.
 function sortForFilter(tracks: SpotifyTrack[], _filter: FilterType): SpotifyTrack[] {
   return tracks;
 }
 
 export interface ArtistPoolsResult {
   pools: Record<FilterType, SpotifyTrack[]>;
+  supplemental: SpotifyTrack[];
   warning?: string;
 }
 
@@ -266,29 +301,30 @@ export async function getArtistTrackPools(
   artistName: string,
   accessToken: string
 ): Promise<ArtistPoolsResult> {
-  const [popularResult, recentResult, deepResult] = await Promise.allSettled([
+  const [popularResult, setlistResult, supplementalResult] = await Promise.allSettled([
     getArtistKnownTracks(artistId, artistName, accessToken),
-    getArtistRecentTracks(artistId, artistName, accessToken),
-    getArtistDeepTracks(artistId, artistName, accessToken),
+    getArtistSetlistTracks(artistId, artistName, accessToken),
+    getArtistSupplementalTracks(artistId, artistName, accessToken),
   ]);
 
   const popular = popularResult.status === "fulfilled" ? popularResult.value : [];
-  const recent = recentResult.status === "fulfilled" ? recentResult.value : [];
-  const deep = deepResult.status === "fulfilled" ? deepResult.value : [];
+  const setlist = setlistResult.status === "fulfilled" ? setlistResult.value : [];
+  const supplemental = supplementalResult.status === "fulfilled" ? supplementalResult.value : [];
 
   const failures: string[] = [];
   if (popularResult.status === "rejected") {
     failures.push(`popular lookup failed (${popularResult.reason?.message || popularResult.reason})`);
   }
-  if (recentResult.status === "rejected") {
-    failures.push(`recent lookup failed (${recentResult.reason?.message || recentResult.reason})`);
+  if (setlistResult.status === "rejected") {
+    failures.push(`setlist lookup failed (${setlistResult.reason?.message || setlistResult.reason})`);
   }
-  if (deepResult.status === "rejected") {
-    failures.push(`deep cuts lookup failed (${deepResult.reason?.message || deepResult.reason})`);
-  }
+  // A failed supplemental fetch isn't worth surfacing as a warning — it was
+  // only ever a top-up source, and the primary pools already cover the
+  // actual filter selections.
 
   return {
-    pools: { popular, recent, deep },
+    pools: { popular, setlist },
+    supplemental,
     warning: failures.length > 0 ? failures.join("; ") : undefined,
   };
 }
@@ -296,7 +332,8 @@ export async function getArtistTrackPools(
 export function selectTracksForFilters(
   poolsByFilter: Record<FilterType, SpotifyTrack[]>,
   filters: FilterType[],
-  count: number
+  count: number,
+  supplemental: SpotifyTrack[] = []
 ): { tracks: SpotifyTrack[]; shortBy: number } {
   const active = filters.length > 0 ? filters : (["popular"] as FilterType[]);
   const base = Math.floor(count / active.length);
@@ -320,11 +357,13 @@ export function selectTracksForFilters(
   });
 
   // if a filter's pool ran out early, top up from whatever's left so the
-  // total still hits `count` — but if the combined pool genuinely doesn't
-  // have enough distinct tracks, `shortBy` reports exactly how far short,
-  // so that can be surfaced instead of silently under-filling.
+  // total still hits `count` — first from the other selected pools, then
+  // from the supplemental broader-query pool if it's still short after
+  // that. `shortBy` reports exactly how far short it still is if even that
+  // combined material genuinely doesn't have enough distinct tracks, so
+  // that can be surfaced instead of silently under-filling.
   if (selected.length < count) {
-    const fallback = [...poolsByFilter.popular, ...poolsByFilter.recent, ...poolsByFilter.deep];
+    const fallback = [...poolsByFilter.popular, ...poolsByFilter.setlist, ...supplemental];
     for (const t of fallback) {
       if (selected.length >= count) break;
       const key = trackDedupeKey(t);
@@ -366,18 +405,30 @@ export async function createSpotifyPlaylist(params: {
     });
   }
 
+  let coverUploaded = false;
   if (params.coverImageBase64) {
-    await fetch(`${API_BASE}/playlists/${playlist.id}/images`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${params.accessToken}`,
-        "Content-Type": "image/jpeg",
-      },
-      body: params.coverImageBase64,
-    }).catch(() => {
-      /* cover upload is best-effort; playlist creation still succeeds without it */
-    });
+    try {
+      const coverRes = await fetch(`${API_BASE}/playlists/${playlist.id}/images`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${params.accessToken}`,
+          "Content-Type": "image/jpeg",
+        },
+        body: params.coverImageBase64,
+      });
+      if (coverRes.ok) {
+        coverUploaded = true;
+      } else {
+        // Cover upload is best-effort — the playlist itself still succeeds
+        // without one — but a silent catch() here previously meant this
+        // failure (over Spotify's 256KB/JPEG-only limit, a stale token,
+        // etc.) never surfaced anywhere, not even in logs.
+        console.error("Cover image upload failed", coverRes.status, await coverRes.text().catch(() => ""));
+      }
+    } catch (err) {
+      console.error("Cover image upload threw", err);
+    }
   }
 
-  return { id: playlist.id, url: playlist.external_urls?.spotify as string };
+  return { id: playlist.id, url: playlist.external_urls?.spotify as string, coverUploaded };
 }

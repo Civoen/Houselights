@@ -41,16 +41,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ tracks: results });
     }
 
-    const { pools, warning } = await getArtistTrackPools(artistId, artistName, accessToken);
+    const { pools, supplemental, warning } = await getArtistTrackPools(artistId, artistName, accessToken);
 
-    if (pools.popular.length === 0 && pools.recent.length === 0) {
+    if (pools.popular.length === 0 && pools.setlist.length === 0 && supplemental.length === 0) {
       return NextResponse.json(
         { error: warning || "No tracks found for this artist.", tracks: [] },
         { status: 200 }
       );
     }
 
-    const tracks = selectTracksForFilters(pools, filters, count);
+    const tracks = selectTracksForFilters(pools, filters, count, supplemental);
 
     // Surface the real reason even when some tracks did come through, so a
     // partial failure isn't silently indistinguishable from "this artist

@@ -6,6 +6,7 @@ import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
 import { addEvent, getAllEvents } from "@/lib/eventHistory";
+import { resizeImageToBase64 } from "@/lib/resizeImage";
 import { copy } from "@/lib/copy";
 
 const CREATING_PHRASES = copy.create.creatingPhrases;
@@ -19,6 +20,7 @@ export default function CreatePage() {
   const [description, setDescription] = useState(playlistDescription);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
 
   const creatingText = useRotatingText(submitting, CREATING_PHRASES, 1200);
 
@@ -35,15 +37,21 @@ export default function CreatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setCoverImage(result.split(",")[1]);
-    };
-    reader.readAsDataURL(file);
+    setCoverError(null);
+    try {
+      // Spotify's cover-image endpoint requires a genuine JPEG under 256KB.
+      // A raw phone photo is neither guaranteed to be JPEG-encoded (PNG is
+      // also accepted here) nor anywhere near that size — this resizes and
+      // re-encodes as real JPEG so the upload actually succeeds instead of
+      // failing silently against Spotify's limit.
+      const base64 = await resizeImageToBase64(file);
+      setCoverImage(base64);
+    } catch {
+      setCoverError("Couldn't use that image — try a different one.");
+    }
   }
 
   async function handleDone() {
@@ -117,6 +125,7 @@ export default function CreatePage() {
           </span>
         </button>
         <input ref={fileInput} type="file" accept="image/jpeg,image/png" onChange={handleFile} className="hidden" />
+        {coverError && <p className="text-xs text-red-600 -mt-3 mb-4">{coverError}</p>}
 
         <label className="block text-xs font-extrabold uppercase tracking-wide text-faint mb-1.5">
           {copy.create.playlistNameLabel}

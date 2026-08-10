@@ -13,6 +13,7 @@ import { useUndoToast } from "@/lib/useUndoToast";
 import { PlaylistTrack } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
+import { buildArtistColorMap } from "@/lib/artistColors";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -46,6 +47,7 @@ interface ArtistGroup {
 export default function PreviewPage() {
   const router = useRouter();
   const { lineup, playlist, eventDate, setEventDate, removeTrack, restoreTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
+  const eventDateInputRef = useRef<HTMLInputElement>(null);
   const [addArtistQuery, setAddArtistQuery] = useState("");
   const [addArtistResults, setAddArtistResults] = useState<any[]>([]);
   const [chosenArtist, setChosenArtist] = useState<{ id: string; name: string } | null>(null);
@@ -83,6 +85,23 @@ export default function PreviewPage() {
   const totalMin = Math.round(totalMs / 60000);
   const artistCount = new Set(playlist.map((t) => t.sourceArtistId)).size;
   const artistOrder = lineup.map((a) => a.artist.id);
+  const artistColorMap = buildArtistColorMap(lineup);
+
+  // Contiguous runs of same-artist tracks in the current flat order — used
+  // to draw the colored box around each artist's block of songs. Recomputed
+  // from whatever order the tracks are actually in right now, so it stays
+  // accurate through Hype/Headliner sorting and manual drag reordering
+  // alike, including a track dragged into the middle of a different
+  // artist's block splitting that block into two.
+  const segments: { artistId: string; items: { track: PlaylistTrack; index: number }[] }[] = [];
+  playlist.forEach((t, i) => {
+    const last = segments[segments.length - 1];
+    if (last && last.artistId === t.sourceArtistId) {
+      last.items.push({ track: t, index: i });
+    } else {
+      segments.push({ artistId: t.sourceArtistId, items: [{ track: t, index: i }] });
+    }
+  });
 
   function handleOrderChange(mode: "hype" | "headliner" | "artists") {
     haptic(HAPTIC.reorder);
@@ -205,7 +224,16 @@ export default function PreviewPage() {
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
-        <div className="flex items-center justify-between gap-3 bg-surface rounded-2xl px-4 py-3 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
+        <div
+          onClick={() => {
+            try {
+              eventDateInputRef.current?.showPicker?.();
+            } catch {
+              /* showPicker isn't supported everywhere — the input is still directly tappable as a fallback */
+            }
+          }}
+          className="flex items-center justify-between gap-3 bg-surface rounded-2xl px-4 py-3 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)] cursor-pointer"
+        >
           <div className="flex items-center gap-2 text-xs font-semibold text-muted">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" />
@@ -215,9 +243,11 @@ export default function PreviewPage() {
             <span className="text-faint font-normal">{copy.lineup.eventDateOptional}</span>
           </div>
           <input
+            ref={eventDateInputRef}
             type="date"
             value={eventDate}
             onChange={(e) => setEventDate(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
             className="bg-transparent text-xs font-semibold text-ink outline-none"
           />
         </div>
@@ -248,64 +278,75 @@ export default function PreviewPage() {
         )}
 
         {playlist.length > 0 && orderMode !== "artists" && (
-          <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] px-3 mb-4">
-            {playlist.map((t, i) => (
-              <div
-                key={`${t.id}-${i}`}
-                ref={setItemRef(i)}
-                className={
-                  "flex items-center gap-3 py-2.5 rounded-xl px-1 " +
-                  (dragIndex === i
-                    ? "bg-surfaceAlt shadow-xl relative z-20"
-                    : "transition-all duration-150 " +
-                      (i > 0 ? "border-t border-line " : "") +
-                      (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
-                }
-                style={
-                  dragIndex === i
-                    ? { transform: `translateY(${dragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
-                    : undefined
-                }
-              >
-                <span
-                  onPointerDown={handlePointerDown(i)}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerCancel}
-                  className="text-faint text-base select-none cursor-grab active:cursor-grabbing flex items-center justify-center w-7 h-7 -mx-1 flex-shrink-0"
-                  style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none" } as React.CSSProperties}
+          <div className="mb-4">
+            {segments.map((seg, segIdx) => {
+              const color = artistColorMap[seg.artistId] || "#93A0AB";
+              return (
+                <div
+                  key={seg.artistId + "-" + segIdx}
+                  className="rounded-2xl mb-2 px-3 overflow-hidden"
+                  style={{ border: `1.5px solid ${color}`, backgroundColor: `${color}14` }}
                 >
-                  ⠿
-                </span>
-                <AlbumArt src={t.albumImage} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate">{t.name}</div>
-                  <div className="text-xs text-faint truncate">
-                    {t.artist}
-                    {t.handpicked ? " · handpicked" : ""}
-                  </div>
+                  {seg.items.map(({ track: t, index: i }, localIdx) => (
+                    <div
+                      key={`${t.id}-${i}`}
+                      ref={setItemRef(i)}
+                      className={
+                        "flex items-center gap-3 py-2.5 rounded-xl px-1 " +
+                        (dragIndex === i
+                          ? "bg-surfaceAlt shadow-xl relative z-20"
+                          : "transition-all duration-150 " +
+                            (localIdx > 0 ? "border-t border-line " : "") +
+                            (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
+                      }
+                      style={
+                        dragIndex === i
+                          ? { transform: `translateY(${dragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
+                          : undefined
+                      }
+                    >
+                      <span
+                        onPointerDown={handlePointerDown(i)}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerCancel}
+                        className="text-faint text-base select-none cursor-grab active:cursor-grabbing flex items-center justify-center w-7 h-7 -mx-1 flex-shrink-0"
+                        style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none" } as React.CSSProperties}
+                      >
+                        ⠿
+                      </span>
+                      <AlbumArt src={t.albumImage} size={36} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold truncate">{t.name}</div>
+                        <div className="text-xs text-faint truncate">
+                          {t.artist}
+                          {t.handpicked ? " · handpicked" : ""}
+                        </div>
+                      </div>
+                      <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
+                      <a
+                        href={`https://open.spotify.com/track/${t.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Listen to ${t.name} on Spotify`}
+                        className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </a>
+                      <button
+                        onClick={() => handleRemoveTrack(t, i)}
+                        className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
-                <a
-                  href={`https://open.spotify.com/track/${t.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label={`Listen to ${t.name} on Spotify`}
-                  className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </a>
-                <button
-                  onClick={() => handleRemoveTrack(t, i)}
-                  className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -313,10 +354,12 @@ export default function PreviewPage() {
           <div className="mb-4">
             {artistGroups.map((group) => {
               const expanded = expandedArtists.has(group.id);
+              const color = artistColorMap[group.id] || "#93A0AB";
               return (
                 <div
                   key={group.id}
                   className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] mb-2 overflow-hidden"
+                  style={{ borderLeft: `4px solid ${color}` }}
                 >
                   <button
                     onClick={() => toggleArtistExpanded(group.id)}

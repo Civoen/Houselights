@@ -5,8 +5,7 @@ import { haptic, HAPTIC } from "@/lib/haptics";
 
 const OPTIONS: { id: FilterType; label: string }[] = [
   { id: "popular", label: copy.filters.popular },
-  { id: "recent", label: copy.filters.recent },
-  { id: "deep", label: copy.filters.deep },
+  { id: "setlist", label: copy.filters.setlist },
 ];
 
 export function FilterChips({ value, onToggle }: { value: FilterType[]; onToggle: (f: FilterType) => void }) {

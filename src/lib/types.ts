@@ -1,4 +1,4 @@
-export type FilterType = "popular" | "recent" | "deep";
+export type FilterType = "popular" | "setlist";
 
 export interface SpotifyArtist {
   id: string;
