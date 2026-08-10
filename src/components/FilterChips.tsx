@@ -1,6 +1,7 @@
 "use client";
 import { FilterType } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { haptic, HAPTIC } from "@/lib/haptics";
 
 const OPTIONS: { id: FilterType; label: string }[] = [
   { id: "popular", label: copy.filters.popular },
@@ -18,12 +19,15 @@ export function FilterChips({ value, onToggle }: { value: FilterType[]; onToggle
             key={opt.id}
             type="button"
             aria-pressed={active}
-            onClick={() => onToggle(opt.id)}
+            onClick={() => {
+              haptic(HAPTIC.tap);
+              onToggle(opt.id);
+            }}
             className={
-              "flex-1 text-center py-2 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 " +
+              "flex-1 text-center py-2 rounded-full text-xs font-bold transition-all duration-200 active:scale-95 " +
               (active
-                ? "bg-grad text-white"
-                : "bg-surfaceAlt text-muted border border-line hover:border-accent hover:text-accent")
+                ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
+                : "bg-surfaceAlt text-muted hover:text-accent")
             }
           >
             {opt.label}

@@ -66,6 +66,12 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(-3px)" },
           "50%": { transform: "translateY(3px)" },
         },
+        pillSqueeze: {
+          "0%": { transform: "scaleX(0.7) scaleY(1.18)" },
+          "45%": { transform: "scaleX(1.28) scaleY(0.86)" },
+          "70%": { transform: "scaleX(0.93) scaleY(1.05)" },
+          "100%": { transform: "scaleX(1) scaleY(1)" },
+        },
       },
       animation: {
         "fade-slide-up": "fadeSlideUp 0.4s ease-out both",
@@ -76,6 +82,7 @@ const config: Config = {
         "theme-flick": "themeFlick 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
         "eq-bounce": "eqBounce 0.8s ease-in-out infinite",
         "fader-drift": "faderDrift 3.4s ease-in-out infinite",
+        "pill-squeeze": "pillSqueeze 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
       },
     },
   },

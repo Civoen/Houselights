@@ -21,10 +21,12 @@ export interface SpotifyTrack {
   releaseDate?: string;
 }
 
+export type PlaylistSizeMode = "songs" | "time";
+
 export interface LineupArtist {
   artist: SpotifyArtist;
   filters: FilterType[];
-  count: number;
+  weight: number;
   pickedTracks: SpotifyTrack[];
 }
 

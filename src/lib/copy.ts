@@ -22,6 +22,18 @@ export const copy = {
     eventDateLabel: "Event date",
     eventDateOptional: "(optional)",
 
+    playlistSizeLabel: "Playlist size",
+    sizeModeSongs: "Songs",
+    sizeModeTime: "Time",
+    totalSongsLabel: "Total songs",
+    totalTimeLabel: "Total length",
+    timePreset30: "30 min",
+    timePreset60: "1 hr",
+    timePreset90: "1.5 hr",
+    timePreset120: "2 hr",
+    timePreset180: "3 hr",
+    timePreset300: "5 hr",
+
     quickAddLabel: "From your Spotify · Quick add",
     quickAddReconnect: "Reconnect Spotify",
     quickAddScopeSuffix: "to see your top artists here.",
@@ -46,7 +58,8 @@ export const copy = {
     headlinerTag: "Headliner",
     estimateSuffix: "(estimate)",
 
-    songsToAddLabel: "Songs to add",
+    weightLabel: "Share",
+    weightGoalSuffix: "goal",
     addSpecificSongs: "Add specific songs",
     pickedSongsLabel: "Picked songs",
     remove: "Remove",

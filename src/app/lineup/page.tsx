@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { Stepper } from "@/components/Stepper";
 import { FilterChips } from "@/components/FilterChips";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
@@ -15,7 +16,7 @@ import { useUndoToast } from "@/lib/useUndoToast";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
 import { SettingsButton } from "@/components/SettingsButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist } from "@/lib/types";
+import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode } from "@/lib/types";
 import { copy } from "@/lib/copy";
 
 interface PosterMatch {
@@ -27,11 +28,52 @@ interface PosterMatch {
 interface PendingIssue {
   entry: LineupArtist;
   message: string;
+  target: number;
 }
 
 const BAR_COLORS = ["#14CC9B", "#115067", "#F5A623", "#EF6461", "#6C63FF", "#2FB8C6", "#E14D9F", "#8BC34A"];
-
 const GENERATING_PHRASES = copy.lineup.generatingPhrases;
+const AVG_TRACK_MINUTES = 3.5;
+
+const TIME_PRESETS = [
+  { v: 30, l: copy.lineup.timePreset30 },
+  { v: 60, l: copy.lineup.timePreset60 },
+  { v: 90, l: copy.lineup.timePreset90 },
+  { v: 120, l: copy.lineup.timePreset120 },
+  { v: 180, l: copy.lineup.timePreset180 },
+  { v: 300, l: copy.lineup.timePreset300 },
+];
+
+function computeTotalTargetSongs(mode: PlaylistSizeMode, value: number): number {
+  if (mode === "songs") return Math.max(1, Math.round(value));
+  return Math.max(1, Math.round(value / AVG_TRACK_MINUTES));
+}
+
+function fmtMinutes(min: number) {
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// Largest-remainder rounding: gives each artist a whole-number target
+// proportional to their weight, while the targets still sum to exactly
+// `totalTarget` (rather than everyone's individual Math.round() drifting
+// the sum away from the actual goal).
+function computeArtistTargets(lineup: LineupArtist[], totalTarget: number): { entry: LineupArtist; target: number }[] {
+  const totalWeight = lineup.reduce((s, e) => s + e.weight, 0) || 1;
+  const raw = lineup.map((e) => (e.weight / totalWeight) * totalTarget);
+  const floors = raw.map((v) => Math.floor(v));
+  const distributed = floors.reduce((s, v) => s + v, 0);
+  let remainder = totalTarget - distributed;
+  const order = raw
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac);
+  const targets = [...floors];
+  for (let k = 0; k < order.length && remainder > 0; k++, remainder--) {
+    targets[order[k].i] += 1;
+  }
+  return lineup.map((e, i) => ({ entry: e, target: Math.max(1, targets[i]) }));
+}
 
 export default function LineupPage() {
   const router = useRouter();
@@ -39,12 +81,15 @@ export default function LineupPage() {
     lineup,
     eventDate,
     setEventDate,
+    playlistSizeMode,
+    playlistSizeValue,
+    setPlaylistSize,
     addArtist,
     removeArtist,
     restoreArtist,
     reorderArtist,
     toggleFilter,
-    setCount,
+    setWeight,
     addPickedTrack,
     removePickedTrack,
     setPlaylist,
@@ -210,7 +255,8 @@ export default function LineupPage() {
   }
 
   async function fetchArtistTracks(
-    entry: LineupArtist
+    entry: LineupArtist,
+    targetCount: number
   ): Promise<{ tracks: PlaylistTrack[]; error?: string; authExpired?: boolean }> {
     const includedIds = new Set<string>();
     const tracks: PlaylistTrack[] = [];
@@ -223,7 +269,7 @@ export default function LineupPage() {
         artistId: entry.artist.id,
         artistName: entry.artist.name,
         filters: entry.filters.join(","),
-        count: String(entry.count),
+        count: String(targetCount),
       });
       const res = await fetch(`/api/spotify/artist-tracks?${params.toString()}`);
 
@@ -272,21 +318,56 @@ export default function LineupPage() {
 
     setGenerating(true);
     setPreviewError(null);
-    const allTracks: PlaylistTrack[] = [];
-    const failed: PendingIssue[] = [];
 
-    for (const entry of lineup) {
-      const result = await fetchArtistTracks(entry);
+    const totalTarget = computeTotalTargetSongs(playlistSizeMode, playlistSizeValue);
+    const targets = computeArtistTargets(lineup, totalTarget);
+
+    const outcomes: { entry: LineupArtist; tracks: PlaylistTrack[]; requested: number; error?: string }[] = [];
+    for (const { entry, target } of targets) {
+      const result = await fetchArtistTracks(entry, target);
       if (result.authExpired) {
         setNeedsAuth(true);
         setGenerating(false);
         setPreviewError("Your Spotify connection expired. Reconnect above and try again.");
         return;
       }
-      allTracks.push(...result.tracks);
-      if (result.error) failed.push({ entry, message: result.error });
+      outcomes.push({ entry, tracks: result.tracks, requested: target, error: result.error });
     }
+
+    // redistribution pass — if the lineup as a whole came up short of the
+    // goal, ask whichever artists already met their own target for a bit
+    // more (they're the ones who plausibly have room to give), splitting
+    // the remaining gap across them. This is what makes the weight system
+    // a genuine goal rather than a hard per-artist cap.
+    let allTracks: PlaylistTrack[] = outcomes.flatMap((o) => o.tracks);
+    let shortfall = totalTarget - allTracks.length;
+    if (shortfall > 0) {
+      const candidates = outcomes.filter((o) => o.tracks.length >= o.requested && !o.error);
+      if (candidates.length > 0) {
+        const share = Math.ceil(shortfall / candidates.length);
+        for (const cand of candidates) {
+          if (shortfall <= 0) break;
+          const bumped = await fetchArtistTracks(cand.entry, cand.requested + share);
+          if (bumped.authExpired) {
+            setNeedsAuth(true);
+            setGenerating(false);
+            setPreviewError("Your Spotify connection expired. Reconnect above and try again.");
+            return;
+          }
+          const existingIds = new Set(allTracks.map((t) => t.id));
+          const fresh = bumped.tracks.filter((t) => !existingIds.has(t.id));
+          const toAdd = fresh.slice(0, shortfall);
+          allTracks = [...allTracks, ...toAdd];
+          shortfall -= toAdd.length;
+        }
+      }
+    }
+
     setGenerating(false);
+
+    const failed: PendingIssue[] = outcomes
+      .filter((o) => o.error)
+      .map((o) => ({ entry: o.entry, message: o.error!, target: o.requested }));
 
     if (allTracks.length === 0) {
       setPreviewError(
@@ -297,9 +378,6 @@ export default function LineupPage() {
       return;
     }
 
-    // some artists returned tracks but others hit a real error — don't silently
-    // drop that error just because the playlist isn't empty. Let the person
-    // retry just the artist(s) that failed, or continue with what we have.
     if (failed.length > 0) {
       setPendingTracks(allTracks);
       setPendingIssues(failed);
@@ -313,7 +391,7 @@ export default function LineupPage() {
   async function retryArtist(issue: PendingIssue) {
     setRetryingId(issue.entry.artist.id);
     haptic(HAPTIC.tap);
-    const result = await fetchArtistTracks(issue.entry);
+    const result = await fetchArtistTracks(issue.entry, issue.target);
     setRetryingId(null);
 
     if (result.authExpired) {
@@ -335,17 +413,21 @@ export default function LineupPage() {
     }
   }
 
+  const totalWeight = lineup.reduce((s, e) => s + e.weight, 0) || 1;
+  const totalTargetSongs = computeTotalTargetSongs(playlistSizeMode, playlistSizeValue);
+  const totalTargetMinutes = playlistSizeMode === "time" ? playlistSizeValue : Math.round(totalTargetSongs * AVG_TRACK_MINUTES);
+
   return (
     <main className="min-h-screen pb-48 animate-fade-slide-up">
-      <div className="bg-grad text-white px-6 pb-6 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="font-display text-2xl font-bold">{copy.lineup.title}</h1>
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="font-display text-3xl font-bold tracking-tight">{copy.lineup.title}</h1>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="w-8 h-8 rounded-full bg-white/20 text-white" />
-            <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
           </div>
         </div>
-        <div className="bg-white/95 rounded-2xl px-4 py-3 flex items-center gap-3">
+        <div className="bg-surface rounded-2xl px-4 py-3 flex items-center gap-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="#93A0AB" strokeWidth="2.2" />
             <path d="M21 21l-4.3-4.3" stroke="#93A0AB" strokeWidth="2.2" strokeLinecap="round" />
@@ -360,7 +442,7 @@ export default function LineupPage() {
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
-        <div className="flex items-center justify-between gap-3 bg-surface border border-line rounded-2xl px-4 py-3 mb-4">
+        <div className="flex items-center justify-between gap-3 bg-surface rounded-2xl px-4 py-3 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" />
@@ -375,6 +457,44 @@ export default function LineupPage() {
             onChange={(e) => setEventDate(e.target.value)}
             className="bg-transparent text-xs font-semibold text-ink outline-none"
           />
+        </div>
+
+        <div className="bg-surface rounded-2xl p-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-muted">{copy.lineup.playlistSizeLabel}</span>
+          </div>
+          <SegmentedControl
+            className="mb-3"
+            value={playlistSizeMode}
+            onChange={(id) => setPlaylistSize(id as "songs" | "time", id === "songs" ? (playlistSizeMode === "songs" ? playlistSizeValue : 40) : (playlistSizeMode === "time" ? playlistSizeValue : 60))}
+            options={[
+              { id: "songs", label: copy.lineup.sizeModeSongs },
+              { id: "time", label: copy.lineup.sizeModeTime },
+            ]}
+          />
+          {playlistSizeMode === "songs" ? (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-faint">{copy.lineup.totalSongsLabel}</span>
+              <Stepper value={playlistSizeValue} onChange={(v) => setPlaylistSize("songs", v)} min={5} max={300} step={5} />
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {TIME_PRESETS.map((preset) => (
+                <button
+                  key={preset.v}
+                  onClick={() => setPlaylistSize("time", preset.v)}
+                  className={
+                    "px-3 py-1.5 rounded-full text-[11px] font-bold transition-all " +
+                    (playlistSizeValue === preset.v
+                      ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
+                      : "bg-surfaceAlt text-muted")
+                  }
+                >
+                  {preset.l}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {query.trim().length < 2 && (topArtists.length > 0 || topArtistsNeedsScope) && (
@@ -454,7 +574,7 @@ export default function LineupPage() {
         )}
 
         {posterReview && (
-          <div className="bg-surface border border-line rounded-2xl p-4 mb-4 animate-pop-in">
+          <div className="bg-surface rounded-2xl p-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-pop-in">
             <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-3">
               {copy.lineup.posterFoundHeading}
             </div>
@@ -487,7 +607,7 @@ export default function LineupPage() {
             <div className="flex gap-2 mt-3">
               <button
                 onClick={() => setPosterReview(null)}
-                className="flex-1 py-2.5 rounded-xl border border-lineStrong text-muted text-xs font-bold transition-all active:scale-95"
+                className="flex-1 py-2.5 rounded-xl bg-surfaceAlt text-muted text-xs font-bold transition-all active:scale-95"
               >
                 {copy.lineup.posterCancel}
               </button>
@@ -504,7 +624,7 @@ export default function LineupPage() {
         )}
 
         {needsAuth && (
-          <div className="bg-surface border border-line rounded-2xl p-4 mb-4 text-center animate-pop-in">
+          <div className="bg-surface rounded-2xl p-4 mb-4 text-center shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-pop-in">
             <p className="text-sm text-muted mb-3">{copy.lineup.connectPrompt}</p>
             <a
               href="/api/auth/login"
@@ -548,8 +668,7 @@ export default function LineupPage() {
           <div className="mb-3">
             <div className="w-full h-2.5 rounded-full overflow-hidden flex bg-surfaceAlt">
               {lineup.map((entry, i) => {
-                const total = lineup.reduce((s, e) => s + e.count, 0) || 1;
-                const pct = (entry.count / total) * 100;
+                const pct = (entry.weight / totalWeight) * 100;
                 return (
                   <div
                     key={entry.artist.id}
@@ -560,14 +679,7 @@ export default function LineupPage() {
               })}
             </div>
             <p className="text-[11px] text-faint mt-1.5">
-              ≈ {lineup.reduce((s, e) => s + e.count, 0)} tracks · ~
-              {(() => {
-                const min = Math.round(lineup.reduce((s, e) => s + e.count, 0) * 3.5);
-                const h = Math.floor(min / 60);
-                const m = min % 60;
-                return h > 0 ? `${h}h ${m}m` : `${m}m`;
-              })()}{" "}
-              {copy.lineup.estimateSuffix}
+              ≈ {totalTargetSongs} tracks · ~{fmtMinutes(totalTargetMinutes)} {copy.lineup.estimateSuffix}
             </p>
           </div>
         )}
@@ -583,12 +695,13 @@ export default function LineupPage() {
         {lineup.map((entry, i) => {
           const artistColor = BAR_COLORS[i % BAR_COLORS.length];
           const isDropTarget = overIndex === i && dragIndex !== null;
+          const sharePct = Math.round((entry.weight / totalWeight) * 100);
           return (
           <div
             key={entry.artist.id}
             ref={setItemRef(i)}
             className={
-              "bg-surface border rounded-2xl p-4 mb-3 " +
+              "bg-surface border rounded-2xl p-4 mb-3 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] " +
               (dragIndex === i
                 ? "shadow-2xl z-20 relative"
                 : "transition-all duration-150 " +
@@ -633,8 +746,10 @@ export default function LineupPage() {
             </div>
             <FilterChips value={entry.filters} onToggle={(f) => toggleFilter(entry.artist.id, f)} />
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-faint font-semibold">{copy.lineup.songsToAddLabel}</span>
-              <Stepper value={entry.count} onChange={(v) => setCount(entry.artist.id, v)} />
+              <span className="text-xs text-faint font-semibold">
+                {copy.lineup.weightLabel} · {sharePct}% {copy.lineup.weightGoalSuffix}
+              </span>
+              <Stepper value={entry.weight} onChange={(v) => setWeight(entry.artist.id, v)} min={1} max={10} />
             </div>
             <button
               onClick={() => {
@@ -708,44 +823,46 @@ export default function LineupPage() {
 
       {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveArtist} className="bottom-36" />}
 
-      <div
-        className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]"
-      >
-        <div className="max-w-lg mx-auto">
-          {pendingIssues.length > 0 && (
-            <div className="bg-surface border border-line rounded-2xl p-3 mb-3 animate-fade-slide-up">
-              {pendingIssues.map((issue) => (
-                <div key={issue.entry.artist.id} className="flex items-center justify-between gap-3 py-1.5">
-                  <span className="text-xs text-red-600 flex-1 min-w-0 truncate">
-                    <span className="font-bold">{issue.entry.artist.name}:</span> {issue.message}
-                  </span>
-                  <button
-                    onClick={() => retryArtist(issue)}
-                    disabled={retryingId === issue.entry.artist.id}
-                    className="text-[11px] font-bold text-accent flex-shrink-0 transition-transform duration-150 active:scale-90 disabled:opacity-50"
-                  >
-                    {retryingId === issue.entry.artist.id ? copy.lineup.retrying : copy.lineup.retry}
-                  </button>
-                </div>
-              ))}
-            </div>
+      <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+        {pendingIssues.length > 0 && (
+          <div className="bg-surface rounded-2xl p-3 mb-3 shadow-[0_16px_36px_-16px_rgba(10,31,38,0.35)] animate-fade-slide-up">
+            {pendingIssues.map((issue) => (
+              <div key={issue.entry.artist.id} className="flex items-center justify-between gap-3 py-1.5">
+                <span className="text-xs text-red-600 flex-1 min-w-0 truncate">
+                  <span className="font-bold">{issue.entry.artist.name}:</span> {issue.message}
+                </span>
+                <button
+                  onClick={() => retryArtist(issue)}
+                  disabled={retryingId === issue.entry.artist.id}
+                  className="text-[11px] font-bold text-accent flex-shrink-0 transition-transform duration-150 active:scale-90 disabled:opacity-50"
+                >
+                  {retryingId === issue.entry.artist.id ? copy.lineup.retrying : copy.lineup.retry}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {previewError && pendingIssues.length === 0 && (
+          <p className="text-xs text-red-600 mb-2 bg-surface rounded-xl px-3 py-2 shadow-[0_10px_24px_-14px_rgba(10,31,38,0.3)] animate-fade-slide-up">
+            {previewError}
+          </p>
+        )}
+        <GradientButton
+          onClick={handlePreview}
+          disabled={lineup.length === 0 || generating}
+          className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]"
+        >
+          {generating ? (
+            <>
+              <EqSpinner />
+              {generatingText}
+            </>
+          ) : pendingTracks ? (
+            copy.lineup.ctaContinueAnyway
+          ) : (
+            copy.lineup.ctaPreview
           )}
-          {previewError && pendingIssues.length === 0 && (
-            <p className="text-xs text-red-600 mb-2 animate-fade-slide-up">{previewError}</p>
-          )}
-          <GradientButton onClick={handlePreview} disabled={lineup.length === 0 || generating}>
-            {generating ? (
-              <>
-                <EqSpinner />
-                {generatingText}
-              </>
-            ) : pendingTracks ? (
-              copy.lineup.ctaContinueAnyway
-            ) : (
-              copy.lineup.ctaPreview
-            )}
-          </GradientButton>
-        </div>
+        </GradientButton>
       </div>
     </main>
   );

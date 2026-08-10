@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { LineupArtist, PlaylistTrack, SpotifyArtist, SpotifyTrack, FilterType } from "./types";
+import { LineupArtist, PlaylistTrack, SpotifyArtist, SpotifyTrack, FilterType, PlaylistSizeMode } from "./types";
 
 interface LineupState {
   lineup: LineupArtist[];
@@ -10,12 +10,15 @@ interface LineupState {
   coverImageBase64?: string;
   eventDate: string;
   setEventDate: (date: string) => void;
+  playlistSizeMode: PlaylistSizeMode;
+  playlistSizeValue: number;
+  setPlaylistSize: (mode: PlaylistSizeMode, value: number) => void;
   addArtist: (artist: SpotifyArtist) => void;
   removeArtist: (artistId: string) => void;
   restoreArtist: (entry: LineupArtist, index: number) => void;
   reorderArtist: (from: number, to: number) => void;
   toggleFilter: (artistId: string, filter: FilterType) => void;
-  setCount: (artistId: string, count: number) => void;
+  setWeight: (artistId: string, weight: number) => void;
   addPickedTrack: (artistId: string, track: SpotifyTrack) => void;
   removePickedTrack: (artistId: string, trackId: string) => void;
   setPlaylist: (tracks: PlaylistTrack[]) => void;
@@ -30,7 +33,9 @@ interface LineupState {
 
 const LineupContext = createContext<LineupState | null>(null);
 
-const STORAGE_KEY = "houselights_lineup_v3";
+const STORAGE_KEY = "houselights_lineup_v4";
+const DEFAULT_SIZE_MODE: PlaylistSizeMode = "songs";
+const DEFAULT_SIZE_VALUE = 40;
 
 export function LineupProvider({ children }: { children: React.ReactNode }) {
   const [lineup, setLineup] = useState<LineupArtist[]>([]);
@@ -39,6 +44,8 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
   const [playlistDescription, setPlaylistDescription] = useState("");
   const [coverImageBase64, setCoverImageBase64] = useState<string | undefined>(undefined);
   const [eventDate, setEventDateState] = useState("");
+  const [playlistSizeMode, setPlaylistSizeMode] = useState<PlaylistSizeMode>(DEFAULT_SIZE_MODE);
+  const [playlistSizeValue, setPlaylistSizeValue] = useState(DEFAULT_SIZE_VALUE);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -51,6 +58,8 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setPlaylistDescription(parsed.playlistDescription || "");
         setCoverImageBase64(parsed.coverImageBase64);
         setEventDateState(parsed.eventDate || "");
+        setPlaylistSizeMode(parsed.playlistSizeMode || DEFAULT_SIZE_MODE);
+        setPlaylistSizeValue(parsed.playlistSizeValue || DEFAULT_SIZE_VALUE);
       } catch {}
     }
   }, []);
@@ -58,15 +67,24 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ lineup, playlist, playlistName, playlistDescription, coverImageBase64, eventDate })
+      JSON.stringify({
+        lineup,
+        playlist,
+        playlistName,
+        playlistDescription,
+        coverImageBase64,
+        eventDate,
+        playlistSizeMode,
+        playlistSizeValue,
+      })
     );
-  }, [lineup, playlist, playlistName, playlistDescription, coverImageBase64, eventDate]);
+  }, [lineup, playlist, playlistName, playlistDescription, coverImageBase64, eventDate, playlistSizeMode, playlistSizeValue]);
 
   const addArtist = useCallback((artist: SpotifyArtist) => {
     setLineup((prev) => {
       if (prev.some((a) => a.artist.id === artist.id)) return prev;
       const isFirst = prev.length === 0;
-      return [...prev, { artist, filters: ["popular"] as FilterType[], count: isFirst ? 20 : 10, pickedTracks: [] }];
+      return [...prev, { artist, filters: ["popular"] as FilterType[], weight: isFirst ? 2 : 1, pickedTracks: [] }];
     });
   }, []);
 
@@ -106,9 +124,9 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const setCount = useCallback((artistId: string, count: number) => {
+  const setWeight = useCallback((artistId: string, weight: number) => {
     setLineup((prev) =>
-      prev.map((a) => (a.artist.id === artistId ? { ...a, count: Math.max(1, count) } : a))
+      prev.map((a) => (a.artist.id === artistId ? { ...a, weight: Math.max(1, weight) } : a))
     );
   }, []);
 
@@ -166,6 +184,10 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
 
   const setCoverImage = useCallback((base64: string | undefined) => setCoverImageBase64(base64), []);
   const setEventDate = useCallback((date: string) => setEventDateState(date), []);
+  const setPlaylistSize = useCallback((mode: PlaylistSizeMode, value: number) => {
+    setPlaylistSizeMode(mode);
+    setPlaylistSizeValue(Math.max(1, value));
+  }, []);
 
   const reset = useCallback(() => {
     setLineup([]);
@@ -174,6 +196,8 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setPlaylistDescription("");
     setCoverImageBase64(undefined);
     setEventDateState("");
+    setPlaylistSizeMode(DEFAULT_SIZE_MODE);
+    setPlaylistSizeValue(DEFAULT_SIZE_VALUE);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
@@ -187,12 +211,15 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         coverImageBase64,
         eventDate,
         setEventDate,
+        playlistSizeMode,
+        playlistSizeValue,
+        setPlaylistSize,
         addArtist,
         removeArtist,
         restoreArtist,
         reorderArtist,
         toggleFilter,
-        setCount,
+        setWeight,
         addPickedTrack,
         removePickedTrack,
         setPlaylist,

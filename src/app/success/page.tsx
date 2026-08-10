@@ -61,7 +61,7 @@ function SuccessInner() {
             reset();
             router.push("/lineup");
           }}
-          className="block w-full border border-lineStrong text-muted py-3.5 rounded-2xl font-bold text-sm transition-all duration-150 hover:bg-surfaceAlt active:scale-[0.97]"
+          className="block w-full bg-surface text-muted py-3.5 rounded-2xl font-bold text-sm shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 active:scale-[0.97]"
         >
           {copy.success.buildAnother}
         </button>

@@ -273,10 +273,45 @@ found versus requested, rather than a silent shortfall — retrying won't
 change the result in that case (it's a real ceiling, not a flaky request),
 but at least it's visible instead of a mystery.
 
-The count you set per artist (defaults: 20 for the first artist you add, 10 for the
-rest — tweak as needed) controls how many auto-selected tracks are pulled in per
-filter. Everything is combined into one list on the preview screen, where you can
-remove, reorder (drag the handle), or add more before creating the playlist.
+## Bottom nav — animated active-tab pill
+
+The active tab is indicated by a floating gradient pill that pops slightly
+above the bar's top edge (rather than plain color-only active text), and it
+genuinely slides and squashes between positions when you switch tabs — this
+is one shared absolutely-positioned element whose `left`/`width` are
+computed from the active tab's index and animated with a bouncy
+`cubic-bezier` transition, with a separate squeeze/stretch keyframe
+(triggered by remounting a `key`-ed inner div on every tab change) layered
+on top for the squishy landing. It's intentionally built as a single moving
+element rather than per-tab static highlights, since that's what makes the
+sliding motion possible at all.
+
+## Playlist sizing — weights, not fixed counts
+
+Each artist has a **weight** (default: 2 for the first artist you add, 1 for
+each after — mirroring headliner-gets-more, support-acts-get-less, but as a
+relative share rather than a hard number) rather than a fixed song count. A
+single **Playlist size** control at the top of the lineup builder sets the
+actual goal, either as a total song count or a total length in time
+(useful for things having nothing to do with a show — a long drive, for
+instance). Each artist's individual target is computed from their share of
+that total: `(their weight / sum of all weights) × total songs`, using
+largest-remainder rounding so the individual targets actually sum to the
+real total instead of drifting from it.
+
+This is deliberately a **goal, not a hard requirement** per artist. If one
+artist can't supply their full share (the search ceiling discussed above),
+`handlePreview` in `src/app/lineup/page.tsx` runs a second pass: any artist
+who *did* meet or exceed their own target gets asked for a bit more,
+splitting the remaining gap across however many artists can plausibly help,
+so the playlist still tries to hit the overall goal rather than silently
+finishing short just because one artist came up light. If the lineup as a
+whole genuinely can't fill the goal, that's still surfaced honestly rather
+than hidden.
+
+The song-distribution bar and each artist's card outline are driven by this
+same weight ratio, so what you see there is a real preview of the actual
+split, not an separate approximation.
 
 ## Known limitations / next steps
 

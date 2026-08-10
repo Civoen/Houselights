@@ -5,6 +5,7 @@ import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { AlbumArt } from "@/components/AlbumArt";
 import { UndoToast } from "@/components/UndoToast";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
 import { useUndoToast } from "@/lib/useUndoToast";
@@ -51,6 +52,7 @@ export default function PreviewPage() {
   const [addTrackQuery, setAddTrackQuery] = useState("");
   const [addTrackResults, setAddTrackResults] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [orderMode, setOrderMode] = useState<string>("headliner");
 
   const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
     track: PlaylistTrack;
@@ -83,6 +85,7 @@ export default function PreviewPage() {
 
   function applyOrder(mode: "hype" | "headliner" | "shuffle") {
     haptic(HAPTIC.reorder);
+    setOrderMode(mode);
     if (mode === "shuffle") {
       setPlaylist(shuffleTracks(playlist));
     } else if (mode === "hype") {
@@ -125,18 +128,16 @@ export default function PreviewPage() {
   }
 
   return (
-    <main className="min-h-screen pb-48 animate-fade-slide-up">
-      <div className="bg-grad text-white px-6 pb-6 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
-        <div className="flex items-center gap-3 mb-2">
-          <button
-            onClick={() => router.back()}
-            className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center transition-transform duration-150 active:scale-90 hover:bg-white/30"
-          >
-            ‹
-          </button>
-          <h1 className="font-display text-xl font-bold">{copy.preview.title}</h1>
-        </div>
-        <p className="text-sm opacity-90 ml-10">
+    <main className="min-h-screen pb-40 animate-fade-slide-up">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+        <button
+          onClick={() => router.back()}
+          className="w-9 h-9 rounded-full bg-surfaceAlt text-muted flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
+        >
+          ‹
+        </button>
+        <h1 className="font-display text-3xl font-bold tracking-tight mb-1">{copy.preview.title}</h1>
+        <p className="text-sm text-muted font-medium">
           {playlist.length} tracks · {totalMin} min · {artistCount} artists
         </p>
       </div>
@@ -155,96 +156,83 @@ export default function PreviewPage() {
         )}
 
         {playlist.length > 0 && (
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => applyOrder("hype")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-accent hover:text-accent"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-              </svg>
-              {copy.preview.hype}
-            </button>
-            <button
-              onClick={() => applyOrder("headliner")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-accent hover:text-accent"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M12 3l2.6 5.6L21 9.3l-4.5 4.2 1.2 6.2L12 16.8l-5.7 2.9 1.2-6.2L3 9.3l6.4-.7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-              </svg>
-              {copy.preview.headliner}
-            </button>
-            <button
-              onClick={() => applyOrder("shuffle")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-surfaceAlt text-muted border border-line transition-all duration-150 active:scale-95 hover:border-accent hover:text-accent"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M3 6h4l9 12h5M3 18h4l3.5-4.5M16 6h5M16 6l3-3M16 6l3 3M21 18l-3 3M21 18l-3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {copy.preview.shuffle}
-            </button>
+          <SegmentedControl
+            className="mb-4"
+            value={orderMode}
+            onChange={(id) => applyOrder(id as "hype" | "headliner" | "shuffle")}
+            options={[
+              { id: "hype", label: copy.preview.hype },
+              { id: "headliner", label: copy.preview.headliner },
+              { id: "shuffle", label: copy.preview.shuffle },
+            ]}
+          />
+        )}
+
+        {playlist.length > 0 && (
+          <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] px-3 mb-4">
+            {playlist.map((t, i) => (
+              <div
+                key={`${t.id}-${i}`}
+                ref={setItemRef(i)}
+                className={
+                  "flex items-center gap-3 py-2.5 rounded-xl px-1 " +
+                  (dragIndex === i
+                    ? "bg-surfaceAlt shadow-xl relative z-20"
+                    : "transition-all duration-150 " +
+                      (i > 0 ? "border-t border-line " : "") +
+                      (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
+                }
+                style={
+                  dragIndex === i
+                    ? { transform: `translateY(${dragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
+                    : undefined
+                }
+              >
+                <span
+                  onPointerDown={handlePointerDown(i)}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={handlePointerCancel}
+                  className="text-faint text-base select-none cursor-grab active:cursor-grabbing px-1 -mx-1"
+                  style={{ touchAction: "none" }}
+                >
+                  ⠿
+                </span>
+                <AlbumArt src={t.albumImage} size={36} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold truncate">{t.name}</div>
+                  <div className="text-xs text-faint truncate">
+                    {t.artist}
+                    {t.handpicked ? " · handpicked" : ""}
+                  </div>
+                </div>
+                <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
+                <a
+                  href={`https://open.spotify.com/track/${t.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Listen to ${t.name} on Spotify`}
+                  className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </a>
+                <button
+                  onClick={() => handleRemoveTrack(t, i)}
+                  className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
-        {playlist.map((t, i) => (
-          <div
-            key={`${t.id}-${i}`}
-            ref={setItemRef(i)}
-            className={
-              "flex items-center gap-3 py-2 border-b border-line rounded-xl px-2 -mx-2 " +
-              (dragIndex === i
-                ? "bg-surface shadow-2xl relative z-20"
-                : "transition-all duration-150 " + (overIndex === i && dragIndex !== null ? "border-accent" : ""))
-            }
-            style={
-              dragIndex === i
-                ? { transform: `translateY(${dragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" }
-                : undefined
-            }
-          >
-            <span
-              onPointerDown={handlePointerDown(i)}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
-              className="text-faint text-base select-none cursor-grab active:cursor-grabbing px-1 -mx-1"
-              style={{ touchAction: "none" }}
-            >
-              ⠿
-            </span>
-            <AlbumArt src={t.albumImage} size={36} />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold truncate">{t.name}</div>
-              <div className="text-xs text-faint truncate">
-                {t.artist}
-                {t.handpicked ? " · handpicked" : ""}
-              </div>
-            </div>
-            <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
-            <a
-              href={`https://open.spotify.com/track/${t.id}`}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              aria-label={`Listen to ${t.name} on Spotify`}
-              className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </a>
-            <button
-              onClick={() => handleRemoveTrack(t, i)}
-              className="w-6 h-6 rounded-full bg-surface text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-
         <button
           onClick={() => setShowAdd((s) => !s)}
-          className="flex items-center gap-2 text-sm font-bold text-accent pt-4 transition-opacity active:opacity-60"
+          className="flex items-center gap-2 text-sm font-bold text-accent pt-1 transition-opacity active:opacity-60"
         >
           <span className="w-6 h-6 rounded-full border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
             {showAdd ? "−" : "+"}
@@ -253,7 +241,7 @@ export default function PreviewPage() {
         </button>
 
         {showAdd && (
-          <div className="mt-3 bg-surface border border-line rounded-2xl p-3 animate-fade-slide-up">
+          <div className="mt-3 bg-surface rounded-2xl p-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up">
             {!chosenArtist ? (
               <>
                 <input
@@ -261,7 +249,7 @@ export default function PreviewPage() {
                   value={addArtistQuery}
                   onChange={(e) => searchArtist(e.target.value)}
                   placeholder={copy.preview.searchArtistPlaceholder}
-                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
+                  className="w-full bg-surfaceAlt rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {addArtistResults.map((a, i) => (
                   <button
@@ -288,7 +276,7 @@ export default function PreviewPage() {
                   value={addTrackQuery}
                   onChange={(e) => searchTrack(e.target.value)}
                   placeholder={copy.preview.searchSongPlaceholder}
-                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
+                  className="w-full bg-surfaceAlt rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {addTrackResults.map((t, i) => (
                   <div
@@ -313,12 +301,14 @@ export default function PreviewPage() {
 
       {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveTrack} className="bottom-36" />}
 
-      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-20 bg-surfaceAlt/95 backdrop-blur border-t border-line px-6 pt-4 pb-4 shadow-[0_-8px_24px_-12px_rgba(20,22,20,0.18)]">
-        <div className="max-w-lg mx-auto">
-          <GradientButton onClick={() => router.push("/lineup/create")} disabled={playlist.length === 0}>
-            {copy.preview.createButton}
-          </GradientButton>
-        </div>
+      <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+        <GradientButton
+          onClick={() => router.push("/lineup/create")}
+          disabled={playlist.length === 0}
+          className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]"
+        >
+          {copy.preview.createButton}
+        </GradientButton>
       </div>
     </main>
   );

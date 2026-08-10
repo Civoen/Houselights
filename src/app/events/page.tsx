@@ -51,15 +51,15 @@ export default function EventsPage() {
 
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
-      <div className="bg-grad text-white px-6 pb-6 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-bold">{copy.events.title}</h1>
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="font-display text-3xl font-bold tracking-tight">{copy.events.title}</h1>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="w-8 h-8 rounded-full bg-white/20 text-white" />
-            <SettingsButton className="w-8 h-8 rounded-full bg-white/20 text-white" />
+            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
           </div>
         </div>
-        <p className="text-sm opacity-90 mt-1">
+        <p className="text-sm text-muted font-medium">
           {events.length > 0
             ? `${events.length} show${events.length === 1 ? "" : "s"} prepped · ${totalSongs} songs queued up`
             : copy.events.subtitleEmpty}
@@ -86,11 +86,11 @@ export default function EventsPage() {
             key={e.id + e.createdAt}
             ref={setItemRef(i)}
             className={
-              "flex items-start gap-3 bg-surface border border-line rounded-2xl p-4 mb-3 " +
+              "flex items-start gap-3 bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] " +
               (dragIndex === i
                 ? "shadow-2xl relative z-20"
                 : "animate-fade-slide-up transition-all duration-150 " +
-                  (overIndex === i && dragIndex !== null ? "border-accent" : ""))
+                  (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
             }
             style={
               dragIndex === i
