@@ -61,12 +61,34 @@ function PatternDef({ id, type }: { id: string; type: WristbandPattern }) {
   );
 }
 
-// A curved horizontal band with an icon tile at its center — modeled on a
-// real event wristband viewed face-on, wrapped slightly around a wrist.
-// Deliberately colorful and distinct per wristband (a real departure from
-// the rest of the app's single-gradient look) rather than themed to match;
-// locked wristbands stay plain grey/outline until earned, so the color and
-// pattern read as a genuine payoff rather than being always-on decoration.
+// Lightens a hex color toward white by the given amount (0-1), for the
+// curved band's top-edge highlight.
+function lighten(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.round(((n >> 16) & 255) + (255 - ((n >> 16) & 255)) * amount));
+  const g = Math.min(255, Math.round(((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * amount));
+  const b = Math.min(255, Math.round((n & 255) + (255 - (n & 255)) * amount));
+  return `rgb(${r},${g},${b})`;
+}
+
+// Darkens a hex color toward black by the given amount (0-1), for the
+// curved band's bottom-edge shadow.
+function darken(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.round(((n >> 16) & 255) * (1 - amount));
+  const g = Math.round(((n >> 8) & 255) * (1 - amount));
+  const b = Math.round((n & 255) * (1 - amount));
+  return `rgb(${r},${g},${b})`;
+}
+
+// A curved horizontal band with a beveled metallic badge at its center —
+// modeled on a real event wristband: woven fabric texture and a slight
+// wrap-around gradient on the band, a brushed-metal bevel on the badge
+// with a soft shine catching the light. Deliberately colorful and
+// distinct per wristband (a real departure from the rest of the app's
+// single-gradient look) rather than themed to match; locked wristbands
+// stay plain grey/outline until earned, so the material treatment reads
+// as a genuine payoff rather than being always-on decoration.
 export function WristbandIcon({
   icon,
   unlocked,
@@ -84,27 +106,52 @@ export function WristbandIcon({
 }) {
   const height = (width * 72) / 120;
   const patternId = `${gradientId}-pattern`;
+  const fabricId = `${gradientId}-fabric`;
+  const metalId = `${gradientId}-metal`;
+  const shineId = `${gradientId}-shine`;
   const bandPath = "M4 20 C4 8 116 8 116 20 L116 52 C116 64 4 64 4 52 Z";
+
+  if (!unlocked) {
+    return (
+      <svg width={width} height={height} viewBox="0 0 120 72">
+        <path d={bandPath} fill="#FFFFFF" stroke="#D8DCDA" strokeWidth="2" />
+        <rect x="42" y="18" width="36" height="36" rx="8" fill="#F1F2F0" stroke="#D8DCDA" strokeWidth="1.5" />
+        <Glyph icon={icon} color="#93A0AB" />
+      </svg>
+    );
+  }
 
   return (
     <svg width={width} height={height} viewBox="0 0 120 72">
       <defs>
         <PatternDef id={patternId} type={pattern} />
+        <linearGradient id={fabricId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={lighten(color, 0.4)} />
+          <stop offset="0.18" stopColor={color} />
+          <stop offset="0.82" stopColor={color} />
+          <stop offset="1" stopColor={darken(color, 0.35)} />
+        </linearGradient>
+        <linearGradient id={metalId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#F2F2F2" />
+          <stop offset="0.35" stopColor="#CFCFCF" />
+          <stop offset="0.55" stopColor="#9A9A9A" />
+          <stop offset="0.8" stopColor="#6B6B6B" />
+          <stop offset="1" stopColor="#4A4A4A" />
+        </linearGradient>
+        <linearGradient id={shineId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="white" stopOpacity="0.65" />
+          <stop offset="0.25" stopColor="white" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      <path d={bandPath} fill={unlocked ? color : "#FFFFFF"} stroke={unlocked ? "none" : "#D8DCDA"} strokeWidth={unlocked ? 0 : 2} />
-      {unlocked && <path d={bandPath} fill={`url(#${patternId})`} />}
-      {unlocked && <path d="M4 20 C4 14 116 14 116 20" fill="none" stroke="white" strokeOpacity="0.22" strokeWidth="2" />}
-      <rect
-        x="42"
-        y="18"
-        width="36"
-        height="36"
-        rx="8"
-        fill={unlocked ? "#0A1F26" : "#F1F2F0"}
-        stroke={unlocked ? "none" : "#D8DCDA"}
-        strokeWidth={unlocked ? 0 : 1.5}
-      />
-      <Glyph icon={icon} color={unlocked ? "white" : "#93A0AB"} />
+      <path d={bandPath} fill={`url(#${fabricId})`} />
+      <path d={bandPath} fill={`url(#${patternId})`} />
+      <path d="M4 20 C4 14 116 14 116 20" fill="none" stroke="white" strokeOpacity="0.3" strokeWidth="3" />
+      <path d="M4 52 C4 58 116 58 116 52" fill="none" stroke="black" strokeOpacity="0.22" strokeWidth="4" />
+      <rect x="42" y="18" width="36" height="36" rx="8" fill="#2A2A2A" />
+      <rect x="45" y="21" width="30" height="30" rx="6" fill={`url(#${metalId})`} />
+      <rect x="45" y="21" width="30" height="15" rx="6" fill={`url(#${shineId})`} />
+      <rect x="45" y="21" width="30" height="30" rx="6" fill="none" stroke="white" strokeOpacity="0.35" strokeWidth="1" />
+      <Glyph icon={icon} color={darken(color, 0.5)} />
     </svg>
   );
 }

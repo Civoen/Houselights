@@ -1,0 +1,56 @@
+export interface PatchNoteVersion {
+  version: string;
+  notes: string[];
+}
+
+// One entry per "give me all the files" request — add a new entry to the
+// TOP of this array each time that happens. Precise per-version tracking
+// starts at 1.0; everything built before this feature existed is bundled
+// into that first entry rather than reconstructed after the fact.
+export const PATCH_NOTES: PatchNoteVersion[] = [
+  {
+    version: "1.4",
+    notes: [
+      "Added Export/Import backup in Settings, so your history isn't only ever on one device",
+      "Added a Colour vision section in Settings — Default, Red-green, and Blue-yellow modes, changing artist and Wristband colours to be easier to tell apart",
+      "Wristbands now look like real wristbands — woven fabric band with a metallic beveled badge, instead of a flat colour block",
+    ],
+  },
+  {
+    version: "1.3",
+    notes: [
+      "Every button now uses the same rounded-rectangle shape — no more mix of fully circular and rounded-corner buttons",
+      "Songs are now indented under their artist on Preview, instead of sitting flush with the artist row",
+      "Settings: added Delete all playlists and Clear progress, plus this patch notes list",
+      "Fixed Next Up on Playlists showing more than one upcoming show",
+      "Fixed the gap between the last artist card and the disclaimer on New Event being too tight",
+    ],
+  },
+  {
+    version: "1.2",
+    notes: [
+      "Fixed opening a playlist in Spotify briefly showing a blank Safari screen and breaking the back button",
+      "Fixed the swipe-to-delete red button's corners and shadow bleeding onto it while swiping",
+      "Fixed Previous Events not staying in sync after deleting a playlist",
+      "Fixed undo toasts being partially hidden behind the nav bar on Playlists and Preview",
+      "Reconnecting Spotify from an error message now actually forces the permission screen again",
+      "Cover image uploads are more reliable, and failures now show the real error instead of failing silently",
+    ],
+  },
+  {
+    version: "1.1",
+    notes: [
+      "Renamed Lanyards to Wristbands, with a new colorful curved-band icon for each one",
+      "Wristbands now show a persistent description and can be tapped for a full-screen view",
+      "Added the Encore stats page, reachable from Playlists",
+      "Added a Setlist filter powered by setlist.fm, alongside Most popular",
+      "Playlists cards can now be edited, deleted, and reordered with swipe and drag",
+    ],
+  },
+  {
+    version: "1.0",
+    notes: [
+      "Everything built before per-version notes existed — the New Event, Preview, and Playlists pages, Wristbands (as Lanyards), and the many design and bug fixes along the way.",
+    ],
+  },
+];

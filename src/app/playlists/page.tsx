@@ -343,8 +343,8 @@ export default function PlaylistsPage() {
         <div className="flex items-center justify-between mb-2">
           <h1 className="font-display text-3xl font-bold tracking-tight">{copy.playlists.title}</h1>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
           </div>
         </div>
         <p className="text-sm text-muted font-medium mb-3">
@@ -355,7 +355,7 @@ export default function PlaylistsPage() {
         {events.length > 0 && (
           <Link
             href="/encore"
-            className="inline-flex items-center gap-1.5 bg-grad text-white text-xs font-bold px-4 py-2 rounded-full transition-all duration-150 hover:brightness-[1.05] active:scale-95"
+            className="inline-flex items-center gap-1.5 bg-grad text-white text-xs font-bold px-4 py-2 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-95"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
               <path
@@ -373,36 +373,27 @@ export default function PlaylistsPage() {
 
       <div className="px-6 pt-2 max-w-lg mx-auto">
         <div className="flex items-center justify-between mb-2 mt-1">
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint">
-            {copy.nextUp.title}
-            {upcoming.length > 0 && <span> · {upcoming.length}</span>}
-          </h2>
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint">{copy.nextUp.title}</h2>
         </div>
         {upcoming.length === 0 ? (
           <p className="text-xs text-faint pb-4">{copy.nextUp.emptyMessage}</p>
         ) : (
           <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] px-4 mb-4">
-            {upcoming.map((e, i) => (
-              <a
-                key={e.id + e.createdAt}
-                href={e.url}
-                target="_blank"
-                rel="noreferrer"
-                className={
-                  "flex items-center gap-3 py-3.5 transition-transform duration-150 active:scale-[0.99] " +
-                  (i > 0 ? "border-t border-line" : "")
-                }
-              >
-                <ArtistAvatar src={e.headliner?.image} size={40} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate">{e.headliner?.name || e.name}</div>
-                  <div className="text-xs text-faint truncate">{e.artistNames.join(", ")}</div>
-                </div>
-                <span className="text-xs font-bold text-accent flex-shrink-0">
-                  {formatCountdown(daysUntil(e.eventDate!))}
-                </span>
-              </a>
-            ))}
+            <a
+              href={upcoming[0].url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 py-3.5 transition-transform duration-150 active:scale-[0.99]"
+            >
+              <ArtistAvatar src={upcoming[0].headliner?.image} size={40} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold truncate">{upcoming[0].headliner?.name || upcoming[0].name}</div>
+                <div className="text-xs text-faint truncate">{upcoming[0].artistNames.join(", ")}</div>
+              </div>
+              <span className="text-xs font-bold text-accent flex-shrink-0">
+                {formatCountdown(daysUntil(upcoming[0].eventDate!))}
+              </span>
+            </a>
           </div>
         )}
 
@@ -468,7 +459,13 @@ export default function PlaylistsPage() {
         {visibleEvents.map(({ e, i }) => renderPlaylistCard(e, i, true))}
       </div>
 
-      {removedPlaylist && <UndoToast message={`Removed ${removedPlaylist.event.name}`} onUndo={undoRemovePlaylist} className="bottom-24" />}
+      {removedPlaylist && (
+        <UndoToast
+          message={`Removed ${removedPlaylist.event.name}`}
+          onUndo={undoRemovePlaylist}
+          className="bottom-[calc(72px+16px+env(safe-area-inset-bottom))]"
+        />
+      )}
     </main>
   );
 }

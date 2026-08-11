@@ -21,7 +21,8 @@ import { getAllEvents } from "@/lib/eventHistory";
 import type { SetlistSummary } from "@/lib/setlistfm";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
-import { ARTIST_COLORS } from "@/lib/artistColors";
+import { getArtistColors } from "@/lib/artistColors";
+import { useColorblindMode } from "@/lib/colorblindStore";
 
 interface PosterMatch {
   name: string;
@@ -67,6 +68,8 @@ function computeArtistTargets(lineup: LineupArtist[], totalTarget: number): { en
 }
 
 export default function LineupPage() {
+  const { mode: colorblindMode } = useColorblindMode();
+  const ARTIST_COLORS = getArtistColors(colorblindMode);
   const router = useRouter();
   const {
     lineup,
@@ -388,13 +391,13 @@ export default function LineupPage() {
   const totalTargetMinutes = playlistSizeMode === "time" ? playlistSizeValue : Math.round(totalTargetSongs * AVG_TRACK_MINUTES);
 
   return (
-    <main className="min-h-screen pb-48 animate-fade-slide-up">
+    <main className="min-h-screen pb-52 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <h1 className="font-display text-3xl font-bold tracking-tight">{copy.lineup.title}</h1>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
           </div>
         </div>
         <div className="bg-surface rounded-2xl px-4 py-3 flex items-center gap-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
@@ -526,7 +529,7 @@ export default function LineupPage() {
                   onClick={() => handleAddFromSearch(artist)}
                   disabled={addedResultId === artist.id}
                   className={
-                    "w-7 h-7 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-all duration-200 " +
+                    "w-7 h-7 rounded-lg text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-all duration-200 " +
                     (addedResultId === artist.id ? "bg-green scale-110" : "bg-grad hover:scale-110 active:scale-90")
                   }
                 >
@@ -572,7 +575,7 @@ export default function LineupPage() {
                     key={preset.v}
                     onClick={() => setPlaylistSize("time", preset.v)}
                     className={
-                      "px-3 py-1.5 rounded-full text-[11px] font-bold transition-all " +
+                      "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all " +
                       (playlistSizeValue === preset.v
                         ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
                         : "bg-surfaceAlt text-muted")
@@ -690,7 +693,7 @@ export default function LineupPage() {
               </div>
               <button
                 onClick={() => handleRemoveArtist(entry, i)}
-                className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex items-center justify-center transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                className="w-6 h-6 rounded-lg bg-surfaceAlt text-faint text-xs font-bold flex items-center justify-center transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
               >
                 ✕
               </button>
@@ -712,7 +715,7 @@ export default function LineupPage() {
               }}
               className="flex items-center gap-2 text-xs font-bold text-accent pt-2 border-t border-line w-full transition-opacity duration-150 active:opacity-60"
             >
-              <span className="w-5 h-5 rounded-full border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
+              <span className="w-5 h-5 rounded-md border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
                 {pickingFor === entry.artist.id ? "−" : "+"}
               </span>
               {copy.lineup.addSpecificSongs}

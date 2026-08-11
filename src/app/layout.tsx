@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LineupProvider } from "@/lib/lineupStore";
 import { ThemeProvider } from "@/lib/themeStore";
+import { ColorblindProvider } from "@/lib/colorblindStore";
 import { AppChrome } from "@/components/AppChrome";
 
 // iOS's icon-grow launch animation ignores manifest.json's background_color
@@ -62,9 +63,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <ThemeProvider>
-          <LineupProvider>
-            <AppChrome>{children}</AppChrome>
-          </LineupProvider>
+          <ColorblindProvider>
+            <LineupProvider>
+              <AppChrome>{children}</AppChrome>
+            </LineupProvider>
+          </ColorblindProvider>
         </ThemeProvider>
         <script
           dangerouslySetInnerHTML={{

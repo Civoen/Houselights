@@ -16,6 +16,7 @@ import { PlaylistTrack, LineupArtist } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
 import { buildArtistColorMap } from "@/lib/artistColors";
+import { useColorblindMode } from "@/lib/colorblindStore";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -130,7 +131,8 @@ export default function PreviewPage() {
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
   const artistCount = new Set(playlist.map((t) => t.sourceArtistId)).size;
-  const artistColorMap = buildArtistColorMap(lineup);
+  const { mode: colorblindMode } = useColorblindMode();
+  const artistColorMap = buildArtistColorMap(lineup, colorblindMode);
 
   // Contiguous runs of same-artist tracks in the current flat order — used
   // to draw the colored box around each artist's block of songs. Recomputed
@@ -296,7 +298,7 @@ export default function PreviewPage() {
           onClick={() => toggleAddSong(artistId)}
           className="w-full flex items-center gap-2 text-xs font-bold text-accent py-2 transition-opacity active:opacity-60"
         >
-          <span className="w-5 h-5 rounded-full border border-dashed border-accent flex items-center justify-center text-[11px] transition-transform duration-200 flex-shrink-0">
+          <span className="w-5 h-5 rounded-md border border-dashed border-accent flex items-center justify-center text-[11px] transition-transform duration-200 flex-shrink-0">
             {isOpen ? "−" : "+"}
           </span>
           {copy.preview.addSong}
@@ -337,13 +339,13 @@ export default function PreviewPage() {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={() => router.push("/lineup")}
-            className="w-11 h-11 rounded-full bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+            className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ‹
           </button>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
           </div>
         </div>
         <h1 className="font-display text-3xl font-bold tracking-tight mb-1">{copy.preview.title}</h1>
@@ -504,7 +506,7 @@ export default function PreviewPage() {
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         aria-label={`Listen to ${t.name} on Spotify`}
-                        className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
+                        className="w-6 h-6 rounded-lg bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
                       >
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M8 5v14l11-7z" />
@@ -512,7 +514,7 @@ export default function PreviewPage() {
                       </a>
                       <button
                         onClick={() => handleRemoveTrack(t, i)}
-                        className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                        className="w-6 h-6 rounded-lg bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
                       >
                         ✕
                       </button>
@@ -582,14 +584,14 @@ export default function PreviewPage() {
                     <button
                       onClick={() => handleRemoveArtistGroup(group)}
                       aria-label={`Remove ${group.name}`}
-                      className="w-7 h-7 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                      className="w-7 h-7 rounded-lg bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
                     >
                       ✕
                     </button>
                   </div>
 
                   {expanded && (
-                    <div className="px-3 pb-1 animate-fade-slide-up">
+                    <div className="pl-8 pr-3 pb-1 animate-fade-slide-up">
                       {group.tracks.map(({ track: t, index: i }, localIndex) => {
                         const isDragging = dragGroupId === group.id && groupDragIndex === localIndex;
                         const isDropTarget = dragGroupId === group.id && groupOverIndex === localIndex && groupDragIndex !== null;
@@ -632,7 +634,7 @@ export default function PreviewPage() {
                               rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               aria-label={`Listen to ${t.name} on Spotify`}
-                              className="w-6 h-6 rounded-full bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
+                              className="w-6 h-6 rounded-lg bg-surfaceAlt text-accent flex items-center justify-center flex-shrink-0 transition-all duration-150 active:scale-90 hover:bg-accent/10"
                             >
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M8 5v14l11-7z" />
@@ -640,7 +642,7 @@ export default function PreviewPage() {
                             </a>
                             <button
                               onClick={() => handleRemoveTrack(t, i)}
-                              className="w-6 h-6 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                              className="w-6 h-6 rounded-lg bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
                             >
                               ✕
                             </button>

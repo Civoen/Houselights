@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { WRISTBANDS, WristbandDef } from "@/lib/wristbands";
+import { WRISTBANDS, WristbandDef, colorForWristband } from "@/lib/wristbands";
+import { useColorblindMode } from "@/lib/colorblindStore";
 import { getUnlockedWristbands } from "@/lib/wristbandTracker";
 import { WristbandIcon } from "@/components/WristbandIcon";
 import { SettingsButton } from "@/components/SettingsButton";
@@ -14,6 +15,7 @@ function formatEarnedDate(dateStr: string) {
 }
 
 export default function WristbandsPage() {
+  const { mode: colorblindMode } = useColorblindMode();
   const [unlockedIds, setUnlockedIds] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<WristbandDef | null>(null);
@@ -48,8 +50,8 @@ export default function WristbandsPage() {
         <div className="flex items-center justify-between mb-2">
           <h1 className="font-display text-3xl font-bold tracking-tight">{copy.wristbands.title}</h1>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
           </div>
         </div>
         <p className="text-sm text-muted font-medium">
@@ -74,7 +76,7 @@ export default function WristbandsPage() {
                     <WristbandIcon
                       icon={wristband.icon}
                       unlocked={unlocked}
-                      color={wristband.color}
+                      color={colorForWristband(wristband, colorblindMode)}
                       pattern={wristband.pattern}
                       gradientId={`wristband-${wristband.id}`}
                       width={108}
@@ -101,14 +103,14 @@ export default function WristbandsPage() {
           <button
             onClick={() => setSelected(null)}
             aria-label="Close"
-            className="absolute top-[calc(env(safe-area-inset-top)+1.5rem)] right-6 w-11 h-11 rounded-full bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+            className="absolute top-[calc(env(safe-area-inset-top)+1.5rem)] right-6 w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ✕
           </button>
           <WristbandIcon
             icon={selected.icon}
             unlocked={selectedUnlocked}
-            color={selected.color}
+            color={colorForWristband(selected, colorblindMode)}
             pattern={selected.pattern}
             gradientId={`wristband-full-${selected.id}`}
             width={220}

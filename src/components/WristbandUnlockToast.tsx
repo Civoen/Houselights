@@ -2,7 +2,7 @@
 import { WristbandIcon } from "./WristbandIcon";
 import { WristbandDef } from "@/lib/wristbands";
 
-export function WristbandUnlockToast({ wristband, onClick }: { wristband: WristbandDef; onClick: () => void }) {
+export function WristbandUnlockToast({ wristband, color, onClick }: { wristband: WristbandDef; color: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -13,7 +13,7 @@ export function WristbandUnlockToast({ wristband, onClick }: { wristband: Wristb
           <WristbandIcon
             icon={wristband.icon}
             unlocked
-            color={wristband.color}
+            color={color}
             pattern={wristband.pattern}
             gradientId={`toast-${wristband.id}`}
             width={44}

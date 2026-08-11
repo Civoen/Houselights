@@ -1,4 +1,5 @@
 import { PastEvent } from "./types";
+import { ColorblindMode } from "./colorblindStore";
 
 export type WristbandIconKey = "play" | "five" | "calendar" | "crown" | "flag" | "tickets";
 export type WristbandPattern = "waves" | "dots" | "stars";
@@ -96,3 +97,33 @@ export const WRISTBANDS: WristbandDef[] = [
     evaluate: (_all, past) => nthByEventDate(past, 3)?.eventDate ?? null,
   },
 ];
+
+// Colorblind-safe alternates, keyed by wristband id — the vivid defaults
+// above (redGreen "off") were picked purely for visual variety and aren't
+// guaranteed distinguishable under color vision deficiency, particularly
+// crimson vs. coral for red-green types. "redGreen" is Okabe-Ito-based
+// (safe for protanopia and deuteranopia together); "blueYellow" avoids the
+// blue/green and yellow/violet confusion pairs specific to tritanopia.
+export const WRISTBAND_COLORBLIND_COLORS: Record<Exclude<ColorblindMode, "off">, Record<string, string>> = {
+  redGreen: {
+    "first-lineup": "#56B4E9",
+    regular: "#E69F00",
+    "show-day": "#0072B2",
+    headliner: "#CC79A7",
+    marathon: "#D55E00",
+    "season-pass": "#009E73",
+  },
+  blueYellow: {
+    "first-lineup": "#BE4BDB",
+    regular: "#FF922B",
+    "show-day": "#12B886",
+    headliner: "#FA5252",
+    marathon: "#E64980",
+    "season-pass": "#40C057",
+  },
+};
+
+export function colorForWristband(wristband: WristbandDef, mode: ColorblindMode): string {
+  if (mode === "off") return wristband.color;
+  return WRISTBAND_COLORBLIND_COLORS[mode][wristband.id] || wristband.color;
+}

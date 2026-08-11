@@ -76,6 +76,8 @@ export default function CreatePage() {
       const url = json.playlist?.url as string;
       const playlistId = json.playlist?.id as string;
       const coverFailed = !!coverImageBase64 && json.playlist?.coverUploaded === false;
+      const coverErrorStatus = json.playlist?.coverErrorStatus as number | undefined;
+      const coverErrorBody = json.playlist?.coverErrorBody as string | undefined;
       const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
       addEvent({
         id: playlistId || crypto.randomUUID(),
@@ -92,7 +94,7 @@ export default function CreatePage() {
         tracks: playlist,
       });
       router.push(
-        `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}${coverFailed ? "&coverFailed=1" : ""}`
+        `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}${coverFailed ? "&coverFailed=1" : ""}${coverFailed && coverErrorStatus ? `&coverErrorStatus=${coverErrorStatus}` : ""}${coverFailed && coverErrorBody ? `&coverErrorBody=${encodeURIComponent(coverErrorBody)}` : ""}`
       );
     } catch (e: any) {
       setError(e.message || "Couldn't create the playlist. Try again.");
@@ -106,7 +108,7 @@ export default function CreatePage() {
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <button
           onClick={() => router.back()}
-          className="w-11 h-11 rounded-full bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
+          className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
         >
           ‹
         </button>

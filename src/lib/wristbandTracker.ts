@@ -53,3 +53,13 @@ export function checkForNewWristbands(): WristbandDef[] {
   }
   return fresh.map((f) => f.def);
 }
+
+// Used by Settings' "Clear progress" — wipes the unlock-tracking record so
+// every wristband re-locks (they're evaluated live from playlist history,
+// so once that's also cleared they'll naturally show as locked; this
+// specifically clears the separate "what's already been shown" record so
+// a future re-unlock pops the toast again instead of staying silent).
+export function resetWristbandProgress() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(SEEN_KEY);
+}

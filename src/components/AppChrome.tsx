@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { BottomNav } from "./BottomNav";
 import { WristbandUnlockToast } from "./WristbandUnlockToast";
 import { checkForNewWristbands } from "@/lib/wristbandTracker";
-import { WristbandDef } from "@/lib/wristbands";
+import { WristbandDef, colorForWristband } from "@/lib/wristbands";
+import { useColorblindMode } from "@/lib/colorblindStore";
 
 const HIDE_NAV_ON = ["/success"];
 
@@ -13,6 +14,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const showNav = !HIDE_NAV_ON.includes(pathname);
   const [unlockQueue, setUnlockQueue] = useState<WristbandDef[]>([]);
+  const { mode: colorblindMode } = useColorblindMode();
 
   useEffect(() => {
     // Checked on initial load and whenever the PWA comes back to the
@@ -45,6 +47,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       {current && (
         <WristbandUnlockToast
           wristband={current}
+          color={colorForWristband(current, colorblindMode)}
           onClick={() => {
             setUnlockQueue((q) => q.slice(1));
             router.push("/wristbands");

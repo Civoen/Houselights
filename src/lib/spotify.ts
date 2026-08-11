@@ -443,6 +443,8 @@ export async function createSpotifyPlaylist(params: {
   }
 
   let coverUploaded = false;
+  let coverErrorStatus: number | undefined;
+  let coverErrorBody: string | undefined;
   if (params.coverImageBase64) {
     try {
       const coverRes = await fetch(`${API_BASE}/playlists/${playlist.id}/images`, {
@@ -459,13 +461,24 @@ export async function createSpotifyPlaylist(params: {
         // Cover upload is best-effort — the playlist itself still succeeds
         // without one — but a silent catch() here previously meant this
         // failure (over Spotify's 256KB/JPEG-only limit, a stale token,
-        // etc.) never surfaced anywhere, not even in logs.
-        console.error("Cover image upload failed", coverRes.status, await coverRes.text().catch(() => ""));
+        // etc.) never surfaced anywhere, not even in logs. Now it's
+        // captured here directly rather than only in server logs, which
+        // require live-tailing Cloudflare's dashboard to ever see.
+        coverErrorStatus = coverRes.status;
+        coverErrorBody = (await coverRes.text().catch(() => "")).slice(0, 200);
+        console.error("Cover image upload failed", coverErrorStatus, coverErrorBody);
       }
-    } catch (err) {
+    } catch (err: any) {
+      coverErrorBody = err?.message || "network error";
       console.error("Cover image upload threw", err);
     }
   }
 
-  return { id: playlist.id, url: playlist.external_urls?.spotify as string, coverUploaded };
+  return {
+    id: playlist.id,
+    url: playlist.external_urls?.spotify as string,
+    coverUploaded,
+    coverErrorStatus,
+    coverErrorBody,
+  };
 }

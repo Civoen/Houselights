@@ -14,6 +14,8 @@ function SuccessInner() {
   const name = params.get("name") || copy.success.fallbackName;
   const isFirst = params.get("first") === "1";
   const coverFailed = params.get("coverFailed") === "1";
+  const coverErrorStatus = params.get("coverErrorStatus");
+  const coverErrorBody = params.get("coverErrorBody");
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
 
@@ -47,7 +49,13 @@ function SuccessInner() {
           {isFirst && ` · ${copy.success.firstSuffix}`}
         </p>
         {coverFailed && (
-          <p className="text-xs text-red-600 -mt-6 mb-8">{copy.success.coverFailed}</p>
+          <div className="-mt-6 mb-8">
+            <p className="text-xs text-red-600">
+              {copy.success.coverFailed}
+              {coverErrorStatus && ` (${coverErrorStatus})`}
+            </p>
+            {coverErrorBody && <p className="text-xs text-faint mt-1 font-mono break-words">{coverErrorBody}</p>}
+          </div>
         )}
         {url && (
           <a

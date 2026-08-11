@@ -24,7 +24,7 @@ export function FilterChips({ value, onChange }: { value: FilterType; onChange: 
               onChange(opt.id);
             }}
             className={
-              "flex-1 text-center py-2 rounded-full text-xs font-bold transition-all duration-200 active:scale-95 " +
+              "flex-1 text-center py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 " +
               (active
                 ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
                 : "bg-surfaceAlt text-muted hover:text-accent")

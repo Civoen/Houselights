@@ -49,15 +49,15 @@ export default function EncorePage() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => router.back()}
-              className="w-11 h-11 -ml-2 rounded-full bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+              className="w-11 h-11 -ml-2 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
             >
               ‹
             </button>
             <h1 className="font-display text-3xl font-bold tracking-tight">{copy.encore.title}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
           </div>
         </div>
         <p className="text-sm text-muted font-medium">{copy.encore.subtitle}</p>
