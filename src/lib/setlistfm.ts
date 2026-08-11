@@ -79,3 +79,30 @@ export async function getRecentSetlistSongTitles(mbid: string, maxShows = 5): Pr
 
   return titles;
 }
+
+export interface SetlistSummary {
+  venue: string;
+  city: string;
+  songCount: number;
+  eventDate: string;
+}
+
+// Just the most recent show's venue/city/song count — for the "last played
+// X, N songs" callout when adding an artist, as distinct from the track
+// pool aggregation above (which deliberately looks across several shows).
+export async function getLatestSetlistSummary(mbid: string): Promise<SetlistSummary | null> {
+  const json = await setlistFetch(`/artist/${mbid}/setlists?p=1`);
+  const setlists: any[] = json.setlist || [];
+  for (const setlist of setlists) {
+    const sets: any[] = setlist.set || [];
+    const songCount = sets.reduce((n, s) => n + (s.song?.length || 0), 0);
+    if (songCount === 0) continue; // skip placeholder entries with no songs logged yet
+    return {
+      venue: setlist.venue?.name || "",
+      city: setlist.venue?.city?.name || "",
+      songCount,
+      eventDate: setlist.eventDate || "",
+    };
+  }
+  return null;
+}

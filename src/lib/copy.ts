@@ -46,6 +46,11 @@ export const copy = {
     connectButton: "Connect Spotify",
     searching: "Searching...",
     artistFallbackGenre: "Artist",
+    seenPrefix: "You've seen them",
+    timeSuffix: "time",
+    timesSuffix: "times",
+    lastPlayedPrefix: "Last played",
+    songsSuffix: "songs",
 
     lineupLabel: "Your lineup",
     dragHint: "Drag to reorder — whoever's on top is the headliner.",
@@ -101,6 +106,7 @@ export const copy = {
     title: "Added to Spotify",
     firstTitle: "Your first show, prepped 🎉",
     firstSuffix: "welcome to Houselights",
+    coverFailed: "Playlist's live, but the cover image didn't attach — you can add one later from Spotify.",
     openInSpotify: "Open in Spotify",
     buildAnother: "Build another",
     fallbackName: "Your playlist",
@@ -109,12 +115,14 @@ export const copy = {
   playlists: {
     title: "Playlists",
     subtitleEmpty: "Playlists you've already sent to Spotify",
+    encoreButton: "Encore",
     emptyMessage: "Nothing here yet — build your first lineup and it'll show up once it's live on Spotify.",
     buildLineupLink: "Build your lineup",
     open: "Spotify",
     copyLink: "Copy link",
     linkCopied: "Copied!",
     edit: "Edit",
+    deleteAction: "Delete",
     previewError: "Couldn't load that playlist. Try again.",
     previewErrorScope: "This needs a fresh Spotify connection to read playlists you've already created.",
     reconnect: "Reconnect",
@@ -147,11 +155,27 @@ export const copy = {
   nav: {
     newEvent: "New event",
     playlists: "Playlists",
-    lanyards: "Lanyards",
+    wristbands: "Wristbands",
   },
 
-  lanyards: {
-    title: "Lanyards",
+  wristbands: {
+    title: "Wristbands",
+  },
+
+  encore: {
+    title: "Encore",
+    subtitle: "A look back at everything you've built",
+    emptyMessage: "Nothing to look back on yet — build your first lineup and it'll show up here.",
+    showsPrepped: "Shows prepped",
+    showsAttended: "Shows attended",
+    songsQueued: "Songs queued",
+    timeQueued: "Time queued",
+    topArtistLabel: "Most-featured headliner",
+    longestLabel: "Longest playlist",
+    firstLabel: "Your first lineup",
+    tracksSuffix: "tracks",
+    timeSuffix: "time",
+    timesSuffix: "times",
   },
 
   filters: {

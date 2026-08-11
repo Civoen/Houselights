@@ -34,3 +34,59 @@ export function resizeImageToBase64(file: File, maxDimension = 1400, quality = 0
     img.src = url;
   });
 }
+
+// Spotify's playlist cover endpoint has a hard 256KB cap on the encoded
+// JPEG. A 1400px/85%-quality encode (the defaults above, tuned for the
+// poster vision API which has no such limit) can easily exceed that for a
+// real photo — so rather than picking one fixed size/quality and hoping it
+// fits, this tries progressively smaller/lower-quality encodes until the
+// result is actually under the limit.
+export function resizeImageForSpotifyCover(file: File): Promise<string> {
+  const MAX_BYTES = 240 * 1024; // small margin under Spotify's 256KB cap
+  const attempts: [number, number][] = [
+    [1000, 0.8],
+    [800, 0.75],
+    [640, 0.7],
+    [500, 0.6],
+    [400, 0.5],
+  ];
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas not supported"));
+        return;
+      }
+
+      for (const [dimension, quality] of attempts) {
+        let { width, height } = img;
+        if (width > dimension || height > dimension) {
+          const scale = dimension / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        const base64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
+        // base64 runs ~4/3 the size of the underlying binary
+        if (base64.length * 0.75 <= MAX_BYTES) {
+          resolve(base64);
+          return;
+        }
+      }
+      reject(new Error("Couldn't shrink that image enough for a Spotify cover."));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Couldn't read that image"));
+    };
+    img.src = url;
+  });
+}

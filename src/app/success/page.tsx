@@ -13,6 +13,7 @@ function SuccessInner() {
   const url = params.get("url");
   const name = params.get("name") || copy.success.fallbackName;
   const isFirst = params.get("first") === "1";
+  const coverFailed = params.get("coverFailed") === "1";
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
 
@@ -45,6 +46,9 @@ function SuccessInner() {
           {playlist.length} tracks · {totalMin} min
           {isFirst && ` · ${copy.success.firstSuffix}`}
         </p>
+        {coverFailed && (
+          <p className="text-xs text-red-600 -mt-6 mb-8">{copy.success.coverFailed}</p>
+        )}
         {url && (
           <a
             href={url}

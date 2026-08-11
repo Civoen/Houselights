@@ -398,7 +398,7 @@ export default function PreviewPage() {
 
         {playlist.length > 0 && (
           <SegmentedControl
-            className="mb-2"
+            className="mb-0"
             value={viewMode}
             onChange={(id) => {
               haptic(HAPTIC.tap);
@@ -411,9 +411,18 @@ export default function PreviewPage() {
           />
         )}
 
+        {playlist.length > 0 && (
+          <div className="flex flex-col items-center" aria-hidden="true">
+            <div className="w-px h-2 bg-line" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-faint -mt-0.5 -mb-0.5">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        )}
+
         {playlist.length > 0 && viewMode === "grouped" && (
           <SegmentedControl
-            className="mb-4"
+            className="mb-4 mt-1"
             value={groupOrder}
             onChange={(id) => handleGroupOrderChange(id as "hype" | "headliner")}
             options={[
@@ -426,7 +435,7 @@ export default function PreviewPage() {
         {playlist.length > 0 && viewMode === "flat" && (
           <button
             onClick={handleShuffle}
-            className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 rounded-xl bg-surfaceAlt text-muted text-xs font-bold transition-all duration-150 active:scale-95"
+            className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 mt-1 rounded-xl bg-surfaceAlt text-muted text-xs font-bold transition-all duration-150 active:scale-95"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path
@@ -648,10 +657,10 @@ export default function PreviewPage() {
         )}
       </div>
 
-      {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveTrack} className="bottom-36" />}
-      {removeArtistToast && <UndoToast message={removeArtistToast.message} onUndo={undoRemoveArtistGroup} className="bottom-36" />}
+      {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveTrack} className="bottom-[calc(72px+24px+52px+16px+env(safe-area-inset-bottom))]" />}
+      {removeArtistToast && <UndoToast message={removeArtistToast.message} onUndo={undoRemoveArtistGroup} className="bottom-[calc(72px+24px+52px+16px+env(safe-area-inset-bottom))]" />}
 
-      <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
         <GradientButton
           onClick={() => router.push("/lineup/create")}
           disabled={playlist.length === 0}

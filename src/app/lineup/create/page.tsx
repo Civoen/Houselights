@@ -6,7 +6,7 @@ import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
 import { addEvent, getAllEvents } from "@/lib/eventHistory";
-import { resizeImageToBase64 } from "@/lib/resizeImage";
+import { resizeImageForSpotifyCover } from "@/lib/resizeImage";
 import { copy } from "@/lib/copy";
 
 const CREATING_PHRASES = copy.create.creatingPhrases;
@@ -44,10 +44,11 @@ export default function CreatePage() {
     try {
       // Spotify's cover-image endpoint requires a genuine JPEG under 256KB.
       // A raw phone photo is neither guaranteed to be JPEG-encoded (PNG is
-      // also accepted here) nor anywhere near that size — this resizes and
-      // re-encodes as real JPEG so the upload actually succeeds instead of
-      // failing silently against Spotify's limit.
-      const base64 = await resizeImageToBase64(file);
+      // also accepted here) nor anywhere near that size — this iteratively
+      // resizes/re-encodes until it actually fits the limit, rather than
+      // picking one fixed size and hoping a real photo happens to be small
+      // enough (a single fixed 1400px/85%-quality encode often isn't).
+      const base64 = await resizeImageForSpotifyCover(file);
       setCoverImage(base64);
     } catch {
       setCoverError("Couldn't use that image — try a different one.");
@@ -74,6 +75,7 @@ export default function CreatePage() {
       if (!res.ok) throw new Error(json.error || "Something went wrong creating the playlist.");
       const url = json.playlist?.url as string;
       const playlistId = json.playlist?.id as string;
+      const coverFailed = !!coverImageBase64 && json.playlist?.coverUploaded === false;
       const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
       addEvent({
         id: playlistId || crypto.randomUUID(),
@@ -90,7 +92,7 @@ export default function CreatePage() {
         tracks: playlist,
       });
       router.push(
-        `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}`
+        `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}${coverFailed ? "&coverFailed=1" : ""}`
       );
     } catch (e: any) {
       setError(e.message || "Couldn't create the playlist. Try again.");
@@ -150,7 +152,7 @@ export default function CreatePage() {
         {error && <p className="text-xs text-red-600 mt-2 animate-fade-slide-up">{error}</p>}
       </div>
 
-      <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
         <GradientButton
           onClick={handleDone}
           disabled={submitting || !name.trim()}

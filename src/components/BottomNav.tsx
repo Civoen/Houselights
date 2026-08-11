@@ -30,14 +30,14 @@ const TABS = [
     ),
   },
   {
-    href: "/lanyards",
-    key: "lanyards",
-    label: copy.nav.lanyards,
-    match: (p: string) => p.startsWith("/lanyards"),
+    href: "/wristbands",
+    key: "wristbands",
+    label: copy.nav.wristbands,
+    match: (p: string) => p.startsWith("/wristbands"),
     icon: (
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-        <rect x="8" y="3" width="8" height="7" rx="3.5" stroke="currentColor" strokeWidth="1.8" />
-        <circle cx="12" cy="15" r="6" stroke="currentColor" strokeWidth="1.8" />
+        <rect x="2" y="8" width="20" height="8" rx="4" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M12 8v8" stroke="currentColor" strokeWidth="1.8" />
       </svg>
     ),
   },

@@ -16,7 +16,9 @@ import { useUndoToast } from "@/lib/useUndoToast";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
 import { SettingsButton } from "@/components/SettingsButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode } from "@/lib/types";
+import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode, PastEvent } from "@/lib/types";
+import { getAllEvents } from "@/lib/eventHistory";
+import type { SetlistSummary } from "@/lib/setlistfm";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
 import { ARTIST_COLORS } from "@/lib/artistColors";
@@ -94,6 +96,46 @@ export default function LineupPage() {
   const [posterError, setPosterError] = useState<string | null>(null);
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [addedResultId, setAddedResultId] = useState<string | null>(null);
+  const [history, setHistory] = useState<PastEvent[]>([]);
+  const [setlistSummaries, setSetlistSummaries] = useState<Record<string, SetlistSummary | null>>({});
+  const fetchedSummaryIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    setHistory(getAllEvents());
+  }, []);
+
+  // Fetches a "last played X, N songs" summary once per artist as they
+  // enter the lineup — covers every path an artist can be added (search,
+  // poster upload) since it watches `lineup` itself rather than being
+  // wired into each individual add-handler separately.
+  useEffect(() => {
+    lineup.forEach((entry) => {
+      const id = entry.artist.id;
+      if (fetchedSummaryIds.current.has(id)) return;
+      fetchedSummaryIds.current.add(id);
+      fetch(`/api/setlist/summary?artistName=${encodeURIComponent(entry.artist.name)}`)
+        .then((res) => res.json())
+        .then((json) => setSetlistSummaries((prev) => ({ ...prev, [id]: json.summary || null })))
+        .catch(() => setSetlistSummaries((prev) => ({ ...prev, [id]: null })));
+    });
+  }, [lineup]);
+
+  // "Seen" specifically means a show whose date has already passed —
+  // matching the same date-based honesty the Wristbands' "Show day" already
+  // uses, not a claim the app can actually verify attendance. Matches by
+  // artist id where possible (headliner, or a track's sourceArtistId for
+  // playlists that carry their own track snapshot) and falls back to name
+  // matching only for older playlists saved before that snapshot existed.
+  function timesSeen(artistId: string, artistName: string): number {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return history.filter((e) => {
+      if (!e.eventDate || e.eventDate >= todayStr) return false;
+      if (e.headliner?.id === artistId) return true;
+      if (e.tracks) return e.tracks.some((t) => t.sourceArtistId === artistId);
+      return e.artistNames.includes(artistName);
+    }).length;
+  }
   const posterInputRef = useRef<HTMLInputElement>(null);
 
   const { dragIndex, overIndex, dragOffsetY, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
@@ -126,6 +168,20 @@ export default function LineupPage() {
     const timer = setTimeout(() => setJustAddedId(null), 900);
     return () => clearTimeout(timer);
   }, [justAddedId]);
+
+  function handleAddFromSearch(artist: SpotifyArtist) {
+    haptic(HAPTIC.add);
+    addArtist(artist);
+    setJustAddedId(artist.id);
+    setAddedResultId(artist.id);
+    // Clearing the search immediately would remove this row from the DOM
+    // before the checkmark/dim animation above ever had a chance to be
+    // seen — this short delay just gives it time to actually play out.
+    setTimeout(() => {
+      setQuery("");
+      setAddedResultId(null);
+    }, 350);
+  }
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -446,20 +502,41 @@ export default function LineupPage() {
               <div
                 key={artist.id}
                 className={
-                  "flex items-center gap-3 py-2.5 animate-fade-slide-up " + (i > 0 ? "border-t border-line" : "")
+                  "flex items-center gap-3 py-2.5 transition-all duration-300 " +
+                  (i > 0 ? "border-t border-line " : "") +
+                  (addedResultId === artist.id ? "opacity-40 scale-[0.98]" : "animate-fade-slide-up")
                 }
-                style={{ animationDelay: `${i * 30}ms` }}
+                style={addedResultId === artist.id ? undefined : { animationDelay: `${i * 30}ms` }}
               >
                 <ArtistAvatar src={artist.image} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold truncate">{artist.name}</div>
-                  <div className="text-xs text-faint truncate">{artist.genres[0] || copy.lineup.artistFallbackGenre}</div>
+                  {(() => {
+                    const seen = timesSeen(artist.id, artist.name);
+                    return (
+                      <div className={"text-xs truncate " + (seen > 0 ? "text-accent font-semibold" : "text-faint")}>
+                        {seen > 0
+                          ? `${copy.lineup.seenPrefix} ${seen} ${seen === 1 ? copy.lineup.timeSuffix : copy.lineup.timesSuffix}`
+                          : artist.genres[0] || copy.lineup.artistFallbackGenre}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <button
-                  onClick={() => { haptic(HAPTIC.add); addArtist(artist); setQuery(""); setJustAddedId(artist.id); }}
-                  className="w-7 h-7 rounded-full bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
+                  onClick={() => handleAddFromSearch(artist)}
+                  disabled={addedResultId === artist.id}
+                  className={
+                    "w-7 h-7 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-all duration-200 " +
+                    (addedResultId === artist.id ? "bg-green scale-110" : "bg-grad hover:scale-110 active:scale-90")
+                  }
                 >
-                  +
+                  {addedResultId === artist.id ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    "+"
+                  )}
                 </button>
               </div>
             ))}
@@ -604,6 +681,12 @@ export default function LineupPage() {
                 {i === 0 && lineup.length > 1 && (
                   <div className="text-[10px] font-extrabold uppercase tracking-wide text-accent">{copy.lineup.headlinerTag}</div>
                 )}
+                {setlistSummaries[entry.artist.id] && (
+                  <div className="text-[11px] text-faint truncate">
+                    {copy.lineup.lastPlayedPrefix} {setlistSummaries[entry.artist.id]!.city || setlistSummaries[entry.artist.id]!.venue} ·{" "}
+                    {setlistSummaries[entry.artist.id]!.songCount} {copy.lineup.songsSuffix}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => handleRemoveArtist(entry, i)}
@@ -613,12 +696,14 @@ export default function LineupPage() {
               </button>
             </div>
             <FilterChips value={entry.filters[0] ?? "popular"} onChange={(f) => setFilter(entry.artist.id, f)} />
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-faint font-semibold">
-                {copy.lineup.weightLabel} · {sharePct}% {copy.lineup.weightGoalSuffix}
-              </span>
-              <Stepper value={entry.weight} onChange={(v) => setWeight(entry.artist.id, v)} min={1} max={10} />
-            </div>
+            {lineup.length > 1 && (
+              <div className="flex items-center justify-between mb-3 animate-fade-slide-up">
+                <span className="text-xs text-faint font-semibold">
+                  {copy.lineup.weightLabel} · {sharePct}% {copy.lineup.weightGoalSuffix}
+                </span>
+                <Stepper value={entry.weight} onChange={(v) => setWeight(entry.artist.id, v)} min={1} max={10} />
+              </div>
+            )}
             <button
               onClick={() => {
                 setPickingFor(pickingFor === entry.artist.id ? null : entry.artist.id);
@@ -693,11 +778,11 @@ export default function LineupPage() {
         <UndoToast
           message={removeToast.message}
           onUndo={undoRemoveArtist}
-          className="bottom-[calc(4rem+16px+112px+env(safe-area-inset-bottom))]"
+          className="bottom-[calc(72px+24px+112px+env(safe-area-inset-bottom))]"
         />
       )}
 
-      <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
         <p className="text-[11px] text-faint text-center mb-2 px-2">{copy.lineup.shortfallDisclaimer}</p>
         <GradientButton
           onClick={handlePreview}

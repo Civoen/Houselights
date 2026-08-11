@@ -114,8 +114,11 @@ export default function PlaylistsPage() {
             window.location.href = e.url;
           }}
           className={
-            "relative bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] cursor-pointer " +
-            (isThisDragging ? "shadow-2xl z-20" : isThisDropTarget ? "ring-2 ring-accent" : "")
+            "relative bg-surface rounded-2xl p-4 cursor-pointer " +
+            (isThisDragging
+              ? "shadow-2xl z-20"
+              : (isSwipingThis || swipe.openId === rowId ? "" : "shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] ") +
+                (isThisDropTarget ? "ring-2 ring-accent" : ""))
           }
           style={{
             touchAction: "pan-y",
@@ -154,7 +157,7 @@ export default function PlaylistsPage() {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 mt-3">
+          <div className="grid grid-cols-4 gap-2 mt-3">
             <button
               data-no-swipe
               onClick={() => {
@@ -199,6 +202,16 @@ export default function PlaylistsPage() {
                 </svg>
               )}
               {copy.playlists.edit}
+            </button>
+            <button
+              data-no-swipe
+              onClick={() => handleRemovePlaylist(e, globalIndex)}
+              className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-surfaceAlt text-red-500 text-[10px] font-bold transition-all duration-150 hover:bg-red-50 active:scale-95"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {copy.playlists.deleteAction}
             </button>
           </div>
           {previewErrorId === rowId && (
@@ -295,11 +308,15 @@ export default function PlaylistsPage() {
   function handleRemovePlaylist(event: PastEvent, index: number) {
     haptic(HAPTIC.remove);
     swipe.close();
-    setEvents((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      saveAllEvents(next);
-      return next;
-    });
+    const next = events.filter((_, i) => i !== index);
+    setEvents(next);
+    saveAllEvents(next);
+    // events.filter/saveAllEvents only ever touched the flat `events` array
+    // — pastEvents and upcoming are separate state derived from it, so
+    // without this they'd keep showing the just-removed playlist even
+    // though storage was already correctly updated underneath them.
+    setPastEvents(getPastDatedEvents());
+    setUpcoming(getUpcomingEvents());
     setRemovedPlaylist({ event, index });
   }
 
@@ -309,12 +326,12 @@ export default function PlaylistsPage() {
   function undoRemovePlaylist() {
     if (!removedPlaylist) return;
     haptic(HAPTIC.add);
-    setEvents((prev) => {
-      const next = [...prev];
-      next.splice(removedPlaylist.index, 0, removedPlaylist.event);
-      saveAllEvents(next);
-      return next;
-    });
+    const next = [...events];
+    next.splice(removedPlaylist.index, 0, removedPlaylist.event);
+    setEvents(next);
+    saveAllEvents(next);
+    setPastEvents(getPastDatedEvents());
+    setUpcoming(getUpcomingEvents());
     setRemovedPlaylist(null);
   }
 
@@ -330,11 +347,28 @@ export default function PlaylistsPage() {
             <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
           </div>
         </div>
-        <p className="text-sm text-muted font-medium">
+        <p className="text-sm text-muted font-medium mb-3">
           {events.length > 0
             ? `${events.length} show${events.length === 1 ? "" : "s"} prepped · ${totalSongs} songs queued up`
             : copy.playlists.subtitleEmpty}
         </p>
+        {events.length > 0 && (
+          <Link
+            href="/encore"
+            className="inline-flex items-center gap-1.5 bg-grad text-white text-xs font-bold px-4 py-2 rounded-full transition-all duration-150 hover:brightness-[1.05] active:scale-95"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 12a8 8 0 1 1 2.34 5.66M4 12v5M4 12H9"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {copy.playlists.encoreButton}
+          </Link>
+        )}
       </div>
 
       <div className="px-6 pt-2 max-w-lg mx-auto">
