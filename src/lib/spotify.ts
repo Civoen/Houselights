@@ -23,6 +23,7 @@ export function getAuthorizeUrl(state: string, forceDialog = false) {
   const scopes = [
     "playlist-modify-public",
     "playlist-modify-private",
+    "playlist-read-private",
     "ugc-image-upload",
     "user-read-private",
   ].join(" ");
@@ -374,6 +375,42 @@ export function selectTracksForFilters(
   }
 
   return { tracks: selected, shortBy: Math.max(0, count - selected.length) };
+}
+
+// Fetches every track currently in a playlist (paginated — GET
+// /playlists/{id}/tracks caps at 100 items per page, and playlists can
+// have more). Used by "Preview" on an existing playlist to reload its
+// actual songs back into the app, since the app's own local history never
+// stored individual tracks — only aggregate counts. Each track's
+// `sourceArtistId` is set from its own primary Spotify artist, since
+// there's no way to recover which of the original lineup's artists it was
+// originally attributed to (relevant for a feature/collab track).
+export async function getPlaylistTracks(playlistId: string, accessToken: string): Promise<SpotifyTrack[]> {
+  const tracks: SpotifyTrack[] = [];
+  let url = `/playlists/${playlistId}/tracks?limit=100&fields=next,items(track(id,uri,name,duration_ms,album(images),artists(id,name)))`;
+  while (url) {
+    const json = await spotifyFetch(url, accessToken);
+    for (const item of json.items || []) {
+      const t = item.track;
+      if (!t || !t.id) continue; // local files / removed tracks have no id
+      const primaryArtist = t.artists?.[0];
+      tracks.push({
+        id: t.id,
+        uri: t.uri,
+        name: t.name,
+        artist: primaryArtist?.name || "Unknown",
+        artistId: primaryArtist?.id || "",
+        album: "",
+        albumImage: t.album?.images?.[0]?.url,
+        durationMs: t.duration_ms || 0,
+        popularity: 0,
+      });
+    }
+    // `next` comes back as a full absolute URL from Spotify; spotifyFetch
+    // expects a path relative to API_BASE, so strip that prefix off.
+    url = json.next ? json.next.replace(API_BASE, "") : "";
+  }
+  return tracks;
 }
 
 export async function createSpotifyPlaylist(params: {

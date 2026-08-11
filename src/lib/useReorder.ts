@@ -44,8 +44,16 @@ export function useReorder(itemCount: number, onReorder: (from: number, to: numb
       let closest: number | null = null;
       let closestDist = Infinity;
       itemRefs.current.forEach((el, i) => {
-        if (!el) return;
+        if (!el || i === current) return; // dragged item's own (moving) rect shouldn't compete against neighbors' static ones
         const rect = el.getBoundingClientRect();
+        // Direct containment wins immediately — no need for the pointer to
+        // reach a row's exact center before it's recognized as the target.
+        if (y >= rect.top && y <= rect.bottom) {
+          closest = i;
+          closestDist = 0;
+          return;
+        }
+        if (closestDist === 0) return;
         const mid = rect.top + rect.height / 2;
         const dist = Math.abs(y - mid);
         if (dist < closestDist) {
@@ -124,22 +132,31 @@ export function useGroupedReorder(onReorder: (groupId: string, from: number, to:
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     setDragGroupId((currentGroup) => {
       if (currentGroup === null) return currentGroup;
-      const y = e.clientY;
-      setDragOffsetY(y - startYRef.current);
-      const refs = itemRefs.current[currentGroup] || [];
-      let closest: number | null = null;
-      let closestDist = Infinity;
-      refs.forEach((el, i) => {
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const mid = rect.top + rect.height / 2;
-        const dist = Math.abs(y - mid);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closest = i;
-        }
+      setDragIndex((currentIdx) => {
+        const y = e.clientY;
+        setDragOffsetY(y - startYRef.current);
+        const refs = itemRefs.current[currentGroup] || [];
+        let closest: number | null = null;
+        let closestDist = Infinity;
+        refs.forEach((el, i) => {
+          if (!el || i === currentIdx) return; // dragged item's own (moving) rect shouldn't compete against neighbors' static ones
+          const rect = el.getBoundingClientRect();
+          if (y >= rect.top && y <= rect.bottom) {
+            closest = i;
+            closestDist = 0;
+            return;
+          }
+          if (closestDist === 0) return;
+          const mid = rect.top + rect.height / 2;
+          const dist = Math.abs(y - mid);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closest = i;
+          }
+        });
+        if (closest !== null) setOverIndex(closest);
+        return currentIdx;
       });
-      if (closest !== null) setOverIndex(closest);
       return currentGroup;
     });
   }, []);

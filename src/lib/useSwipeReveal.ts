@@ -78,9 +78,12 @@ export function useSwipeReveal(revealWidth: number) {
     [dragOffset, openId, revealWidth]
   );
 
+  const isDragging = useCallback((id: string) => dragOffset !== null && dragOffset.id === id, [dragOffset]);
+
   return {
     openId,
     offsetFor,
+    isDragging,
     close,
     consumeWasDragging,
     handlePointerDown,

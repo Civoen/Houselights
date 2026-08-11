@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAllEvents, saveAllEvents, getPastDatedEvents, getUpcomingEvents } from "@/lib/eventHistory";
 import { useLineup } from "@/lib/lineupStore";
-import { PastEvent } from "@/lib/types";
+import { PastEvent, PlaylistTrack, SpotifyTrack } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
+import { EqSpinner } from "@/components/EqSpinner";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
 import { useSwipeReveal } from "@/lib/useSwipeReveal";
@@ -43,13 +44,16 @@ function formatPastLabel(days: number) {
 
 export default function PlaylistsPage() {
   const router = useRouter();
-  const { reset, addArtist } = useLineup();
+  const { reset, addArtist, setPlaylist, setPlaylistMeta, setEventDate } = useLineup();
   const [events, setEvents] = useState<PastEvent[]>([]);
   const [upcoming, setUpcoming] = useState<PastEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<PastEvent[]>([]);
   const [showPrevious, setShowPrevious] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [removedPlaylist, setRemovedPlaylist] = useState<{ event: PastEvent; index: number } | null>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+  const [previewErrorId, setPreviewErrorId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const swipe = useSwipeReveal(SWIPE_REVEAL_WIDTH);
 
@@ -76,12 +80,60 @@ export default function PlaylistsPage() {
       haptic(HAPTIC.reorder);
     });
 
-  function buildAgain(e: PastEvent) {
-    if (!e.headliner?.id) return;
-    haptic(HAPTIC.add);
-    reset();
-    addArtist(e.headliner);
-    router.push("/lineup");
+  function copyLink(e: PastEvent) {
+    haptic(HAPTIC.tap);
+    navigator.clipboard.writeText(e.url).then(() => {
+      setCopiedId(e.id + e.createdAt);
+      setTimeout(() => setCopiedId(null), 1500);
+    });
+  }
+
+  // Reloads an already-created playlist's actual tracks back into the app's
+  // Preview UI. The app's own history never stored individual tracks (only
+  // aggregate counts), so this genuinely re-fetches from Spotify — meaning
+  // it needs network time and can fail, unlike the other two actions here.
+  // Like Build Again before it, this clears whatever's currently in
+  // progress on the New Event page — if you've got an unsaved lineup being
+  // built, this will discard it.
+  async function openInPreview(e: PastEvent) {
+    const key = e.id + e.createdAt;
+    haptic(HAPTIC.tap);
+    setPreviewErrorId(null);
+    setPreviewLoadingId(key);
+    try {
+      const res = await fetch(`/api/playlist/${e.id}/tracks`);
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      const sourceTracks: SpotifyTrack[] = json.tracks || [];
+      if (sourceTracks.length === 0) throw new Error();
+
+      reset();
+      // Rebuild a minimal lineup — one entry per distinct artist actually
+      // present in the tracks, in order of first appearance — so Preview's
+      // artist-grouping and color-coding has something to key off, even
+      // though genre/image/original weighting can't be recovered.
+      const seen = new Set<string>();
+      sourceTracks.forEach((t) => {
+        if (!t.artistId || seen.has(t.artistId)) return;
+        seen.add(t.artistId);
+        addArtist({ id: t.artistId, name: t.artist, genres: [] });
+      });
+
+      const playlistTracks: PlaylistTrack[] = sourceTracks.map((t) => ({
+        ...t,
+        sourceArtistId: t.artistId,
+        handpicked: false,
+      }));
+      setPlaylist(playlistTracks);
+      setPlaylistMeta(e.name, "");
+      setEventDate(e.eventDate || "");
+      router.push("/lineup/preview");
+    } catch {
+      haptic(HAPTIC.remove);
+      setPreviewErrorId(key);
+    } finally {
+      setPreviewLoadingId(null);
+    }
   }
 
   function handleRemovePlaylist(event: PastEvent, index: number) {
@@ -236,8 +288,18 @@ export default function PlaylistsPage() {
           </div>
         )}
 
-        {events.map((e, i) => (
-          <div key={e.id + e.createdAt} className={"relative rounded-2xl mb-3 " + (dragIndex === i ? "" : "overflow-hidden")}>
+        {events.map((e, i) => {
+          const rowId = e.id + e.createdAt;
+          const isSwipingThis = swipe.isDragging(rowId);
+          return (
+          <div
+            key={rowId}
+            className={
+              "relative rounded-2xl mb-3 " +
+              (dragIndex === i ? "" : "overflow-hidden animate-fade-slide-up")
+            }
+            style={dragIndex === i ? undefined : { animationDelay: `${i * 30}ms` }}
+          >
             <button
               onClick={() => handleRemovePlaylist(e, i)}
               aria-label={`Remove ${e.name}`}
@@ -248,7 +310,7 @@ export default function PlaylistsPage() {
 
             <div
               ref={setItemRef(i)}
-              onPointerDown={swipe.handlePointerDown(e.id + e.createdAt)}
+              onPointerDown={swipe.handlePointerDown(rowId)}
               onPointerMove={swipe.handlePointerMove}
               onPointerUp={swipe.handlePointerUp}
               onPointerCancel={swipe.handlePointerCancel}
@@ -261,17 +323,15 @@ export default function PlaylistsPage() {
                 "relative flex items-start gap-3 bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] cursor-pointer " +
                 (dragIndex === i
                   ? "shadow-2xl z-20"
-                  : "animate-fade-slide-up transition-all duration-150 " +
-                    (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
+                  : (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
               }
               style={{
                 touchAction: "pan-y",
-                transform: `translateY(${dragIndex === i ? dragOffsetY : 0}px) translateX(${swipe.offsetFor(e.id + e.createdAt)}px)${dragIndex === i ? " scale(1.02)" : ""}`,
-                transition: dragIndex === i ? "box-shadow 0.15s ease" : "transform 0.2s ease",
-                animationDelay: dragIndex === i ? undefined : `${i * 30}ms`,
+                transform: `translateY(${dragIndex === i ? dragOffsetY : 0}px) translateX(${swipe.offsetFor(rowId)}px)${dragIndex === i ? " scale(1.02)" : ""}`,
+                transition: dragIndex === i ? "box-shadow 0.15s ease" : isSwipingThis ? "none" : "transform 0.2s ease, box-shadow 0.15s ease",
               }}
             >
-              {swipe.openId === e.id + e.createdAt && (
+              {swipe.openId === rowId && (
                 <div
                   className="absolute inset-0 z-10 rounded-2xl"
                   onClick={(ev) => {
@@ -302,19 +362,61 @@ export default function PlaylistsPage() {
                 <div className="text-xs text-muted font-semibold mb-3">
                   {e.trackCount} tracks · {fmtMinutes(e.totalMinutes)}
                 </div>
-                {e.headliner?.id && (
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     data-no-swipe
-                    onClick={() => buildAgain(e)}
-                    className="w-full text-xs font-bold text-accent bg-accent/10 rounded-xl py-2.5 transition-transform duration-150 active:scale-95"
+                    onClick={() => {
+                      haptic(HAPTIC.tap);
+                      window.open(e.url, "_blank", "noopener,noreferrer");
+                    }}
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
                   >
-                    {copy.playlists.buildAgain}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {copy.playlists.open}
                   </button>
+                  <button
+                    data-no-swipe
+                    onClick={() => copyLink(e)}
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+                  >
+                    {copiedId === e.id + e.createdAt ? (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+                        <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" stroke="currentColor" strokeWidth="1.8" />
+                      </svg>
+                    )}
+                    {copiedId === e.id + e.createdAt ? copy.playlists.linkCopied : copy.playlists.copyLink}
+                  </button>
+                  <button
+                    data-no-swipe
+                    onClick={() => openInPreview(e)}
+                    disabled={previewLoadingId === e.id + e.createdAt}
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95 disabled:opacity-70"
+                  >
+                    {previewLoadingId === e.id + e.createdAt ? (
+                      <EqSpinner className="text-white" />
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M8 5v14l11-7z" fill="currentColor" />
+                      </svg>
+                    )}
+                    {copy.playlists.edit}
+                  </button>
+                </div>
+                {previewErrorId === e.id + e.createdAt && (
+                  <p className="text-[11px] text-red-600 mt-2 text-center">{copy.playlists.previewError}</p>
                 )}
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {removedPlaylist && <UndoToast message={`Removed ${removedPlaylist.event.name}`} onUndo={undoRemovePlaylist} className="bottom-24" />}

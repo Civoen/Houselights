@@ -51,10 +51,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 nav-frosted border-t border-line"
+      className="fixed bottom-0 left-0 right-0 z-30 nav-frosted border-t border-line px-2"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="relative flex items-stretch px-2 h-[72px]">
+      <div className="relative flex items-stretch h-[72px]">
         <div
           className="absolute top-[6px] h-[60px] rounded-full bg-grad shadow-[0_6px_16px_-6px_rgba(17,80,103,0.5)] pointer-events-none"
           style={{

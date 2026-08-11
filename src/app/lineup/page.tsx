@@ -93,6 +93,7 @@ export default function LineupPage() {
   const [posterLoading, setPosterLoading] = useState(false);
   const [posterError, setPosterError] = useState<string | null>(null);
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const posterInputRef = useRef<HTMLInputElement>(null);
 
   const { dragIndex, overIndex, dragOffsetY, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
@@ -119,6 +120,12 @@ export default function LineupPage() {
     dismissRemoveToast();
     haptic(HAPTIC.add);
   }
+
+  useEffect(() => {
+    if (!justAddedId) return;
+    const timer = setTimeout(() => setJustAddedId(null), 900);
+    return () => clearTimeout(timer);
+  }, [justAddedId]);
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -367,7 +374,7 @@ export default function LineupPage() {
                   <div className="text-xs text-faint truncate">{artist.genres[0] || copy.lineup.artistFallbackGenre}</div>
                 </div>
                 <button
-                  onClick={() => { haptic(HAPTIC.add); addArtist(artist); }}
+                  onClick={() => { haptic(HAPTIC.add); addArtist(artist); setQuery(""); setJustAddedId(artist.id); }}
                   className="w-7 h-7 rounded-full bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
                 >
                   +
@@ -559,11 +566,11 @@ export default function LineupPage() {
             key={entry.artist.id}
             ref={setItemRef(i)}
             className={
-              "bg-surface border rounded-2xl p-4 mb-3 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] " +
+              "relative bg-surface border rounded-2xl p-4 mb-3 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] overflow-hidden " +
               (dragIndex === i
-                ? "shadow-2xl z-20 relative"
+                ? "shadow-2xl z-20"
                 : "transition-all duration-150 " +
-                  (isDropTarget ? "border-accent" : "animate-pop-in"))
+                  (isDropTarget ? "border-accent" : "animate-fade-slide-up"))
             }
             style={{
               ...(dragIndex === i
@@ -572,6 +579,9 @@ export default function LineupPage() {
               ...(isDropTarget ? {} : { borderColor: artistColor }),
             }}
           >
+            {entry.artist.id === justAddedId && (
+              <div className="absolute inset-0 bg-grad animate-flash-fade pointer-events-none" aria-hidden="true" />
+            )}
             <div className="flex items-center gap-3 mb-3">
               <span
                 onPointerDown={handlePointerDown(i)}
@@ -622,7 +632,7 @@ export default function LineupPage() {
               </span>
               {copy.lineup.addSpecificSongs}
               {entry.pickedTracks.length > 0 && (
-                <span className="ml-auto bg-accent/10 text-accent text-[10px] font-extrabold px-2 py-0.5 rounded-md animate-pop-in">
+                <span className="ml-auto bg-accent/10 text-accent text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                   {entry.pickedTracks.length} picked
                 </span>
               )}
@@ -679,7 +689,13 @@ export default function LineupPage() {
         );})}
       </div>
 
-      {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveArtist} className="bottom-36" />}
+      {removeToast && (
+        <UndoToast
+          message={removeToast.message}
+          onUndo={undoRemoveArtist}
+          className="bottom-[calc(4rem+16px+112px+env(safe-area-inset-bottom))]"
+        />
+      )}
 
       <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
         <p className="text-[11px] text-faint text-center mb-2 px-2">{copy.lineup.shortfallDisclaimer}</p>

@@ -72,6 +72,10 @@ const config: Config = {
           "70%": { transform: "scaleX(0.97) scaleY(1.02)" },
           "100%": { transform: "scaleX(1) scaleY(1)" },
         },
+        flashFade: {
+          "0%": { opacity: "0.55" },
+          "100%": { opacity: "0" },
+        },
       },
       animation: {
         "fade-slide-up": "fadeSlideUp 0.4s ease-out both",
@@ -83,6 +87,7 @@ const config: Config = {
         "eq-bounce": "eqBounce 0.8s ease-in-out infinite",
         "fader-drift": "faderDrift 3.4s ease-in-out infinite",
         "pill-squeeze": "pillSqueeze 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
+        "flash-fade": "flashFade 900ms ease-out both",
       },
     },
   },

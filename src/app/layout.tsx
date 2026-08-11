@@ -4,6 +4,27 @@ import { LineupProvider } from "@/lib/lineupStore";
 import { ThemeProvider } from "@/lib/themeStore";
 import { AppChrome } from "@/components/AppChrome";
 
+// iOS's icon-grow launch animation ignores manifest.json's background_color
+// entirely (that's an Android/Chrome behavior) — without explicit
+// apple-touch-startup-image entries, it defaults to a plain white
+// background behind the transition, which is the "white border" that shows
+// up before the app opens. These are solid-color images (light/dark to
+// match the current theme) sized for each current-generation iPhone.
+const splashDevices = [
+  { file: "6.7in", w: 430, h: 932, dpr: 3 },
+  { file: "6.1in-3x", w: 393, h: 852, dpr: 3 },
+  { file: "6.5in", w: 428, h: 926, dpr: 3 },
+  { file: "6.1in", w: 390, h: 844, dpr: 3 },
+  { file: "4.7in", w: 375, h: 667, dpr: 2 },
+];
+
+const startupImage = splashDevices.flatMap(({ file, w, h, dpr }) =>
+  (["light", "dark"] as const).map((theme) => ({
+    url: `/splash/${file}-${theme}.png`,
+    media: `(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: portrait) and (prefers-color-scheme: ${theme})`,
+  }))
+);
+
 export const metadata: Metadata = {
   title: "Houselights",
   description: "Create better playlists.",
@@ -12,6 +33,7 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Houselights",
+    startupImage,
   },
 };
 

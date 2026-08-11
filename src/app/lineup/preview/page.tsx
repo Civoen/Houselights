@@ -7,6 +7,8 @@ import { AlbumArt } from "@/components/AlbumArt";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
 import { SegmentedControl } from "@/components/SegmentedControl";
+import { SettingsButton } from "@/components/SettingsButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder, useGroupedReorder } from "@/lib/useReorder";
 import { useUndoToast } from "@/lib/useUndoToast";
@@ -48,13 +50,10 @@ export default function PreviewPage() {
   const router = useRouter();
   const { lineup, playlist, eventDate, setEventDate, removeTrack, restoreTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
   const eventDateInputRef = useRef<HTMLInputElement>(null);
-  const [addArtistQuery, setAddArtistQuery] = useState("");
-  const [addArtistResults, setAddArtistResults] = useState<any[]>([]);
-  const [chosenArtist, setChosenArtist] = useState<{ id: string; name: string } | null>(null);
+  const [addingSongForId, setAddingSongForId] = useState<string | null>(null);
   const [addTrackQuery, setAddTrackQuery] = useState("");
   const [addTrackResults, setAddTrackResults] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [orderMode, setOrderMode] = useState<string>("headliner");
+  const [orderMode, setOrderMode] = useState<string>("artists");
   const [expandedArtists, setExpandedArtists] = useState<Set<string>>(new Set());
 
   const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
@@ -103,16 +102,25 @@ export default function PreviewPage() {
     }
   });
 
-  function handleOrderChange(mode: "hype" | "headliner" | "artists") {
+  function handleOrderChange(mode: "hype" | "headliner" | "random") {
     haptic(HAPTIC.reorder);
     setOrderMode(mode);
     if (mode === "hype") {
       setPlaylist(orderByArtist(playlist, artistOrder, "desc"));
     } else if (mode === "headliner") {
       setPlaylist(orderByArtist(playlist, artistOrder, "asc"));
+    } else if (mode === "random") {
+      setPlaylist(shuffleTracks(playlist));
     }
-    // "artists" doesn't reorder the playlist — it just changes how the
-    // list is presented, grouped by artist instead of as a flat sequence.
+  }
+
+  function shuffleTracks(tracks: PlaylistTrack[]): PlaylistTrack[] {
+    const arr = [...tracks];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }
 
   function toggleArtistExpanded(artistId: string) {
@@ -176,31 +184,20 @@ export default function PreviewPage() {
     haptic(HAPTIC.reorder);
   });
 
-  async function searchArtist(q: string) {
-    setAddArtistQuery(q);
-    setChosenArtist(null);
-    if (q.trim().length < 2) {
-      setAddArtistResults([]);
-      return;
-    }
-    const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(q)}`);
-    if (res.ok) {
-      const json = await res.json();
-      setAddArtistResults(json.artists || []);
-    }
+  function toggleAddSong(artistId: string) {
+    haptic(HAPTIC.tap);
+    setAddingSongForId((current) => (current === artistId ? null : artistId));
+    setAddTrackQuery("");
+    setAddTrackResults([]);
   }
 
-  async function searchTrack(q: string) {
+  async function searchTrack(artistId: string, artistName: string, q: string) {
     setAddTrackQuery(q);
-    if (!chosenArtist || q.trim().length < 2) {
+    if (q.trim().length < 2) {
       setAddTrackResults([]);
       return;
     }
-    const params = new URLSearchParams({
-      artistId: chosenArtist.id,
-      artistName: chosenArtist.name,
-      pickQuery: q,
-    });
+    const params = new URLSearchParams({ artistId, artistName, pickQuery: q });
     const res = await fetch(`/api/spotify/artist-tracks?${params.toString()}`);
     if (res.ok) {
       const json = await res.json();
@@ -208,15 +205,73 @@ export default function PreviewPage() {
     }
   }
 
+  function addSongResult(artistId: string, t: any) {
+    haptic(HAPTIC.add);
+    addTrackToPlaylist({ ...t, sourceArtistId: artistId, handpicked: true });
+  }
+
+  // A plain render helper, not a nested component — defining a component
+  // function inside another component's body would give it a new identity
+  // every render, remounting the input (and dropping focus) on every
+  // keystroke. This just builds JSX inline instead.
+  function renderAddSongPanel(artistId: string, artistName: string) {
+    const isOpen = addingSongForId === artistId;
+    return (
+      <div className="pt-1">
+        <button
+          onClick={() => toggleAddSong(artistId)}
+          className="w-full flex items-center gap-2 text-xs font-bold text-accent py-2 transition-opacity active:opacity-60"
+        >
+          <span className="w-5 h-5 rounded-full border border-dashed border-accent flex items-center justify-center text-[11px] transition-transform duration-200 flex-shrink-0">
+            {isOpen ? "−" : "+"}
+          </span>
+          {copy.preview.addSong}
+        </button>
+        {isOpen && (
+          <div className="pb-2 animate-fade-slide-up">
+            <input
+              autoFocus
+              value={addTrackQuery}
+              onChange={(e) => searchTrack(artistId, artistName, e.target.value)}
+              placeholder={copy.preview.searchSongPlaceholder}
+              className="w-full bg-surfaceAlt rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
+            />
+            {addTrackResults.map((t, i) => (
+              <div
+                key={t.id}
+                className="flex items-center justify-between py-1.5 animate-fade-slide-up"
+                style={{ animationDelay: `${i * 25}ms` }}
+              >
+                <span className="text-xs truncate">{t.name}</span>
+                <button
+                  onClick={() => addSongResult(artistId, t)}
+                  className="text-[11px] font-bold text-accent flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
+                >
+                  {copy.preview.add}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen pb-40 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
-        <button
-          onClick={() => router.back()}
-          className="w-9 h-9 rounded-full bg-surfaceAlt text-muted flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
-        >
-          ‹
-        </button>
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => router.back()}
+            className="w-9 h-9 rounded-full bg-surfaceAlt text-muted flex items-center justify-center transition-transform duration-150 active:scale-90"
+          >
+            ‹
+          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+            <SettingsButton className="w-9 h-9 rounded-full bg-surfaceAlt text-muted" />
+          </div>
+        </div>
         <h1 className="font-display text-3xl font-bold tracking-tight mb-1">{copy.preview.title}</h1>
         <p className="text-sm text-muted font-medium">
           {playlist.length} tracks · {fmtMinutes(totalMin)} · {artistCount} artists
@@ -268,11 +323,11 @@ export default function PreviewPage() {
           <SegmentedControl
             className="mb-4"
             value={orderMode}
-            onChange={(id) => handleOrderChange(id as "hype" | "headliner" | "artists")}
+            onChange={(id) => handleOrderChange(id as "hype" | "headliner" | "random")}
             options={[
               { id: "hype", label: copy.preview.hype },
               { id: "headliner", label: copy.preview.headliner },
-              { id: "artists", label: copy.preview.artists },
+              { id: "random", label: copy.preview.random },
             ]}
           />
         )}
@@ -344,6 +399,7 @@ export default function PreviewPage() {
                       </button>
                     </div>
                   ))}
+                  {renderAddSongPanel(seg.artistId, seg.items[0].track.artist)}
                 </div>
               );
             })}
@@ -445,79 +501,12 @@ export default function PreviewPage() {
                           </div>
                         );
                       })}
+                      {renderAddSongPanel(group.id, group.name)}
                     </div>
                   )}
                 </div>
               );
             })}
-          </div>
-        )}
-
-        <button
-          onClick={() => setShowAdd((s) => !s)}
-          className="flex items-center gap-2 text-sm font-bold text-accent pt-1 transition-opacity active:opacity-60"
-        >
-          <span className="w-6 h-6 rounded-full border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
-            {showAdd ? "−" : "+"}
-          </span>
-          {copy.preview.addSong}
-        </button>
-
-        {showAdd && (
-          <div className="mt-3 bg-surface rounded-2xl p-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up">
-            {!chosenArtist ? (
-              <>
-                <input
-                  autoFocus
-                  value={addArtistQuery}
-                  onChange={(e) => searchArtist(e.target.value)}
-                  placeholder={copy.preview.searchArtistPlaceholder}
-                  className="w-full bg-surfaceAlt rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
-                />
-                {addArtistResults.map((a, i) => (
-                  <button
-                    key={a.id}
-                    onClick={() => setChosenArtist({ id: a.id, name: a.name })}
-                    className="flex items-center justify-between w-full py-1.5 text-left animate-fade-slide-up transition-opacity active:opacity-60"
-                    style={{ animationDelay: `${i * 25}ms` }}
-                  >
-                    <span className="text-xs font-semibold">{a.name}</span>
-                    <span className="text-[11px] text-accent font-bold">{copy.preview.select}</span>
-                  </button>
-                ))}
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-2 animate-pop-in">
-                  <span className="text-xs font-bold">{chosenArtist.name}</span>
-                  <button onClick={() => setChosenArtist(null)} className="text-[11px] text-faint transition-opacity active:opacity-60">
-                    {copy.preview.change}
-                  </button>
-                </div>
-                <input
-                  autoFocus
-                  value={addTrackQuery}
-                  onChange={(e) => searchTrack(e.target.value)}
-                  placeholder={copy.preview.searchSongPlaceholder}
-                  className="w-full bg-surfaceAlt rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
-                />
-                {addTrackResults.map((t, i) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between py-1.5 animate-fade-slide-up"
-                    style={{ animationDelay: `${i * 25}ms` }}
-                  >
-                    <span className="text-xs truncate">{t.name}</span>
-                    <button
-                      onClick={() => { haptic(HAPTIC.add); addTrackToPlaylist({ ...t, sourceArtistId: chosenArtist.id, handpicked: true }); }}
-                      className="text-[11px] font-bold text-accent flex-shrink-0 ml-2 transition-transform duration-150 active:scale-90"
-                    >
-                      {copy.preview.add}
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
           </div>
         )}
       </div>
