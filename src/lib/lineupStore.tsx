@@ -17,7 +17,7 @@ interface LineupState {
   removeArtist: (artistId: string) => void;
   restoreArtist: (entry: LineupArtist, index: number) => void;
   reorderArtist: (from: number, to: number) => void;
-  toggleFilter: (artistId: string, filter: FilterType) => void;
+  setFilter: (artistId: string, filter: FilterType) => void;
   setWeight: (artistId: string, weight: number) => void;
   addPickedTrack: (artistId: string, track: SpotifyTrack) => void;
   removePickedTrack: (artistId: string, trackId: string) => void;
@@ -110,18 +110,13 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const toggleFilter = useCallback((artistId: string, filter: FilterType) => {
-    setLineup((prev) =>
-      prev.map((a) => {
-        if (a.artist.id !== artistId) return a;
-        const has = a.filters.includes(filter);
-        if (has) {
-          if (a.filters.length === 1) return a; // keep at least one filter selected
-          return { ...a, filters: a.filters.filter((f) => f !== filter) };
-        }
-        return { ...a, filters: [...a.filters, filter] };
-      })
-    );
+  // Single-select: choosing a filter replaces whatever was selected,
+  // rather than toggling membership in a multi-select set. "Most popular"
+  // and "Setlist" pull from genuinely different, non-combinable sources
+  // (Spotify relevance vs. actual live setlists), so picking one is meant
+  // to be a real either/or choice, not a blend of both pools.
+  const setFilter = useCallback((artistId: string, filter: FilterType) => {
+    setLineup((prev) => prev.map((a) => (a.artist.id === artistId ? { ...a, filters: [filter] } : a)));
   }, []);
 
   const setWeight = useCallback((artistId: string, weight: number) => {
@@ -218,7 +213,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         removeArtist,
         restoreArtist,
         reorderArtist,
-        toggleFilter,
+        setFilter,
         setWeight,
         addPickedTrack,
         removePickedTrack,

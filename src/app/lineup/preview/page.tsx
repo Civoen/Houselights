@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder, useGroupedReorder } from "@/lib/useReorder";
 import { useUndoToast } from "@/lib/useUndoToast";
-import { PlaylistTrack } from "@/lib/types";
+import { PlaylistTrack, LineupArtist } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
 import { buildArtistColorMap } from "@/lib/artistColors";
@@ -33,12 +33,25 @@ interface ArtistGroup {
 
 export default function PreviewPage() {
   const router = useRouter();
-  const { lineup, playlist, eventDate, setEventDate, removeTrack, restoreTrack, reorderTrack, addTrackToPlaylist, setPlaylist } = useLineup();
+  const {
+    lineup,
+    playlist,
+    eventDate,
+    setEventDate,
+    removeTrack,
+    restoreTrack,
+    reorderTrack,
+    addTrackToPlaylist,
+    setPlaylist,
+    removeArtist,
+    restoreArtist,
+    reorderArtist,
+  } = useLineup();
   const eventDateInputRef = useRef<HTMLInputElement>(null);
   const [addingSongForId, setAddingSongForId] = useState<string | null>(null);
   const [addTrackQuery, setAddTrackQuery] = useState("");
   const [addTrackResults, setAddTrackResults] = useState<any[]>([]);
-  const [orderMode, setOrderMode] = useState<string>("artists");
+  const [orderMode, setOrderMode] = useState<string>("headliner");
   const [expandedArtists, setExpandedArtists] = useState<Set<string>>(new Set());
 
   const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
@@ -56,6 +69,48 @@ export default function PreviewPage() {
     if (!removeToast) return;
     restoreTrack(removeToast.payload.track, removeToast.payload.index);
     dismissRemoveToast();
+    haptic(HAPTIC.add);
+  }
+
+  const { toast: removeArtistToast, show: showRemoveArtistToast, dismiss: dismissRemoveArtistToast } = useUndoToast<{
+    lineupEntry: LineupArtist | null;
+    lineupIndex: number;
+    tracks: { track: PlaylistTrack; index: number }[];
+  }>();
+
+  function handleRemoveArtistGroup(group: ArtistGroup) {
+    haptic(HAPTIC.remove);
+    const removeIndices = new Set(group.tracks.map((t) => t.index));
+    setPlaylist(playlist.filter((_, i) => !removeIndices.has(i)));
+
+    const lineupIndex = lineup.findIndex((a) => a.artist.id === group.id);
+    const lineupEntry = lineupIndex >= 0 ? lineup[lineupIndex] : null;
+    if (lineupEntry) removeArtist(group.id);
+
+    setExpandedArtists((prev) => {
+      if (!prev.has(group.id)) return prev;
+      const next = new Set(prev);
+      next.delete(group.id);
+      return next;
+    });
+    if (addingSongForId === group.id) setAddingSongForId(null);
+
+    showRemoveArtistToast(`Removed ${group.name}`, {
+      lineupEntry,
+      lineupIndex,
+      tracks: [...group.tracks].sort((a, b) => a.index - b.index),
+    });
+  }
+
+  function undoRemoveArtistGroup() {
+    if (!removeArtistToast) return;
+    const { lineupEntry, lineupIndex, tracks } = removeArtistToast.payload;
+    if (lineupEntry) restoreArtist(lineupEntry, lineupIndex);
+    // Restore in ascending original-index order — each splice-insert shifts
+    // everything at/after it right by one, so ascending order is what
+    // correctly reconstructs the original positions instead of drifting.
+    tracks.forEach(({ track, index }) => restoreTrack(track, index));
+    dismissRemoveArtistToast();
     haptic(HAPTIC.add);
   }
 
@@ -150,6 +205,31 @@ export default function PreviewPage() {
   const artistGroupsRef = useRef(artistGroups);
   useEffect(() => {
     artistGroupsRef.current = artistGroups;
+  });
+
+  const {
+    dragIndex: cardDragIndex,
+    overIndex: cardOverIndex,
+    dragOffsetY: cardDragOffsetY,
+    setItemRef: setGroupCardRef,
+    handlePointerDown: handleGroupCardPointerDown,
+    handlePointerMove: handleGroupCardPointerMove,
+    handlePointerUp: handleGroupCardPointerUp,
+    handlePointerCancel: handleGroupCardPointerCancel,
+  } = useReorder(artistGroups.length, (fromVisual, toVisual) => {
+    // artistGroups can be showing the reversed (Hype) order, so a visual
+    // drag position doesn't map 1:1 onto `lineup`'s own index — resolve
+    // both ends back to the artist's real position in `lineup` via id
+    // before reordering, rather than assuming visual === underlying order.
+    const groups = artistGroupsRef.current;
+    const fromId = groups[fromVisual]?.id;
+    const toId = groups[toVisual]?.id;
+    if (!fromId || !toId) return;
+    const fromLineupIndex = lineup.findIndex((a) => a.artist.id === fromId);
+    const toLineupIndex = lineup.findIndex((a) => a.artist.id === toId);
+    if (fromLineupIndex === -1 || toLineupIndex === -1) return;
+    reorderArtist(fromLineupIndex, toLineupIndex);
+    haptic(HAPTIC.reorder);
   });
 
   const {
@@ -398,37 +478,66 @@ export default function PreviewPage() {
 
         {playlist.length > 0 && orderMode !== "random" && (
           <div className="mb-4">
-            {artistGroups.map((group) => {
+            {artistGroups.map((group, i) => {
               const expanded = expandedArtists.has(group.id);
               const color = artistColorMap[group.id] || "#93A0AB";
+              const isDragging = cardDragIndex === i;
+              const isDropTarget = cardOverIndex === i && cardDragIndex !== null && !isDragging;
               return (
                 <div
                   key={group.id}
-                  className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] mb-2 overflow-hidden"
-                  style={{ borderLeft: `4px solid ${color}` }}
+                  ref={setGroupCardRef(i)}
+                  className={
+                    "bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] mb-2 overflow-hidden " +
+                    (isDragging ? "shadow-2xl relative z-20" : "transition-all duration-150 " + (isDropTarget ? "ring-2 ring-accent" : ""))
+                  }
+                  style={{
+                    borderLeft: `4px solid ${color}`,
+                    ...(isDragging ? { transform: `translateY(${cardDragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" } : {}),
+                  }}
                 >
-                  <button
-                    onClick={() => toggleArtistExpanded(group.id)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5"
-                  >
-                    <ArtistAvatar src={group.image} size={36} />
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="text-sm font-bold truncate">{group.name}</div>
-                      <div className="text-xs text-faint">
-                        {group.tracks.length} song{group.tracks.length === 1 ? "" : "s"} added
-                      </div>
-                    </div>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="transition-transform duration-200 text-faint flex-shrink-0"
-                      style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                  <div className="flex items-center gap-1 pl-1 pr-2">
+                    <span
+                      data-no-swipe
+                      onPointerDown={handleGroupCardPointerDown(i)}
+                      onPointerMove={handleGroupCardPointerMove}
+                      onPointerUp={handleGroupCardPointerUp}
+                      onPointerCancel={handleGroupCardPointerCancel}
+                      className="text-faint text-base select-none cursor-grab active:cursor-grabbing flex items-center justify-center w-8 h-8 flex-shrink-0"
+                      style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none" } as React.CSSProperties}
                     >
-                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                      ⠿
+                    </span>
+                    <button
+                      onClick={() => toggleArtistExpanded(group.id)}
+                      className="flex-1 min-w-0 flex items-center gap-3 py-2.5 text-left"
+                    >
+                      <ArtistAvatar src={group.image} size={36} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold truncate">{group.name}</div>
+                        <div className="text-xs text-faint">
+                          {group.tracks.length} song{group.tracks.length === 1 ? "" : "s"} added
+                        </div>
+                      </div>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="transition-transform duration-200 text-faint flex-shrink-0"
+                        style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                      >
+                        <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleRemoveArtistGroup(group)}
+                      aria-label={`Remove ${group.name}`}
+                      className="w-7 h-7 rounded-full bg-surfaceAlt text-faint text-xs font-bold flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:bg-red-50 hover:text-red-500 active:scale-90"
+                    >
+                      ✕
+                    </button>
+                  </div>
 
                   {expanded && (
                     <div className="px-3 pb-1 animate-fade-slide-up">
@@ -502,6 +611,7 @@ export default function PreviewPage() {
       </div>
 
       {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveTrack} className="bottom-36" />}
+      {removeArtistToast && <UndoToast message={removeArtistToast.message} onUndo={undoRemoveArtistGroup} className="bottom-36" />}
 
       <div className="fixed left-6 right-6 bottom-[calc(4rem+16px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
         <GradientButton

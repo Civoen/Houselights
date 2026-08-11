@@ -87,6 +87,7 @@ export default function CreatePage() {
           { id: playlist[0]?.artistId || "", name: playlist[0]?.artist || "Unknown", genres: [] },
         eventDate: eventDate || undefined,
         createdAt: new Date().toISOString(),
+        tracks: playlist,
       });
       router.push(
         `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}`

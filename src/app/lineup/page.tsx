@@ -75,7 +75,7 @@ export default function LineupPage() {
     removeArtist,
     restoreArtist,
     reorderArtist,
-    toggleFilter,
+    setFilter,
     setWeight,
     addPickedTrack,
     removePickedTrack,
@@ -612,7 +612,7 @@ export default function LineupPage() {
                 ✕
               </button>
             </div>
-            <FilterChips value={entry.filters} onToggle={(f) => toggleFilter(entry.artist.id, f)} />
+            <FilterChips value={entry.filters[0] ?? "popular"} onChange={(f) => setFilter(entry.artist.id, f)} />
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-faint font-semibold">
                 {copy.lineup.weightLabel} · {sharePct}% {copy.lineup.weightGoalSuffix}

@@ -8,19 +8,20 @@ const OPTIONS: { id: FilterType; label: string }[] = [
   { id: "setlist", label: copy.filters.setlist },
 ];
 
-export function FilterChips({ value, onToggle }: { value: FilterType[]; onToggle: (f: FilterType) => void }) {
+export function FilterChips({ value, onChange }: { value: FilterType; onChange: (f: FilterType) => void }) {
   return (
     <div className="flex gap-2 mb-3">
       {OPTIONS.map((opt) => {
-        const active = value.includes(opt.id);
+        const active = value === opt.id;
         return (
           <button
             key={opt.id}
             type="button"
             aria-pressed={active}
             onClick={() => {
+              if (active) return;
               haptic(HAPTIC.tap);
-              onToggle(opt.id);
+              onChange(opt.id);
             }}
             className={
               "flex-1 text-center py-2 rounded-full text-xs font-bold transition-all duration-200 active:scale-95 " +

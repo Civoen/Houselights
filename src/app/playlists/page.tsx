@@ -98,18 +98,24 @@ export default function PlaylistsPage() {
     });
   }
 
-  // Reloads an already-created playlist's actual tracks back into the app's
-  // Preview UI. The app's own history never stored individual tracks (only
-  // aggregate counts), so this genuinely re-fetches from Spotify — meaning
-  // it needs network time and can fail, unlike the other two actions here.
-  // Like Build Again before it, this clears whatever's currently in
-  // progress on the New Event page — if you've got an unsaved lineup being
-  // built, this will discard it.
+  // Playlists now carry their own track snapshot from creation time (no
+  // extra cost — the data was already in memory right when the playlist
+  // was made). Loading Edit is instant and offline-capable for these.
+  // Playlists saved before this existed don't have that snapshot, so for
+  // those specifically this still falls back to re-fetching from Spotify
+  // — meaning only that older subset needs network time or can hit the
+  // scope/permission failure mode.
   async function openInPreview(e: PastEvent) {
     const key = e.id + e.createdAt;
     haptic(HAPTIC.tap);
     setPreviewErrorId(null);
     setPreviewErrorKind(null);
+
+    if (e.tracks && e.tracks.length > 0) {
+      loadIntoPreview(e, e.tracks);
+      return;
+    }
+
     setPreviewLoadingId(key);
     try {
       const res = await fetch(`/api/playlist/${e.id}/tracks`);
@@ -124,33 +130,36 @@ export default function PlaylistsPage() {
       const sourceTracks: SpotifyTrack[] = json.tracks || [];
       if (sourceTracks.length === 0) throw new Error();
 
-      reset();
-      // Rebuild a minimal lineup — one entry per distinct artist actually
-      // present in the tracks, in order of first appearance — so Preview's
-      // artist-grouping and color-coding has something to key off, even
-      // though genre/image/original weighting can't be recovered.
-      const seen = new Set<string>();
-      sourceTracks.forEach((t) => {
-        if (!t.artistId || seen.has(t.artistId)) return;
-        seen.add(t.artistId);
-        addArtist({ id: t.artistId, name: t.artist, genres: [] });
-      });
-
       const playlistTracks: PlaylistTrack[] = sourceTracks.map((t) => ({
         ...t,
         sourceArtistId: t.artistId,
         handpicked: false,
       }));
-      setPlaylist(playlistTracks);
-      setPlaylistMeta(e.name, "");
-      setEventDate(e.eventDate || "");
-      router.push("/lineup/preview");
+      loadIntoPreview(e, playlistTracks);
     } catch {
       haptic(HAPTIC.remove);
       setPreviewErrorId(key);
     } finally {
       setPreviewLoadingId(null);
     }
+  }
+
+  // Shared by both the instant (local snapshot) and fallback (network)
+  // paths — rebuild a minimal lineup — one entry per distinct artist
+  // actually present in the tracks, in order of first appearance — so
+  // Preview's artist-grouping and color-coding has something to key off.
+  function loadIntoPreview(e: PastEvent, tracks: PlaylistTrack[]) {
+    reset();
+    const seen = new Set<string>();
+    tracks.forEach((t) => {
+      if (!t.sourceArtistId || seen.has(t.sourceArtistId)) return;
+      seen.add(t.sourceArtistId);
+      addArtist({ id: t.sourceArtistId, name: t.artist, genres: [] });
+    });
+    setPlaylist(tracks);
+    setPlaylistMeta(e.name, "");
+    setEventDate(e.eventDate || "");
+    router.push("/lineup/preview");
   }
 
   function handleRemovePlaylist(event: PastEvent, index: number) {
@@ -384,7 +393,7 @@ export default function PlaylistsPage() {
                     haptic(HAPTIC.tap);
                   window.open(e.url, "_blank", "noopener,noreferrer");
                 }}
-                className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+                className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                       <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -394,7 +403,7 @@ export default function PlaylistsPage() {
                   <button
                     data-no-swipe
                     onClick={() => copyLink(e)}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+                    className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
                   >
                     {copiedId === e.id + e.createdAt ? (
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -412,7 +421,7 @@ export default function PlaylistsPage() {
                     data-no-swipe
                     onClick={() => openInPreview(e)}
                     disabled={previewLoadingId === e.id + e.createdAt}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95 disabled:opacity-70"
+                    className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95 disabled:opacity-70"
                   >
                     {previewLoadingId === e.id + e.createdAt ? (
                       <EqSpinner className="text-white" />

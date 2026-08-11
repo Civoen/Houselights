@@ -45,4 +45,9 @@ export interface PastEvent {
   headliner: SpotifyArtist;
   eventDate?: string;
   createdAt: string;
+  // Full track snapshot, saved alongside the aggregate stats since the
+  // create flow already has this in memory. Optional because playlists
+  // saved before this field existed won't have it — Edit falls back to
+  // re-fetching from Spotify for those specifically.
+  tracks?: PlaylistTrack[];
 }
