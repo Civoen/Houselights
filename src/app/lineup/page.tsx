@@ -356,78 +356,6 @@ export default function LineupPage() {
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
-        {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
-
-        {results.length > 0 && (
-          <div className="bg-surface rounded-2xl px-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
-            {results.map((artist, i) => (
-              <div
-                key={artist.id}
-                className={
-                  "flex items-center gap-3 py-2.5 animate-fade-slide-up " + (i > 0 ? "border-t border-line" : "")
-                }
-                style={{ animationDelay: `${i * 30}ms` }}
-              >
-                <ArtistAvatar src={artist.image} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate">{artist.name}</div>
-                  <div className="text-xs text-faint truncate">{artist.genres[0] || copy.lineup.artistFallbackGenre}</div>
-                </div>
-                <button
-                  onClick={() => { haptic(HAPTIC.add); addArtist(artist); setQuery(""); setJustAddedId(artist.id); }}
-                  className="w-7 h-7 rounded-full bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
-                >
-                  +
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="bg-surface rounded-2xl p-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-muted">{copy.lineup.playlistSizeLabel}</span>
-          </div>
-          <SegmentedControl
-            className="mb-3"
-            value={playlistSizeMode}
-            onChange={(id) => setPlaylistSize(id as "songs" | "time", id === "songs" ? (playlistSizeMode === "songs" ? playlistSizeValue : 40) : (playlistSizeMode === "time" ? playlistSizeValue : 60))}
-            options={[
-              { id: "songs", label: copy.lineup.sizeModeSongs },
-              { id: "time", label: copy.lineup.sizeModeTime },
-            ]}
-          />
-          {playlistSizeMode === "songs" ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs text-faint block">{copy.lineup.totalSongsLabel}</span>
-                <span className="text-[11px] text-faint">≈ {fmtMinutes(totalTargetMinutes)}</span>
-              </div>
-              <Stepper value={playlistSizeValue} onChange={(v) => setPlaylistSize("songs", v)} min={5} max={300} step={5} />
-            </div>
-          ) : (
-            <div>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {TIME_PRESETS.map((preset) => (
-                  <button
-                    key={preset.v}
-                    onClick={() => setPlaylistSize("time", preset.v)}
-                    className={
-                      "px-3 py-1.5 rounded-full text-[11px] font-bold transition-all " +
-                      (playlistSizeValue === preset.v
-                        ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
-                        : "bg-surfaceAlt text-muted")
-                    }
-                  >
-                    {preset.l}
-                  </button>
-                ))}
-              </div>
-              <span className="text-[11px] text-faint">≈ {totalTargetSongs} songs</span>
-            </div>
-          )}
-        </div>
-
         <input
           ref={posterInputRef}
           type="file"
@@ -509,6 +437,78 @@ export default function LineupPage() {
             </div>
           </div>
         )}
+
+        {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
+
+        {results.length > 0 && (
+          <div className="bg-surface rounded-2xl px-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
+            {results.map((artist, i) => (
+              <div
+                key={artist.id}
+                className={
+                  "flex items-center gap-3 py-2.5 animate-fade-slide-up " + (i > 0 ? "border-t border-line" : "")
+                }
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                <ArtistAvatar src={artist.image} size={36} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold truncate">{artist.name}</div>
+                  <div className="text-xs text-faint truncate">{artist.genres[0] || copy.lineup.artistFallbackGenre}</div>
+                </div>
+                <button
+                  onClick={() => { haptic(HAPTIC.add); addArtist(artist); setQuery(""); setJustAddedId(artist.id); }}
+                  className="w-7 h-7 rounded-full bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
+                >
+                  +
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="bg-surface rounded-2xl p-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-muted">{copy.lineup.playlistSizeLabel}</span>
+          </div>
+          <SegmentedControl
+            className="mb-3"
+            value={playlistSizeMode}
+            onChange={(id) => setPlaylistSize(id as "songs" | "time", id === "songs" ? (playlistSizeMode === "songs" ? playlistSizeValue : 40) : (playlistSizeMode === "time" ? playlistSizeValue : 60))}
+            options={[
+              { id: "songs", label: copy.lineup.sizeModeSongs },
+              { id: "time", label: copy.lineup.sizeModeTime },
+            ]}
+          />
+          {playlistSizeMode === "songs" ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs text-faint block">{copy.lineup.totalSongsLabel}</span>
+                <span className="text-[11px] text-faint">≈ {fmtMinutes(totalTargetMinutes)}</span>
+              </div>
+              <Stepper value={playlistSizeValue} onChange={(v) => setPlaylistSize("songs", v)} min={5} max={300} step={5} />
+            </div>
+          ) : (
+            <div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {TIME_PRESETS.map((preset) => (
+                  <button
+                    key={preset.v}
+                    onClick={() => setPlaylistSize("time", preset.v)}
+                    className={
+                      "px-3 py-1.5 rounded-full text-[11px] font-bold transition-all " +
+                      (playlistSizeValue === preset.v
+                        ? "bg-grad text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]"
+                        : "bg-surfaceAlt text-muted")
+                    }
+                  >
+                    {preset.l}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-faint">≈ {totalTargetSongs} songs</span>
+            </div>
+          )}
+        </div>
 
         {needsAuth && (
           <div className="bg-surface rounded-2xl p-4 mb-4 text-center shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-pop-in">

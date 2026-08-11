@@ -53,6 +53,7 @@ export default function PlaylistsPage() {
   const [removedPlaylist, setRemovedPlaylist] = useState<{ event: PastEvent; index: number } | null>(null);
   const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
   const [previewErrorId, setPreviewErrorId] = useState<string | null>(null);
+  const [previewErrorKind, setPreviewErrorKind] = useState<"scope" | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const swipe = useSwipeReveal(SWIPE_REVEAL_WIDTH);
@@ -99,10 +100,17 @@ export default function PlaylistsPage() {
     const key = e.id + e.createdAt;
     haptic(HAPTIC.tap);
     setPreviewErrorId(null);
+    setPreviewErrorKind(null);
     setPreviewLoadingId(key);
     try {
       const res = await fetch(`/api/playlist/${e.id}/tracks`);
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.error === "insufficient_scope") {
+          setPreviewErrorKind("scope");
+        }
+        throw new Error();
+      }
       const json = await res.json();
       const sourceTracks: SpotifyTrack[] = json.tracks || [];
       if (sourceTracks.length === 0) throw new Error();
@@ -320,7 +328,7 @@ export default function PlaylistsPage() {
                 window.open(e.url, "_blank", "noopener,noreferrer");
               }}
               className={
-                "relative flex items-start gap-3 bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] cursor-pointer " +
+                "relative bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] cursor-pointer " +
                 (dragIndex === i
                   ? "shadow-2xl z-20"
                   : (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
@@ -340,36 +348,34 @@ export default function PlaylistsPage() {
                   }}
                 />
               )}
-              <span
-                data-no-swipe
-                onPointerDown={handlePointerDown(i)}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerCancel}
-                className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
-                style={{ touchAction: "none" }}
-              >
-                ⠿
-              </span>
-              <ArtistAvatar src={e.headliner?.image} size={38} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <div className="text-sm font-bold truncate">{e.name}</div>
-                  <span className="text-[11px] text-faint flex-shrink-0">
-                    {new Date(e.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
-                  </span>
+              <div className="flex items-start gap-3">
+                <span
+                  data-no-swipe
+                  onPointerDown={handlePointerDown(i)}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={handlePointerCancel}
+                  className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
+                  style={{ touchAction: "none" }}
+                >
+                  ⠿
+                </span>
+                <ArtistAvatar src={e.headliner?.image} size={38} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold truncate mb-1">{e.name}</div>
+                  <div className="text-xs text-muted font-semibold">
+                    {e.trackCount} tracks · {fmtMinutes(e.totalMinutes)}
+                  </div>
                 </div>
-                <div className="text-xs text-muted font-semibold mb-3">
-                  {e.trackCount} tracks · {fmtMinutes(e.totalMinutes)}
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    data-no-swipe
-                    onClick={() => {
-                      haptic(HAPTIC.tap);
-                      window.open(e.url, "_blank", "noopener,noreferrer");
-                    }}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <button
+                  data-no-swipe
+                  onClick={() => {
+                    haptic(HAPTIC.tap);
+                  window.open(e.url, "_blank", "noopener,noreferrer");
+                }}
+                className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                       <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -410,11 +416,21 @@ export default function PlaylistsPage() {
                   </button>
                 </div>
                 {previewErrorId === e.id + e.createdAt && (
-                  <p className="text-[11px] text-red-600 mt-2 text-center">{copy.playlists.previewError}</p>
+                  <p className="text-[11px] text-red-600 mt-2 text-center">
+                    {previewErrorKind === "scope" ? (
+                      <>
+                        {copy.playlists.previewErrorScope}{" "}
+                        <a href="/api/auth/login" className="underline font-bold">
+                          {copy.playlists.reconnect}
+                        </a>
+                      </>
+                    ) : (
+                      copy.playlists.previewError
+                    )}
+                  </p>
                 )}
               </div>
             </div>
-          </div>
           );
         })}
       </div>

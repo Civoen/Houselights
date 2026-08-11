@@ -12,6 +12,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const tracks = await getPlaylistTracks(id, accessToken);
     return NextResponse.json({ tracks });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 502 });
+    const message = e?.message || "";
+    if (message.includes("403")) {
+      return NextResponse.json({ error: "insufficient_scope" }, { status: 403 });
+    }
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

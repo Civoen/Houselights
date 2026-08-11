@@ -24,21 +24,6 @@ function fmtDuration(ms: number) {
   return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
-function orderByArtist(tracks: PlaylistTrack[], artistOrder: string[], direction: "asc" | "desc"): PlaylistTrack[] {
-  const indexMap = new Map(artistOrder.map((id, i) => [id, i]));
-  const withIndex = tracks.map((t, i) => ({
-    t,
-    i,
-    artistIndex: indexMap.get(t.sourceArtistId) ?? artistOrder.length,
-  }));
-  withIndex.sort((a, b) => {
-    const diff = direction === "asc" ? a.artistIndex - b.artistIndex : b.artistIndex - a.artistIndex;
-    if (diff !== 0) return diff;
-    return a.i - b.i;
-  });
-  return withIndex.map((x) => x.t);
-}
-
 interface ArtistGroup {
   id: string;
   name: string;
@@ -83,7 +68,6 @@ export default function PreviewPage() {
   const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
   const totalMin = Math.round(totalMs / 60000);
   const artistCount = new Set(playlist.map((t) => t.sourceArtistId)).size;
-  const artistOrder = lineup.map((a) => a.artist.id);
   const artistColorMap = buildArtistColorMap(lineup);
 
   // Contiguous runs of same-artist tracks in the current flat order — used
@@ -105,13 +89,13 @@ export default function PreviewPage() {
   function handleOrderChange(mode: "hype" | "headliner" | "random") {
     haptic(HAPTIC.reorder);
     setOrderMode(mode);
-    if (mode === "hype") {
-      setPlaylist(orderByArtist(playlist, artistOrder, "desc"));
-    } else if (mode === "headliner") {
-      setPlaylist(orderByArtist(playlist, artistOrder, "asc"));
-    } else if (mode === "random") {
+    if (mode === "random") {
       setPlaylist(shuffleTracks(playlist));
     }
+    // "hype"/"headliner" don't touch the track array or leave the grouped
+    // view at all — they just change which order the artist group CARDS
+    // appear in (handled below, in artistGroups). Only Random deals in
+    // individual songs, since a shuffle scrambles artist order anyway.
   }
 
   function shuffleTracks(tracks: PlaylistTrack[]): PlaylistTrack[] {
@@ -133,9 +117,11 @@ export default function PreviewPage() {
     });
   }
 
-  // Groups tracks by source artist, ordered to match the lineup (headliner
-  // first). Hand-picked tracks from an artist outside the original lineup
-  // still get their own group rather than being silently dropped.
+  // Groups tracks by source artist. Card order follows orderMode: Headliner
+  // (and the default Artists view) puts the lineup's headliner first; Hype
+  // reverses that, building up toward the headliner instead. Hand-picked
+  // tracks from an artist outside the original lineup still get their own
+  // group, appended at the end, rather than being silently dropped.
   const artistGroups: ArtistGroup[] = (() => {
     const byArtist = new Map<string, { track: PlaylistTrack; index: number }[]>();
     playlist.forEach((t, i) => {
@@ -143,9 +129,10 @@ export default function PreviewPage() {
       arr.push({ track: t, index: i });
       byArtist.set(t.sourceArtistId, arr);
     });
+    const orderedLineup = orderMode === "hype" ? [...lineup].reverse() : lineup;
     const groups: ArtistGroup[] = [];
     const seen = new Set<string>();
-    lineup.forEach((entry) => {
+    orderedLineup.forEach((entry) => {
       const tracks = byArtist.get(entry.artist.id);
       if (tracks && tracks.length > 0) {
         groups.push({ id: entry.artist.id, name: entry.artist.name, image: entry.artist.image, tracks });
@@ -262,7 +249,7 @@ export default function PreviewPage() {
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push("/lineup")}
             className="w-9 h-9 rounded-full bg-surfaceAlt text-muted flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ‹
@@ -281,11 +268,14 @@ export default function PreviewPage() {
       <div className="px-6 py-4 max-w-lg mx-auto">
         <div
           onClick={() => {
+            const el = eventDateInputRef.current;
+            if (!el) return;
             try {
-              eventDateInputRef.current?.showPicker?.();
+              el.showPicker?.();
             } catch {
-              /* showPicker isn't supported everywhere — the input is still directly tappable as a fallback */
+              /* showPicker isn't supported everywhere for type="date" — focus() below is the real fallback */
             }
+            el.focus();
           }}
           className="flex items-center justify-between gap-3 bg-surface rounded-2xl px-4 py-3 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)] cursor-pointer"
         >
@@ -332,7 +322,7 @@ export default function PreviewPage() {
           />
         )}
 
-        {playlist.length > 0 && orderMode !== "artists" && (
+        {playlist.length > 0 && orderMode === "random" && (
           <div className="mb-4">
             {segments.map((seg, segIdx) => {
               const color = artistColorMap[seg.artistId] || "#93A0AB";
@@ -406,7 +396,7 @@ export default function PreviewPage() {
           </div>
         )}
 
-        {playlist.length > 0 && orderMode === "artists" && (
+        {playlist.length > 0 && orderMode !== "random" && (
           <div className="mb-4">
             {artistGroups.map((group) => {
               const expanded = expandedArtists.has(group.id);

@@ -114,6 +114,8 @@ export const copy = {
     linkCopied: "Copied!",
     edit: "Edit",
     previewError: "Couldn't load that playlist. Try again.",
+    previewErrorScope: "This needs a fresh Spotify connection to read playlists you've already created.",
+    reconnect: "Reconnect",
     previousEventsLabel: "Previous events",
     previousEventsEmpty: "No past shows yet.",
   },
