@@ -103,7 +103,7 @@ export default function CreatePage() {
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 rounded-full bg-surfaceAlt text-muted flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
+          className="w-11 h-11 rounded-full bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
         >
           ‹
         </button>
@@ -133,7 +133,7 @@ export default function CreatePage() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full bg-surface rounded-xl px-4 py-3 text-sm font-semibold mb-4 outline-none shadow-[0_6px_18px_-12px_rgba(10,31,38,0.2)] transition-shadow focus:ring-2 focus:ring-accent/30"
+          className="w-full bg-surface rounded-xl px-4 py-3 text-[16px] font-semibold mb-4 outline-none shadow-[0_6px_18px_-12px_rgba(10,31,38,0.2)] transition-shadow focus:ring-2 focus:ring-accent/30"
         />
 
         <label className="block text-xs font-extrabold uppercase tracking-wide text-faint mb-1.5">
@@ -143,7 +143,7 @@ export default function CreatePage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="w-full bg-surface rounded-xl px-4 py-3 text-sm mb-2 outline-none resize-none shadow-[0_6px_18px_-12px_rgba(10,31,38,0.2)] transition-shadow focus:ring-2 focus:ring-accent/30"
+          className="w-full bg-surface rounded-xl px-4 py-3 text-[16px] mb-2 outline-none resize-none shadow-[0_6px_18px_-12px_rgba(10,31,38,0.2)] transition-shadow focus:ring-2 focus:ring-accent/30"
         />
 
         {error && <p className="text-xs text-red-600 mt-2 animate-fade-slide-up">{error}</p>}

@@ -221,7 +221,7 @@ export default function PreviewPage() {
               value={addTrackQuery}
               onChange={(e) => searchTrack(artistId, artistName, e.target.value)}
               placeholder={copy.preview.searchSongPlaceholder}
-              className="w-full bg-surfaceAlt rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
+              className="w-full bg-surfaceAlt rounded-xl px-3 py-2 text-[16px] mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
             />
             {addTrackResults.map((t, i) => (
               <div
@@ -250,7 +250,7 @@ export default function PreviewPage() {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={() => router.push("/lineup")}
-            className="w-9 h-9 rounded-full bg-surfaceAlt text-muted flex items-center justify-center transition-transform duration-150 active:scale-90"
+            className="w-11 h-11 rounded-full bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ‹
           </button>
@@ -293,7 +293,7 @@ export default function PreviewPage() {
             value={eventDate}
             onChange={(e) => setEventDate(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            className="bg-transparent text-xs font-semibold text-ink outline-none"
+            className="bg-transparent text-[16px] font-semibold text-ink outline-none"
           />
         </div>
 

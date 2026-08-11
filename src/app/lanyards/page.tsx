@@ -29,6 +29,15 @@ export default function LanyardsPage() {
 
   const earnedCount = Object.keys(unlockedIds).length;
 
+  // Unlocked first, locked after — within each group the original config
+  // order is preserved (Array.prototype.sort is stable).
+  const sortedLanyards = [...LANYARDS].sort((a, b) => {
+    const aUnlocked = !!unlockedIds[a.id];
+    const bUnlocked = !!unlockedIds[b.id];
+    if (aUnlocked === bUnlocked) return 0;
+    return aUnlocked ? -1 : 1;
+  });
+
   return (
     <main className="min-h-screen pb-28 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
@@ -47,7 +56,7 @@ export default function LanyardsPage() {
       <div className="px-6 py-4 max-w-lg mx-auto">
         <div className="grid grid-cols-2 gap-3">
           {loaded &&
-            LANYARDS.map((lanyard, i) => {
+            sortedLanyards.map((lanyard, i) => {
               const earnedOn = unlockedIds[lanyard.id];
               const unlocked = !!earnedOn;
               return (

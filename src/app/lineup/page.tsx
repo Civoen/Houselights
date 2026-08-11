@@ -666,7 +666,7 @@ export default function LineupPage() {
                     runTrackSearch(entry.artist.id, entry.artist.name, e.target.value);
                   }}
                   placeholder={copy.lineup.searchSongPlaceholder}
-                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-sm mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
+                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-[16px] mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
                 />
                 {pickResults.map((t, i) => (
                   <div

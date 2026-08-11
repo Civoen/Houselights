@@ -30,7 +30,7 @@ const config: Config = {
       },
       keyframes: {
         fadeSlideUp: {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "0%": { opacity: "0", transform: "translateY(6px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         popIn: {
@@ -78,7 +78,7 @@ const config: Config = {
         },
       },
       animation: {
-        "fade-slide-up": "fadeSlideUp 0.4s ease-out both",
+        "fade-slide-up": "fadeSlideUp 0.2s ease-out both",
         "pop-in": "popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both",
         "check-draw": "checkDraw 0.5s ease-out 0.1s both",
         "ring-pop": "ringPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both",

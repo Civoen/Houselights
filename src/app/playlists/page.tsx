@@ -58,6 +58,15 @@ export default function PlaylistsPage() {
 
   const swipe = useSwipeReveal(SWIPE_REVEAL_WIDTH);
 
+  // The main list excludes anything whose event date has already passed —
+  // those live in the "Previous events" section instead now. Indices are
+  // preserved from the full `events` array (not re-numbered), since
+  // reorder/remove/drag all operate on that array's real positions.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const visibleEvents = events
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => !(e.eventDate && e.eventDate < todayStr));
+
   useEffect(() => {
     setEvents(getAllEvents());
     setUpcoming(getUpcomingEvents());
@@ -279,7 +288,7 @@ export default function PlaylistsPage() {
       <div className="px-6 py-5 max-w-lg mx-auto">
         {loaded && events.length > 0 && (
           <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
-            {copy.playlists.title} · {events.length}
+            {copy.playlists.title} · {visibleEvents.length}
           </h2>
         )}
         {loaded && events.length === 0 && (
@@ -296,7 +305,7 @@ export default function PlaylistsPage() {
           </div>
         )}
 
-        {events.map((e, i) => {
+        {visibleEvents.map(({ e, i }) => {
           const rowId = e.id + e.createdAt;
           const isSwipingThis = swipe.isDragging(rowId);
           return (

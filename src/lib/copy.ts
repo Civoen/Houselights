@@ -109,7 +109,7 @@ export const copy = {
     subtitleEmpty: "Playlists you've already sent to Spotify",
     emptyMessage: "Nothing here yet — build your first lineup and it'll show up once it's live on Spotify.",
     buildLineupLink: "Build your lineup",
-    open: "Open",
+    open: "Spotify",
     copyLink: "Copy link",
     linkCopied: "Copied!",
     edit: "Edit",
