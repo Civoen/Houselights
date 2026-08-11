@@ -51,7 +51,14 @@ export default function PreviewPage() {
   const [addingSongForId, setAddingSongForId] = useState<string | null>(null);
   const [addTrackQuery, setAddTrackQuery] = useState("");
   const [addTrackResults, setAddTrackResults] = useState<any[]>([]);
-  const [orderMode, setOrderMode] = useState<string>("headliner");
+  // Two independent axes, not one three-way toggle: viewMode picks how the
+  // playlist is displayed (grouped by artist, or a flat song list);
+  // groupOrder only matters while viewMode is "grouped" — it can't combine
+  // with shuffling, since a shuffled order isn't "headliner first" or
+  // "hype" by definition, so shuffle lives as an action on the flat view
+  // instead of a third peer state.
+  const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
+  const [groupOrder, setGroupOrder] = useState<"hype" | "headliner">("headliner");
   const [expandedArtists, setExpandedArtists] = useState<Set<string>>(new Set());
 
   const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
@@ -141,16 +148,16 @@ export default function PreviewPage() {
     }
   });
 
-  function handleOrderChange(mode: "hype" | "headliner" | "random") {
+  function handleGroupOrderChange(order: "hype" | "headliner") {
     haptic(HAPTIC.reorder);
-    setOrderMode(mode);
-    if (mode === "random") {
-      setPlaylist(shuffleTracks(playlist));
-    }
-    // "hype"/"headliner" don't touch the track array or leave the grouped
-    // view at all — they just change which order the artist group CARDS
-    // appear in (handled below, in artistGroups). Only Random deals in
-    // individual songs, since a shuffle scrambles artist order anyway.
+    setGroupOrder(order);
+    // Doesn't touch the track array at all — just changes which order the
+    // artist group CARDS appear in (handled below, in artistGroups).
+  }
+
+  function handleShuffle() {
+    haptic(HAPTIC.reorder);
+    setPlaylist(shuffleTracks(playlist));
   }
 
   function shuffleTracks(tracks: PlaylistTrack[]): PlaylistTrack[] {
@@ -172,7 +179,7 @@ export default function PreviewPage() {
     });
   }
 
-  // Groups tracks by source artist. Card order follows orderMode: Headliner
+  // Groups tracks by source artist. Card order follows groupOrder: Headliner
   // (and the default Artists view) puts the lineup's headliner first; Hype
   // reverses that, building up toward the headliner instead. Hand-picked
   // tracks from an artist outside the original lineup still get their own
@@ -184,7 +191,7 @@ export default function PreviewPage() {
       arr.push({ track: t, index: i });
       byArtist.set(t.sourceArtistId, arr);
     });
-    const orderedLineup = orderMode === "hype" ? [...lineup].reverse() : lineup;
+    const orderedLineup = groupOrder === "hype" ? [...lineup].reverse() : lineup;
     const groups: ArtistGroup[] = [];
     const seen = new Set<string>();
     orderedLineup.forEach((entry) => {
@@ -391,18 +398,51 @@ export default function PreviewPage() {
 
         {playlist.length > 0 && (
           <SegmentedControl
-            className="mb-4"
-            value={orderMode}
-            onChange={(id) => handleOrderChange(id as "hype" | "headliner" | "random")}
+            className="mb-2"
+            value={viewMode}
+            onChange={(id) => {
+              haptic(HAPTIC.tap);
+              setViewMode(id as "grouped" | "flat");
+            }}
             options={[
-              { id: "hype", label: copy.preview.hype },
-              { id: "headliner", label: copy.preview.headliner },
-              { id: "random", label: copy.preview.random },
+              { id: "grouped", label: copy.preview.viewArtists },
+              { id: "flat", label: copy.preview.viewSongs },
             ]}
           />
         )}
 
-        {playlist.length > 0 && orderMode === "random" && (
+        {playlist.length > 0 && viewMode === "grouped" && (
+          <SegmentedControl
+            className="mb-4"
+            value={groupOrder}
+            onChange={(id) => handleGroupOrderChange(id as "hype" | "headliner")}
+            options={[
+              { id: "hype", label: copy.preview.hype },
+              { id: "headliner", label: copy.preview.headliner },
+            ]}
+          />
+        )}
+
+        {playlist.length > 0 && viewMode === "flat" && (
+          <button
+            onClick={handleShuffle}
+            className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 rounded-xl bg-surfaceAlt text-muted text-xs font-bold transition-all duration-150 active:scale-95"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M3 6h3.5c1.5 0 2.5.7 3.3 1.8L15 18c.8 1.1 1.8 1.8 3.3 1.8H21M3 18h3.5c1.5 0 2.5-.7 3.3-1.8l.7-1"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M18 3l3 3-3 3M18 15l3 3-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {copy.preview.shuffle}
+          </button>
+        )}
+
+        {playlist.length > 0 && viewMode === "flat" && (
           <div className="mb-4">
             {segments.map((seg, segIdx) => {
               const color = artistColorMap[seg.artistId] || "#93A0AB";
@@ -476,7 +516,7 @@ export default function PreviewPage() {
           </div>
         )}
 
-        {playlist.length > 0 && orderMode !== "random" && (
+        {playlist.length > 0 && viewMode === "grouped" && (
           <div className="mb-4">
             {artistGroups.map((group, i) => {
               const expanded = expandedArtists.has(group.id);
@@ -574,9 +614,7 @@ export default function PreviewPage() {
                             <AlbumArt src={t.albumImage} size={32} />
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-bold truncate">{t.name}</div>
-                              <div className="text-xs text-faint truncate">
-                                {t.handpicked ? "Handpicked" : "\u00A0"}
-                              </div>
+                              {t.handpicked && <div className="text-xs text-faint truncate">Handpicked</div>}
                             </div>
                             <span className="text-xs text-faint font-semibold flex-shrink-0">{fmtDuration(t.durationMs)}</span>
                             <a

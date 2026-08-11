@@ -30,18 +30,6 @@ function formatCountdown(days: number) {
   return `in ${days} days`;
 }
 
-function daysAgo(dateStr: string) {
-  return Math.round(
-    (new Date(new Date().toDateString()).getTime() - new Date(dateStr + "T00:00:00").getTime()) / 86400000
-  );
-}
-
-function formatPastLabel(days: number) {
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  return `${days}d ago`;
-}
-
 export default function PlaylistsPage() {
   const router = useRouter();
   const { reset, addArtist, setPlaylist, setPlaylistMeta, setEventDate } = useLineup();
@@ -89,6 +77,148 @@ export default function PlaylistsPage() {
       reorder(from, to);
       haptic(HAPTIC.reorder);
     });
+
+  // Shared by both the main Playlists list and Previous Events — the full
+  // card (avatar, stats, swipe-to-delete, Spotify/Copy link/Edit actions).
+  // Drag-reorder is optional since it only makes sense for the main list;
+  // reordering shows that already happened doesn't have a clear purpose.
+  function renderPlaylistCard(e: PastEvent, globalIndex: number, dragEnabled: boolean) {
+    const rowId = e.id + e.createdAt;
+    const isSwipingThis = swipe.isDragging(rowId);
+    const isThisDragging = dragEnabled && dragIndex === globalIndex;
+    const isThisDropTarget = dragEnabled && overIndex === globalIndex && dragIndex !== null;
+
+    return (
+      <div
+        key={rowId}
+        className={"relative rounded-2xl mb-3 " + (isThisDragging ? "" : "overflow-hidden animate-fade-slide-up")}
+        style={isThisDragging ? undefined : { animationDelay: `${globalIndex * 30}ms` }}
+      >
+        <button
+          onClick={() => handleRemovePlaylist(e, globalIndex)}
+          aria-label={`Remove ${e.name}`}
+          className="absolute right-0 top-0 bottom-0 w-[76px] bg-red-500 rounded-r-2xl text-white flex items-center justify-center text-lg font-bold"
+        >
+          ✕
+        </button>
+
+        <div
+          ref={dragEnabled ? setItemRef(globalIndex) : undefined}
+          onPointerDown={swipe.handlePointerDown(rowId)}
+          onPointerMove={swipe.handlePointerMove}
+          onPointerUp={swipe.handlePointerUp}
+          onPointerCancel={swipe.handlePointerCancel}
+          onClick={(ev) => {
+            if ((ev.target as HTMLElement).closest("[data-no-swipe]")) return;
+            if (swipe.consumeWasDragging()) return;
+            window.location.href = e.url;
+          }}
+          className={
+            "relative bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] cursor-pointer " +
+            (isThisDragging ? "shadow-2xl z-20" : isThisDropTarget ? "ring-2 ring-accent" : "")
+          }
+          style={{
+            touchAction: "pan-y",
+            transform: `translateY(${isThisDragging ? dragOffsetY : 0}px) translateX(${swipe.offsetFor(rowId)}px)${isThisDragging ? " scale(1.02)" : ""}`,
+            transition: isThisDragging ? "box-shadow 0.15s ease" : isSwipingThis ? "none" : "transform 0.2s ease, box-shadow 0.15s ease",
+          }}
+        >
+          {swipe.openId === rowId && (
+            <div
+              className="absolute inset-0 z-10 rounded-2xl"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                swipe.close();
+              }}
+            />
+          )}
+          <div className="flex items-start gap-3">
+            {dragEnabled && (
+              <span
+                data-no-swipe
+                onPointerDown={handlePointerDown(globalIndex)}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
+                style={{ touchAction: "none" }}
+              >
+                ⠿
+              </span>
+            )}
+            <ArtistAvatar src={e.headliner?.image} size={38} />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold truncate mb-1">{e.name}</div>
+              <div className="text-xs text-muted font-semibold">
+                {e.trackCount} tracks · {fmtMinutes(e.totalMinutes)}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <button
+              data-no-swipe
+              onClick={() => {
+                haptic(HAPTIC.tap);
+                window.location.href = e.url;
+              }}
+              className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {copy.playlists.open}
+            </button>
+            <button
+              data-no-swipe
+              onClick={() => copyLink(e)}
+              className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+            >
+              {copiedId === rowId ? (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              )}
+              {copiedId === rowId ? copy.playlists.linkCopied : copy.playlists.copyLink}
+            </button>
+            <button
+              data-no-swipe
+              onClick={() => openInPreview(e)}
+              disabled={previewLoadingId === rowId}
+              className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95 disabled:opacity-70"
+            >
+              {previewLoadingId === rowId ? (
+                <EqSpinner className="text-white" />
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path d="M8 5v14l11-7z" fill="currentColor" />
+                </svg>
+              )}
+              {copy.playlists.edit}
+            </button>
+          </div>
+          {previewErrorId === rowId && (
+            <p className="text-[11px] text-red-600 mt-2 text-center">
+              {previewErrorKind === "scope" ? (
+                <>
+                  {copy.playlists.previewErrorScope}{" "}
+                  <a href="/api/auth/login?switch=1" className="underline font-bold">
+                    {copy.playlists.reconnect}
+                  </a>
+                </>
+              ) : (
+                copy.playlists.previewError
+              )}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   function copyLink(e: PastEvent) {
     haptic(HAPTIC.tap);
@@ -266,29 +396,16 @@ export default function PlaylistsPage() {
         </button>
 
         {showPrevious && (
-          <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] px-4 mt-2 animate-fade-slide-up">
+          <div className="mt-2 animate-fade-slide-up">
             {pastEvents.length === 0 ? (
-              <p className="text-xs text-faint py-4 text-center">{copy.playlists.previousEventsEmpty}</p>
+              <div className="bg-surface rounded-2xl px-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
+                <p className="text-xs text-faint py-4 text-center">{copy.playlists.previousEventsEmpty}</p>
+              </div>
             ) : (
-              pastEvents.map((e, i) => (
-                <a
-                  key={e.id + e.createdAt}
-                  href={e.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={
-                    "flex items-center gap-3 py-3.5 transition-transform duration-150 active:scale-[0.99] " +
-                    (i > 0 ? "border-t border-line" : "")
-                  }
-                >
-                  <ArtistAvatar src={e.headliner?.image} size={36} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold truncate">{e.headliner?.name || e.name}</div>
-                    <div className="text-xs text-faint truncate">{e.artistNames.join(", ")}</div>
-                  </div>
-                  <span className="text-xs font-bold text-faint flex-shrink-0">{formatPastLabel(daysAgo(e.eventDate!))}</span>
-                </a>
-              ))
+              pastEvents.map((e) => {
+                const globalIndex = events.findIndex((ev) => ev.id === e.id && ev.createdAt === e.createdAt);
+                return renderPlaylistCard(e, globalIndex, false);
+              })
             )}
           </div>
         )}
@@ -314,143 +431,7 @@ export default function PlaylistsPage() {
           </div>
         )}
 
-        {visibleEvents.map(({ e, i }) => {
-          const rowId = e.id + e.createdAt;
-          const isSwipingThis = swipe.isDragging(rowId);
-          return (
-          <div
-            key={rowId}
-            className={
-              "relative rounded-2xl mb-3 " +
-              (dragIndex === i ? "" : "overflow-hidden animate-fade-slide-up")
-            }
-            style={dragIndex === i ? undefined : { animationDelay: `${i * 30}ms` }}
-          >
-            <button
-              onClick={() => handleRemovePlaylist(e, i)}
-              aria-label={`Remove ${e.name}`}
-              className="absolute right-0 top-0 bottom-0 w-[76px] bg-red-500 text-white flex items-center justify-center text-lg font-bold"
-            >
-              ✕
-            </button>
-
-            <div
-              ref={setItemRef(i)}
-              onPointerDown={swipe.handlePointerDown(rowId)}
-              onPointerMove={swipe.handlePointerMove}
-              onPointerUp={swipe.handlePointerUp}
-              onPointerCancel={swipe.handlePointerCancel}
-              onClick={(ev) => {
-                if ((ev.target as HTMLElement).closest("[data-no-swipe]")) return;
-                if (swipe.consumeWasDragging()) return;
-                window.open(e.url, "_blank", "noopener,noreferrer");
-              }}
-              className={
-                "relative bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] cursor-pointer " +
-                (dragIndex === i
-                  ? "shadow-2xl z-20"
-                  : (overIndex === i && dragIndex !== null ? "ring-2 ring-accent" : ""))
-              }
-              style={{
-                touchAction: "pan-y",
-                transform: `translateY(${dragIndex === i ? dragOffsetY : 0}px) translateX(${swipe.offsetFor(rowId)}px)${dragIndex === i ? " scale(1.02)" : ""}`,
-                transition: dragIndex === i ? "box-shadow 0.15s ease" : isSwipingThis ? "none" : "transform 0.2s ease, box-shadow 0.15s ease",
-              }}
-            >
-              {swipe.openId === rowId && (
-                <div
-                  className="absolute inset-0 z-10 rounded-2xl"
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    swipe.close();
-                  }}
-                />
-              )}
-              <div className="flex items-start gap-3">
-                <span
-                  data-no-swipe
-                  onPointerDown={handlePointerDown(i)}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerCancel}
-                  className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
-                  style={{ touchAction: "none" }}
-                >
-                  ⠿
-                </span>
-                <ArtistAvatar src={e.headliner?.image} size={38} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate mb-1">{e.name}</div>
-                  <div className="text-xs text-muted font-semibold">
-                    {e.trackCount} tracks · {fmtMinutes(e.totalMinutes)}
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 mt-3">
-                <button
-                  data-no-swipe
-                  onClick={() => {
-                    haptic(HAPTIC.tap);
-                  window.open(e.url, "_blank", "noopener,noreferrer");
-                }}
-                className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                      <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    {copy.playlists.open}
-                  </button>
-                  <button
-                    data-no-swipe
-                    onClick={() => copyLink(e)}
-                    className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
-                  >
-                    {copiedId === e.id + e.createdAt ? (
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : (
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
-                        <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" stroke="currentColor" strokeWidth="1.8" />
-                      </svg>
-                    )}
-                    {copiedId === e.id + e.createdAt ? copy.playlists.linkCopied : copy.playlists.copyLink}
-                  </button>
-                  <button
-                    data-no-swipe
-                    onClick={() => openInPreview(e)}
-                    disabled={previewLoadingId === e.id + e.createdAt}
-                    className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95 disabled:opacity-70"
-                  >
-                    {previewLoadingId === e.id + e.createdAt ? (
-                      <EqSpinner className="text-white" />
-                    ) : (
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M8 5v14l11-7z" fill="currentColor" />
-                      </svg>
-                    )}
-                    {copy.playlists.edit}
-                  </button>
-                </div>
-                {previewErrorId === e.id + e.createdAt && (
-                  <p className="text-[11px] text-red-600 mt-2 text-center">
-                    {previewErrorKind === "scope" ? (
-                      <>
-                        {copy.playlists.previewErrorScope}{" "}
-                        <a href="/api/auth/login" className="underline font-bold">
-                          {copy.playlists.reconnect}
-                        </a>
-                      </>
-                    ) : (
-                      copy.playlists.previewError
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {visibleEvents.map(({ e, i }) => renderPlaylistCard(e, i, true))}
       </div>
 
       {removedPlaylist && <UndoToast message={`Removed ${removedPlaylist.event.name}`} onUndo={undoRemovePlaylist} className="bottom-24" />}
