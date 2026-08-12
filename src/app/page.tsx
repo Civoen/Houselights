@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { copy } from "@/lib/copy";
 import { BrandMark } from "@/components/BrandMark";
-import { SettingsButton } from "@/components/SettingsButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const router = useRouter();
@@ -23,10 +21,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex items-center justify-center px-6 pb-16 relative">
-      <div className="absolute top-6 right-6 flex items-center gap-2">
-        <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-        <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-      </div>
       <div className="max-w-sm w-full text-center animate-fade-slide-up">
         <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center animate-lights-up">
           <BrandMark size={56} />

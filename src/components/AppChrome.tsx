@@ -3,16 +3,23 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BottomNav } from "./BottomNav";
 import { WristbandUnlockToast } from "./WristbandUnlockToast";
+import { ThemeToggle } from "./ThemeToggle";
+import { SettingsButton } from "./SettingsButton";
 import { checkForNewWristbands } from "@/lib/wristbandTracker";
 import { WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
 
 const HIDE_NAV_ON = ["/success"];
+// Settings excludes itself for the same reason it never shows its own
+// SettingsButton — you're already there — and it has its own, more
+// detailed theme control further down the page instead of the header icon.
+const HIDE_HEADER_ICONS_ON = ["/success", "/settings"];
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const showNav = !HIDE_NAV_ON.includes(pathname);
+  const showHeaderIcons = !HIDE_HEADER_ICONS_ON.includes(pathname);
   const [unlockQueue, setUnlockQueue] = useState<WristbandDef[]>([]);
   const { mode: colorblindMode } = useColorblindMode();
 
@@ -44,6 +51,19 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
+      {showHeaderIcons && (
+        <div
+          className="fixed left-0 right-0 z-40 pointer-events-none"
+          style={{ top: "calc(env(safe-area-inset-top) + 1.5rem)" }}
+        >
+          <div className="max-w-lg mx-auto px-6 flex justify-end">
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
+              <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
+            </div>
+          </div>
+        </div>
+      )}
       {current && (
         <WristbandUnlockToast
           wristband={current}

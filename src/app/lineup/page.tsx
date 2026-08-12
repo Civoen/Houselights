@@ -14,8 +14,6 @@ import { useReorder } from "@/lib/useReorder";
 import { useRotatingText } from "@/lib/useRotatingText";
 import { useUndoToast } from "@/lib/useUndoToast";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
-import { SettingsButton } from "@/components/SettingsButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode, PastEvent } from "@/lib/types";
 import { getAllEvents } from "@/lib/eventHistory";
 import type { SetlistSummary } from "@/lib/setlistfm";
@@ -387,13 +385,7 @@ export default function LineupPage() {
   return (
     <main className="min-h-screen pb-52 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="font-display text-3xl font-bold tracking-tight">{copy.lineup.title}</h1>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-          </div>
-        </div>
+        <h1 className="font-display text-3xl font-bold tracking-tight mb-3">{copy.lineup.title}</h1>
         {editingPlaylistId && (
           <div className="bg-accent/10 border border-accent/25 rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
             <span className="text-xs font-semibold text-accent">{copy.lineup.editingBanner}</span>

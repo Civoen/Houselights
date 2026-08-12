@@ -4,8 +4,6 @@ import { WRISTBANDS, WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
 import { getUnlockedWristbands } from "@/lib/wristbandTracker";
 import { WristbandIcon } from "@/components/WristbandIcon";
-import { SettingsButton } from "@/components/SettingsButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { copy } from "@/lib/copy";
 
 function formatEarnedDate(dateStr: string) {
@@ -47,13 +45,7 @@ export default function WristbandsPage() {
   return (
     <main className="min-h-screen pb-28 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="font-display text-3xl font-bold tracking-tight">{copy.wristbands.title}</h1>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-          </div>
-        </div>
+        <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.wristbands.title}</h1>
         <p className="text-sm text-muted font-medium">
           {earnedCount} of {WRISTBANDS.length} earned
         </p>

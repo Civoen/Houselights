@@ -9,6 +9,17 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "1.8",
+    notes: [
+      "Cover generation now supports up to 4 artists instead of 2, with each name sized independently so a short one isn't shrunk to match a longer one",
+      "Added Upload/Replace and Delete buttons on the cover upload screen",
+      "Generate cover now fits on screen without scrolling, and Use this cover sits in the same place as the Preview playlist button",
+      "Fixed Settings incorrectly highlighting Playlists on the nav bar — nothing highlights while you're in Settings",
+      "Lights up/down and Settings no longer animate in when opening a new page, since they never move or change",
+      "Playlist descriptions now list the artists first, then the Houselights credit",
+    ],
+  },
+  {
     version: "1.7",
     notes: [
       "Shrunk the cover image picker on the create screen — cover, title, description, and the button should now all fit on one screen without scrolling",
@@ -18,8 +29,7 @@ export const PATCH_NOTES: PatchNoteVersion[] = [
   {
     version: "1.6",
     notes: [
-      "Consolidated every remaining piece of app text into copy.ts — toast messages, error messages, and accessibility labels, not just visible button/label text",
-      "Fixed a real gap where editing a playlist you'd abandoned mid-way could silently overwrite an unrelated playlist you built afterward — New Event now shows a clear banner (with a Cancel edit option) whenever an edit session is still active",
+      "Added a banner when you're still editing an existing playlist, with a Cancel edit option, so it's always clear when saving will update that playlist instead of creating a new one",
     ],
   },
   {
@@ -29,7 +39,7 @@ export const PATCH_NOTES: PatchNoteVersion[] = [
       "Every button shape is now consistent — rounded rectangles throughout, including the filter and toggle buttons",
       "Removed swipe-to-delete on Playlists — the Delete button in each card handles it now, which also removed a few long-standing swipe-related bugs",
       "Removed icons from the Spotify/Copy link/Edit/Delete buttons on Playlists",
-      "Fixed auto-generated playlist names/descriptions sometimes including artists you never added, caused by reading each track's own Spotify-reported artist instead of your actual lineup",
+      "Fixed auto-generated playlist names/descriptions sometimes including artists you never added",
       "Renamed the Encore button to Stats and made it full-width and more prominent",
       "Songs are now indented under their artist on Preview, and the spectrum bar on New Event is thicker",
       "Most Popular/Setlist buttons now use a gradient built from that artist's own color instead of the app-wide gradient",

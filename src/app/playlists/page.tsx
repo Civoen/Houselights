@@ -10,8 +10,6 @@ import { UndoToast } from "@/components/UndoToast";
 import { EqSpinner } from "@/components/EqSpinner";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
-import { SettingsButton } from "@/components/SettingsButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
 
@@ -287,13 +285,7 @@ export default function PlaylistsPage() {
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="font-display text-3xl font-bold tracking-tight">{copy.playlists.title}</h1>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-          </div>
-        </div>
+        <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.playlists.title}</h1>
         <p className="text-sm text-muted font-medium mb-3">
           {events.length > 0
             ? `${events.length} show${events.length === 1 ? "" : "s"} prepped · ${totalSongs} songs queued up`

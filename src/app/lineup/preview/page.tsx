@@ -7,8 +7,6 @@ import { AlbumArt } from "@/components/AlbumArt";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
 import { SegmentedControl } from "@/components/SegmentedControl";
-import { SettingsButton } from "@/components/SettingsButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder, useGroupedReorder } from "@/lib/useReorder";
 import { useUndoToast } from "@/lib/useUndoToast";
@@ -344,10 +342,6 @@ export default function PreviewPage() {
           >
             ‹
           </button>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-          </div>
         </div>
         <h1 className="font-display text-3xl font-bold tracking-tight mb-1">{copy.preview.title}</h1>
         <p className="text-sm text-muted font-medium">

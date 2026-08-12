@@ -1,9 +1,9 @@
 // Generates a Spotify playlist cover client-side — an oversized, rotated
-// wordmark of one or two artist names on a solid background. Two names
-// (or one repeated twice) rather than more: past two lines the rotated
-// text either overlaps illegibly or has to shrink small enough that
-// "oversized" stops being true, so the style itself caps it at two lines
-// by design rather than being an arbitrary limit bolted on afterward.
+// wordmark of one to four artist names on a solid background. Four is the
+// practical ceiling for a real festival-style lineup while keeping each
+// name legible; past that the rotated text would need to shrink small
+// enough that "oversized" stops being true, so the style itself caps it
+// rather than the limit being arbitrary.
 //
 // This is a real advantage over the photo-upload path, not just a
 // different option — it's rendered directly onto a canvas at a size and
@@ -14,10 +14,11 @@
 const CANVAS_SIZE = 640;
 const ROTATION_DEG = -8;
 const TARGET_TEXT_WIDTH = 760; // wider than the canvas — the intended "bleed"
+const MAX_LINES = 4;
 
 export interface WordmarkCoverOptions {
   backgroundColor: string;
-  lines: string[]; // 0, 1, or 2 strings — 1 renders twice (matching the liked example), 0 renders just the background
+  lines: string[]; // 0-4 strings — 1 renders twice (matching the liked example), 0 renders just the background
 }
 
 // Curated dark, saturated backgrounds only — the text is always rendered
@@ -65,24 +66,41 @@ export async function generateWordmarkCover(options: WordmarkCoverOptions): Prom
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
   const lines = options.lines.filter((l) => l.trim().length > 0);
-  const displayLines = lines.length === 1 ? [lines[0], lines[0]] : lines.slice(0, 2);
+  const displayLines = lines.length === 1 ? [lines[0], lines[0]] : lines.slice(0, MAX_LINES);
+  const n = displayLines.length;
 
-  if (displayLines.length > 0) {
+  if (n > 0) {
     ctx.save();
     ctx.translate(CANVAS_SIZE / 2, CANVAS_SIZE / 2);
     ctx.rotate((ROTATION_DEG * Math.PI) / 180);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    const lineGap = 30;
-    const rowOffsets = displayLines.length === 2 ? [-1, 1] : [0];
+    // Each line is sized independently to fill the same target width, on
+    // purpose — a short name like "KISS" and a long one like "Bring Me
+    // The Horizon" are never going to look right at a matching font size,
+    // and forcing them to match undersells the short ones. Lines are
+    // stacked by their own actual size rather than an even shared slot,
+    // so a short line's much larger height is expected to crowd or crop
+    // into its neighbors — that's the poster-collage look, not a bug to
+    // engineer around. Anything drawn past the canvas edge is simply
+    // clipped by the canvas itself, no extra logic needed.
+    const lineGap = 14;
+    const fontSizes = displayLines.map((line) => fitFontSizeToWidth(ctx, line.toUpperCase(), TARGET_TEXT_WIDTH));
+    const totalHeight = fontSizes.reduce((sum, size) => sum + size, 0) + lineGap * (n - 1);
+    let cursorY = -totalHeight / 2;
+
     displayLines.forEach((line, i) => {
-      const text = line.toUpperCase();
-      const fontSize = fitFontSizeToWidth(ctx, text, TARGET_TEXT_WIDTH);
+      const fontSize = fontSizes[i];
       ctx.font = `900 ${fontSize}px Poppins`;
-      ctx.fillStyle = i === 0 ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.6)";
-      const y = rowOffsets[i] * (fontSize / 2 + lineGap / 2);
-      ctx.fillText(text, 0, y);
+      // Gradual fade from fully opaque at the top line down to ~50% by
+      // the last — keeps every line legible even at 4, rather than
+      // flattening straight to one fixed dim tone partway down.
+      const opacity = Math.max(0.5, 0.95 - i * (0.45 / Math.max(1, n - 1)));
+      ctx.fillStyle = `rgba(255,255,255,${opacity})`;
+      const y = cursorY + fontSize / 2;
+      ctx.fillText(line.toUpperCase(), 0, y);
+      cursorY += fontSize + lineGap;
     });
 
     ctx.restore();

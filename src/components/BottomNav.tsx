@@ -45,8 +45,7 @@ const TABS = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const foundIndex = TABS.findIndex((t) => t.match(pathname));
-  const activeIndex = foundIndex === -1 ? 0 : foundIndex;
+  const activeIndex = TABS.findIndex((t) => t.match(pathname));
   const tabWidthPct = 100 / TABS.length;
 
   return (
@@ -55,16 +54,18 @@ export function BottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="relative flex items-stretch h-[72px]">
-        <div
-          className="absolute top-[6px] h-[60px] rounded-full bg-grad shadow-[0_6px_16px_-6px_rgba(17,80,103,0.5)] pointer-events-none"
-          style={{
-            left: `calc(${activeIndex * tabWidthPct}% + 8px)`,
-            width: `calc(${tabWidthPct}% - 16px)`,
-            transition: "left 0.45s cubic-bezier(0.3,1.2,0.4,1), width 0.45s cubic-bezier(0.3,1.2,0.4,1)",
-          }}
-        >
-          <div key={activeIndex} className="w-full h-full rounded-full animate-pill-squeeze" />
-        </div>
+        {activeIndex >= 0 && (
+          <div
+            className="absolute top-[6px] h-[60px] rounded-full bg-grad shadow-[0_6px_16px_-6px_rgba(17,80,103,0.5)] pointer-events-none"
+            style={{
+              left: `calc(${activeIndex * tabWidthPct}% + 8px)`,
+              width: `calc(${tabWidthPct}% - 16px)`,
+              transition: "left 0.45s cubic-bezier(0.3,1.2,0.4,1), width 0.45s cubic-bezier(0.3,1.2,0.4,1)",
+            }}
+          >
+            <div key={activeIndex} className="w-full h-full rounded-full animate-pill-squeeze" />
+          </div>
+        )}
 
         {TABS.map((tab, i) => {
           const active = i === activeIndex;

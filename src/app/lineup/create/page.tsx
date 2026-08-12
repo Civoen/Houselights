@@ -48,7 +48,7 @@ export default function CreatePage() {
       setName(artists[0] ? `${artists[0]} — ${today}` : `My playlist — ${today}`);
     }
     if (!description) {
-      setDescription(`Prepped with Houselights · ${artists.join(", ")}`);
+      setDescription(`${artists.join(", ")} · Prepped with Houselights`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -242,39 +242,63 @@ export default function CreatePage() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-6 max-w-lg mx-auto w-full">
+          <div className="flex-1 overflow-y-auto px-6 pb-[calc(52px+16px+env(safe-area-inset-bottom))] max-w-lg mx-auto w-full">
             {coverTab === "upload" && (
-              <button
-                onClick={() => fileInput.current?.click()}
-                className="w-full aspect-square rounded-2xl bg-gradient-to-br from-teal to-green relative overflow-hidden shadow-[0_16px_36px_-16px_rgba(17,80,103,0.5)] flex items-center justify-center transition-transform duration-200 active:scale-[0.99]"
-                style={
-                  coverImageBase64
-                    ? { backgroundImage: `url(data:image/jpeg;base64,${coverImageBase64})`, backgroundSize: "cover", backgroundPosition: "center" }
-                    : undefined
-                }
-              >
-                {!coverImageBase64 && <span className="text-white text-sm font-bold">{copy.create.uploadPrompt}</span>}
-              </button>
+              <>
+                <button
+                  onClick={() => fileInput.current?.click()}
+                  className="w-full aspect-square rounded-2xl bg-gradient-to-br from-teal to-green relative overflow-hidden shadow-[0_16px_36px_-16px_rgba(17,80,103,0.5)] flex items-center justify-center transition-transform duration-200 active:scale-[0.99]"
+                  style={
+                    coverImageBase64
+                      ? { backgroundImage: `url(data:image/jpeg;base64,${coverImageBase64})`, backgroundSize: "cover", backgroundPosition: "center" }
+                      : undefined
+                  }
+                >
+                  {!coverImageBase64 && <span className="text-white text-sm font-bold">{copy.create.uploadPrompt}</span>}
+                </button>
+                <div className="flex flex-col gap-2 mt-3">
+                  <button
+                    onClick={() => fileInput.current?.click()}
+                    className="w-full py-3 rounded-xl bg-surfaceAlt text-muted text-sm font-bold transition-transform duration-150 active:scale-[0.98]"
+                  >
+                    {coverImageBase64 ? copy.create.replaceCoverButton : copy.create.uploadCoverButton}
+                  </button>
+                  {coverImageBase64 && (
+                    <button
+                      onClick={() => {
+                        setCoverImage(undefined);
+                        setCoverError(null);
+                      }}
+                      className="w-full py-3 rounded-xl bg-surfaceAlt text-red-500 text-sm font-bold transition-all duration-150 hover:bg-red-50 active:scale-[0.98]"
+                    >
+                      {copy.create.deleteCoverButton}
+                    </button>
+                  )}
+                </div>
+              </>
             )}
 
             {coverTab === "generate" && (
               <>
-                <div className="w-full aspect-square rounded-2xl overflow-hidden mb-5 shadow-[0_16px_36px_-16px_rgba(17,80,103,0.5)]">
-                  {genPreview ? (
-                    <img src={`data:image/jpeg;base64,${genPreview}`} className="w-full h-full object-cover" alt="" />
-                  ) : (
-                    <div className="w-full h-full" style={{ background: genBackground }} />
-                  )}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)]">
+                    {genPreview ? (
+                      <img src={`data:image/jpeg;base64,${genPreview}`} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <div className="w-full h-full" style={{ background: genBackground }} />
+                    )}
+                  </div>
+                  <p className="text-xs text-faint flex-1">{copy.create.generatePreviewNote}</p>
                 </div>
 
                 <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">{copy.create.backgroundLabel}</div>
-                <div className="grid grid-cols-4 gap-2 mb-5">
+                <div className="grid grid-cols-8 gap-1.5 mb-4">
                   {COVER_BACKGROUND_SWATCHES.map((sw) => (
                     <button
                       key={sw.id}
                       onClick={() => setGenBackground(sw.color)}
                       aria-label={sw.label}
-                      className="aspect-square rounded-xl transition-transform duration-150 active:scale-95"
+                      className="aspect-square rounded-lg transition-transform duration-150 active:scale-95"
                       style={{
                         background: sw.color,
                         boxShadow: genBackground === sw.color ? "0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent)" : "none",
@@ -284,11 +308,11 @@ export default function CreatePage() {
                 </div>
 
                 <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-1">{copy.create.artistsToIncludeLabel}</div>
-                <p className="text-xs text-faint mb-3">{copy.create.artistsToIncludeNote}</p>
-                <div className="flex flex-col gap-2 mb-6">
+                <p className="text-xs text-faint mb-2">{copy.create.artistsToIncludeNote}</p>
+                <div className="flex flex-col gap-1.5">
                   {lineup.map((entry) => {
                     const selected = genArtistIds.includes(entry.artist.id);
-                    const disabled = !selected && genArtistIds.length >= 2;
+                    const disabled = !selected && genArtistIds.length >= 4;
                     return (
                       <button
                         key={entry.artist.id}
@@ -299,7 +323,7 @@ export default function CreatePage() {
                           )
                         }
                         className={
-                          "flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
+                          "flex items-center gap-3 px-4 py-2 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
                           (selected ? "bg-grad text-white" : "bg-surface text-ink") +
                           (disabled ? " opacity-40" : "")
                         }
@@ -321,15 +345,19 @@ export default function CreatePage() {
                     );
                   })}
                 </div>
-
-                <GradientButton onClick={handleUseGenerated} disabled={genLoading}>
-                  {genLoading ? <EqSpinner /> : copy.create.useThisCover}
-                </GradientButton>
               </>
             )}
 
             {coverError && <p className="text-xs text-red-600 mt-3">{coverError}</p>}
           </div>
+
+          {coverTab === "generate" && (
+            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+              <GradientButton onClick={handleUseGenerated} disabled={genLoading} className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]">
+                {genLoading ? <EqSpinner /> : copy.create.useThisCover}
+              </GradientButton>
+            </div>
+          )}
         </div>
       )}
 

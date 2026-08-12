@@ -5,8 +5,6 @@ import { getAllEvents } from "@/lib/eventHistory";
 import { PastEvent } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { fmtMinutes } from "@/lib/format";
-import { SettingsButton } from "@/components/SettingsButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { copy } from "@/lib/copy";
 
 export default function EncorePage() {
@@ -45,20 +43,14 @@ export default function EncorePage() {
   return (
     <main className="min-h-screen pb-28 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => router.back()}
-              className="w-11 h-11 -ml-2 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
-            >
-              ‹
-            </button>
-            <h1 className="font-display text-3xl font-bold tracking-tight">{copy.encore.title}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-            <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
-          </div>
+        <div className="flex items-center gap-1 mb-2">
+          <button
+            onClick={() => router.back()}
+            className="w-11 h-11 -ml-2 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+          >
+            ‹
+          </button>
+          <h1 className="font-display text-3xl font-bold tracking-tight">{copy.encore.title}</h1>
         </div>
         <p className="text-sm text-muted font-medium">{copy.encore.subtitle}</p>
       </div>
