@@ -16,7 +16,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (connected) router.replace("/playlists");
+    if (connected) router.replace("/lineup");
   }, [connected, router]);
 
   return (

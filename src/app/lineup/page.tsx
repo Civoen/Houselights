@@ -37,7 +37,6 @@ const TIME_PRESETS = [
   { v: 90, l: copy.lineup.timePreset90 },
   { v: 120, l: copy.lineup.timePreset120 },
   { v: 180, l: copy.lineup.timePreset180 },
-  { v: 300, l: copy.lineup.timePreset300 },
 ];
 
 function computeTotalTargetSongs(mode: PlaylistSizeMode, value: number): number {
@@ -163,6 +162,30 @@ export default function LineupPage() {
     restoreArtist(removeToast.payload.entry, removeToast.payload.index);
     dismissRemoveToast();
     haptic(HAPTIC.add);
+  }
+
+  const { toast: clearAllToast, show: showClearAllToast, dismiss: dismissClearAllToast } = useUndoToast<{
+    entries: { entry: LineupArtist; index: number }[];
+  }>();
+
+  function handleClearAll() {
+    if (lineup.length === 0) return;
+    haptic(HAPTIC.remove);
+    const entries = lineup.map((entry, index) => ({ entry, index }));
+    entries.forEach(({ entry }) => removeArtist(entry.artist.id));
+    showClearAllToast(
+      `${copy.common.removedPrefix} ${entries.length} artist${entries.length === 1 ? "" : "s"}`,
+      { entries }
+    );
+  }
+
+  function undoClearAll() {
+    if (!clearAllToast) return;
+    haptic(HAPTIC.add);
+    [...clearAllToast.payload.entries]
+      .sort((a, b) => a.index - b.index)
+      .forEach(({ entry, index }) => restoreArtist(entry, index));
+    dismissClearAllToast();
   }
 
   useEffect(() => {
@@ -412,6 +435,17 @@ export default function LineupPage() {
             className="flex-1 bg-transparent outline-none text-[16px] text-ink placeholder:text-slate-400"
           />
         </div>
+        {needsAuth && (
+          <div className="bg-surface rounded-2xl p-4 mt-3 text-center shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-pop-in">
+            <p className="text-sm text-muted mb-3">{copy.lineup.connectPrompt}</p>
+            <a
+              href="/api/auth/login"
+              className="inline-block bg-grad text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-[0.96]"
+            >
+              {copy.lineup.connectButton}
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
@@ -499,6 +533,10 @@ export default function LineupPage() {
 
         {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
 
+        {!loading && !needsAuth && query.trim().length >= 2 && results.length === 0 && (
+          <p className="text-xs text-faint mb-4">{copy.lineup.noResults}</p>
+        )}
+
         {results.length > 0 && (
           <div className="bg-surface rounded-2xl px-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
             {results.map((artist, i) => (
@@ -540,6 +578,7 @@ export default function LineupPage() {
           </div>
           <SegmentedControl
             className="mb-3"
+            accent
             value={playlistSizeMode}
             onChange={(id) => setPlaylistSize(id as "songs" | "time", id === "songs" ? (playlistSizeMode === "songs" ? playlistSizeValue : 40) : (playlistSizeMode === "time" ? playlistSizeValue : 60))}
             options={[
@@ -553,7 +592,7 @@ export default function LineupPage() {
                 <span className="text-xs text-faint block">{copy.lineup.totalSongsLabel}</span>
                 <span className="text-[11px] text-faint">≈ {fmtMinutes(totalTargetMinutes)}</span>
               </div>
-              <Stepper value={playlistSizeValue} onChange={(v) => setPlaylistSize("songs", v)} min={5} max={300} step={5} />
+              <Stepper value={playlistSizeValue} onChange={(v) => setPlaylistSize("songs", v)} min={5} max={300} step={5} accent />
             </div>
           ) : (
             <div>
@@ -578,18 +617,6 @@ export default function LineupPage() {
           )}
         </div>
 
-        {needsAuth && (
-          <div className="bg-surface rounded-2xl p-4 mb-4 text-center shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-pop-in">
-            <p className="text-sm text-muted mb-3">{copy.lineup.connectPrompt}</p>
-            <a
-              href="/api/auth/login"
-              className="inline-block bg-grad text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-[0.96]"
-            >
-              {copy.lineup.connectButton}
-            </a>
-          </div>
-        )}
-
         <div className="flex items-center gap-2 mt-5 mb-1">
           <span className="text-xs font-extrabold uppercase tracking-wide text-faint">
             {copy.lineup.lineupLabel} · {lineup.length}
@@ -611,14 +638,19 @@ export default function LineupPage() {
                 );
               })}
             </div>
-            <p className="text-[11px] text-faint mt-1.5">
-              ≈ {totalTargetSongs} tracks · ~{fmtMinutes(totalTargetMinutes)} {copy.lineup.estimateSuffix}
-            </p>
           </div>
         )}
 
-        {lineup.length > 1 && (
-          <p className="text-[11px] text-faint mb-3">{copy.lineup.dragHint}</p>
+        {lineup.length > 0 && (
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] text-faint">{lineup.length > 1 ? copy.lineup.dragHint : ""}</p>
+            <button
+              onClick={handleClearAll}
+              className="text-[11px] font-bold text-red-500 underline decoration-dotted underline-offset-4"
+            >
+              {copy.lineup.clearAll}
+            </button>
+          </div>
         )}
 
         {lineup.length === 0 && (
@@ -769,6 +801,13 @@ export default function LineupPage() {
         <UndoToast
           message={removeToast.message}
           onUndo={undoRemoveArtist}
+          className="bottom-[calc(72px+24px+112px+env(safe-area-inset-bottom))]"
+        />
+      )}
+      {clearAllToast && (
+        <UndoToast
+          message={clearAllToast.message}
+          onUndo={undoClearAll}
           className="bottom-[calc(72px+24px+112px+env(safe-area-inset-bottom))]"
         />
       )}

@@ -1,11 +1,13 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
 import { addEvent, updateEvent, getAllEvents } from "@/lib/eventHistory";
+import { triggerWristbandCheck } from "@/lib/wristbandTracker";
 import { resizeImageForSpotifyCover } from "@/lib/resizeImage";
 import { generateWordmarkCover, COVER_BACKGROUND_SWATCHES } from "@/lib/coverGenerator";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -149,6 +151,7 @@ export default function CreatePage() {
       } else {
         addEvent({ id: playlistId || crypto.randomUUID(), createdAt: new Date().toISOString(), ...eventFields });
       }
+      triggerWristbandCheck();
       router.push(
         `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}${coverFailed ? "&coverFailed=1" : ""}${coverFailed && coverErrorStatus ? `&coverErrorStatus=${coverErrorStatus}` : ""}${coverFailed && coverErrorBody ? `&coverErrorBody=${encodeURIComponent(coverErrorBody)}` : ""}${isEditing ? "&updated=1" : ""}`
       );
@@ -214,11 +217,12 @@ export default function CreatePage() {
         {error && <p className="text-xs text-red-600 mt-2 animate-fade-slide-up">{error}</p>}
       </div>
 
-      {coverModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-bg flex flex-col animate-fade-slide-up"
-          style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
-        >
+      {coverModalOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 bg-bg flex flex-col animate-fade-slide-up"
+            style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
           <div className="px-6 pt-6 pb-2 flex items-center justify-between flex-shrink-0 max-w-lg mx-auto w-full">
             <h2 className="font-display text-xl font-bold">{copy.create.coverModalTitle}</h2>
             <button
@@ -309,7 +313,7 @@ export default function CreatePage() {
 
                 <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-1">{copy.create.artistsToIncludeLabel}</div>
                 <p className="text-xs text-faint mb-2">{copy.create.artistsToIncludeNote}</p>
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-2.5">
                   {lineup.map((entry) => {
                     const selected = genArtistIds.includes(entry.artist.id);
                     const disabled = !selected && genArtistIds.length >= 4;
@@ -323,24 +327,24 @@ export default function CreatePage() {
                           )
                         }
                         className={
-                          "flex items-center gap-3 px-4 py-2 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
+                          "flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
                           (selected ? "bg-grad text-white" : "bg-surface text-ink") +
                           (disabled ? " opacity-40" : "")
                         }
                       >
                         <div
                           className={
-                            "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 " +
+                            "w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0 " +
                             (selected ? "bg-white/25 border-white" : "border-lineStrong")
                           }
                         >
                           {selected && (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                               <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
                         </div>
-                        <span className="text-sm font-bold truncate">{entry.artist.name}</span>
+                        <span className="text-base font-bold truncate">{entry.artist.name}</span>
                       </button>
                     );
                   })}
@@ -358,8 +362,9 @@ export default function CreatePage() {
               </GradientButton>
             </div>
           )}
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
         {editingPlaylistId && !submitting && (

@@ -9,6 +9,19 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "1.9",
+    notes: [
+      "Removed the duplicate track/time estimate under the spectrum bar on New Event — same numbers already shown in Playlist size",
+      "Wristband unlocks (like your first playlist) now show immediately instead of waiting until the app is next reopened",
+      "Searching for an artist with no matches now shows a message instead of just showing nothing",
+      "The reconnect prompt now appears right under the search field when a search fails, instead of several sections further down the page",
+      "Headliner and Hype swapped order on Preview",
+      "Songs/Time, Headliner/Hype, and Artists/Songs toggles now use the brand gradient",
+      "Artist selection buttons in Generate cover are larger and harder to mis-click",
+      "Removed the 5hr playlist length option so the rest fit neatly on one row",
+    ],
+  },
+  {
     version: "1.8",
     notes: [
       "Cover generation now supports up to 4 artists instead of 2, with each name sized independently so a short one isn't shrunk to match a longer one",

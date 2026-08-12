@@ -5,7 +5,7 @@ import { BottomNav } from "./BottomNav";
 import { WristbandUnlockToast } from "./WristbandUnlockToast";
 import { ThemeToggle } from "./ThemeToggle";
 import { SettingsButton } from "./SettingsButton";
-import { checkForNewWristbands } from "@/lib/wristbandTracker";
+import { checkForNewWristbands, WRISTBAND_CHECK_EVENT } from "@/lib/wristbandTracker";
 import { WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
 
@@ -24,10 +24,14 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const { mode: colorblindMode } = useColorblindMode();
 
   useEffect(() => {
-    // Checked on initial load and whenever the PWA comes back to the
-    // foreground — a wristband like "Show day" can flip from locked to
-    // unlocked purely because time passed, with no action taken in-app,
-    // so a fresh page load isn't the only moment this needs checking.
+    // Checked on initial load, whenever the PWA comes back to the
+    // foreground (a wristband like "Show day" can flip from locked to
+    // unlocked purely because time passed, with no action taken in-app),
+    // and whenever something explicitly signals a fresh achievement (like
+    // finishing a create/save) — that last one matters because navigating
+    // within the app is a client-side route change, not a fresh mount, so
+    // without it an in-session unlock wouldn't show until the next time
+    // the app happens to be backgrounded and reopened.
     function check() {
       const fresh = checkForNewWristbands();
       if (fresh.length > 0) setUnlockQueue((q) => [...q, ...fresh]);
@@ -37,7 +41,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       if (document.visibilityState === "visible") check();
     }
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    window.addEventListener(WRISTBAND_CHECK_EVENT, check);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener(WRISTBAND_CHECK_EVENT, check);
+    };
   }, []);
 
   const current = unlockQueue[0] || null;

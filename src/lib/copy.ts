@@ -49,7 +49,6 @@ export const copy = {
     timePreset90: "1.5 hr",
     timePreset120: "2 hr",
     timePreset180: "3 hr",
-    timePreset300: "5 hr",
 
     posterUploadIdle: "Upload a poster to auto-add artists",
     posterUploadLoading: "Reading poster...",
@@ -68,6 +67,7 @@ export const copy = {
     connectPrompt: "Connect Spotify to search for artists.",
     connectButton: "Connect Spotify",
     searching: "Searching...",
+    noResults: "No artists found — try a different spelling or search.",
     artistFallbackGenre: "Artist",
     seenPrefix: "You've seen them",
     editingBanner: "Editing an existing playlist — Create will save changes to it instead of making a new one.",
@@ -79,9 +79,9 @@ export const copy = {
 
     lineupLabel: "Your lineup",
     dragHint: "Drag to reorder — whoever's on top is the headliner.",
+    clearAll: "Clear all",
     emptyLineup: "Search for an artist above to get started.",
     headlinerTag: "Headliner",
-    estimateSuffix: "(estimate)",
 
     weightLabel: "Share",
     weightGoalSuffix: "goal",

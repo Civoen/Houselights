@@ -63,3 +63,17 @@ export function resetWristbandProgress() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(SEEN_KEY);
 }
+
+// Used by AppChrome — the only place that actually owns the unlock-toast
+// queue — but the moment a wristband is genuinely earned (e.g. right after
+// a successful playlist create/save) happens in a different component
+// entirely. Rather than lifting the whole toast queue into a new shared
+// Context just for this one signal, a plain custom event lets any
+// component ask AppChrome to check again immediately, on top of its
+// existing mount/visibilitychange triggers.
+export const WRISTBAND_CHECK_EVENT = "houselights:wristband-check";
+
+export function triggerWristbandCheck() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(WRISTBAND_CHECK_EVENT));
+}

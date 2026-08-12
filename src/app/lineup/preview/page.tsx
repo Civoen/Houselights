@@ -396,6 +396,7 @@ export default function PreviewPage() {
         {playlist.length > 0 && (
           <SegmentedControl
             className="mb-0"
+            accent
             value={viewMode}
             onChange={(id) => {
               haptic(HAPTIC.tap);
@@ -420,11 +421,12 @@ export default function PreviewPage() {
         {playlist.length > 0 && viewMode === "grouped" && (
           <SegmentedControl
             className="mb-4 mt-1"
+            accent
             value={groupOrder}
             onChange={(id) => handleGroupOrderChange(id as "hype" | "headliner")}
             options={[
-              { id: "hype", label: copy.preview.hype },
               { id: "headliner", label: copy.preview.headliner },
+              { id: "hype", label: copy.preview.hype },
             ]}
           />
         )}

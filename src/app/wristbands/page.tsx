@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { WRISTBANDS, WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
 import { getUnlockedWristbands } from "@/lib/wristbandTracker";
@@ -87,37 +88,39 @@ export default function WristbandsPage() {
         </div>
       </div>
 
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 bg-bg flex flex-col items-center justify-center px-8 animate-fade-slide-up"
-          style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
-        >
-          <button
-            onClick={() => setSelected(null)}
-            aria-label={copy.common.closeLabel}
-            className="absolute top-[calc(env(safe-area-inset-top)+1.5rem)] right-6 w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+      {selected &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 bg-bg flex flex-col items-center justify-center px-8 animate-fade-slide-up"
+            style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
           >
-            ✕
-          </button>
-          <WristbandIcon
-            icon={selected.icon}
-            unlocked={selectedUnlocked}
-            color={colorForWristband(selected, colorblindMode)}
-            pattern={selected.pattern}
-            gradientId={`wristband-full-${selected.id}`}
-            width={220}
-          />
-          <h2 className={"font-display text-2xl font-bold mt-6 text-center " + (selectedUnlocked ? "" : "text-faint")}>
-            {selected.name}
-          </h2>
-          <p className={"text-sm font-semibold mt-2 text-center " + (selectedUnlocked ? "text-muted" : "text-faint")}>
-            {selected.requirement}
-          </p>
-          {selectedUnlocked && (
-            <p className="text-xs font-bold text-green mt-3">{`${copy.common.earnedPrefix} ${formatEarnedDate(selectedEarnedOn!)}`}</p>
-          )}
-        </div>
-      )}
+            <button
+              onClick={() => setSelected(null)}
+              aria-label={copy.common.closeLabel}
+              className="absolute top-[calc(env(safe-area-inset-top)+1.5rem)] right-6 w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+            >
+              ✕
+            </button>
+            <WristbandIcon
+              icon={selected.icon}
+              unlocked={selectedUnlocked}
+              color={colorForWristband(selected, colorblindMode)}
+              pattern={selected.pattern}
+              gradientId={`wristband-full-${selected.id}`}
+              width={220}
+            />
+            <h2 className={"font-display text-2xl font-bold mt-6 text-center " + (selectedUnlocked ? "" : "text-faint")}>
+              {selected.name}
+            </h2>
+            <p className={"text-sm font-semibold mt-2 text-center " + (selectedUnlocked ? "text-muted" : "text-faint")}>
+              {selected.requirement}
+            </p>
+            {selectedUnlocked && (
+              <p className="text-xs font-bold text-green mt-3">{`${copy.common.earnedPrefix} ${formatEarnedDate(selectedEarnedOn!)}`}</p>
+            )}
+          </div>,
+          document.body
+        )}
     </main>
   );
 }
