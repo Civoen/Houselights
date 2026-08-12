@@ -38,6 +38,7 @@ export interface PlaylistTrack extends SpotifyTrack {
 export interface PastEvent {
   id: string;
   name: string;
+  description?: string;
   url: string;
   trackCount: number;
   totalMinutes: number;

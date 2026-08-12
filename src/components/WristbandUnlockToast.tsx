@@ -1,6 +1,7 @@
 "use client";
 import { WristbandIcon } from "./WristbandIcon";
 import { WristbandDef } from "@/lib/wristbands";
+import { copy } from "@/lib/copy";
 
 export function WristbandUnlockToast({ wristband, color, onClick }: { wristband: WristbandDef; color: string; onClick: () => void }) {
   return (
@@ -20,10 +21,10 @@ export function WristbandUnlockToast({ wristband, color, onClick }: { wristband:
           />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-green">Wristband unlocked</div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-green">{copy.wristbands.unlockedToastLabel}</div>
           <div className="text-sm font-bold truncate">{wristband.name}</div>
         </div>
-        <span className="text-[11px] font-bold text-green flex-shrink-0">View</span>
+        <span className="text-[11px] font-bold text-green flex-shrink-0">{copy.wristbands.viewAction}</span>
       </div>
     </button>
   );

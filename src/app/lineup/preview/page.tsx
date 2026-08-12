@@ -47,6 +47,7 @@ export default function PreviewPage() {
     removeArtist,
     restoreArtist,
     reorderArtist,
+    editingPlaylistId,
   } = useLineup();
   const eventDateInputRef = useRef<HTMLInputElement>(null);
   const [addingSongForId, setAddingSongForId] = useState<string | null>(null);
@@ -70,7 +71,7 @@ export default function PreviewPage() {
   function handleRemoveTrack(track: PlaylistTrack, index: number) {
     haptic(HAPTIC.remove);
     removeTrack(index);
-    showRemoveToast(`Removed ${track.name}`, { track, index });
+    showRemoveToast(`${copy.common.removedPrefix} ${track.name}`, { track, index });
   }
 
   function undoRemoveTrack() {
@@ -103,7 +104,7 @@ export default function PreviewPage() {
     });
     if (addingSongForId === group.id) setAddingSongForId(null);
 
-    showRemoveArtistToast(`Removed ${group.name}`, {
+    showRemoveArtistToast(`${copy.common.removedPrefix} ${group.name}`, {
       lineupEntry,
       lineupIndex,
       tracks: [...group.tracks].sort((a, b) => a.index - b.index),
@@ -668,7 +669,7 @@ export default function PreviewPage() {
           disabled={playlist.length === 0}
           className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]"
         >
-          {copy.preview.createButton}
+          {editingPlaylistId ? copy.preview.continueToSave : copy.preview.createButton}
         </GradientButton>
       </div>
     </main>

@@ -22,6 +22,19 @@ export function addEvent(event: PastEvent) {
   localStorage.setItem(KEY, JSON.stringify(next));
 }
 
+// Updates an existing history entry in place — used when "Save changes" on
+// an edited playlist actually overwrites the original on Spotify, so the
+// local record should reflect that too rather than getting a duplicate
+// entry the way addEvent would produce. createdAt is deliberately left
+// untouched, since it should still reflect when the playlist was first
+// made, not when it was last edited.
+export function updateEvent(id: string, updates: Omit<PastEvent, "id" | "createdAt">) {
+  if (typeof window === "undefined") return;
+  const events = getAllEvents();
+  const next = events.map((e) => (e.id === id ? { ...e, ...updates, id: e.id, createdAt: e.createdAt } : e));
+  localStorage.setItem(KEY, JSON.stringify(next));
+}
+
 export function saveAllEvents(events: PastEvent[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(events));

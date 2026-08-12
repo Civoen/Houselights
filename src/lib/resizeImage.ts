@@ -1,4 +1,5 @@
 "use client";
+import { copy } from "./copy";
 
 // Resizes an image file down to a max dimension and re-encodes as JPEG,
 // keeping the upload small and fast rather than sending a multi-megabyte
@@ -20,7 +21,7 @@ export function resizeImageToBase64(file: File, maxDimension = 1400, quality = 0
       canvas.height = height;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        reject(new Error("Canvas not supported"));
+        reject(new Error(copy.common.canvasNotSupportedError));
         return;
       }
       ctx.drawImage(img, 0, 0, width, height);
@@ -29,7 +30,7 @@ export function resizeImageToBase64(file: File, maxDimension = 1400, quality = 0
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Couldn't read that image"));
+      reject(new Error(copy.common.imageReadError));
     };
     img.src = url;
   });
@@ -59,7 +60,7 @@ export function resizeImageForSpotifyCover(file: File): Promise<string> {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        reject(new Error("Canvas not supported"));
+        reject(new Error(copy.common.canvasNotSupportedError));
         return;
       }
 
@@ -81,11 +82,11 @@ export function resizeImageForSpotifyCover(file: File): Promise<string> {
           return;
         }
       }
-      reject(new Error("Couldn't shrink that image enough for a Spotify cover."));
+      reject(new Error(copy.common.imageShrinkError));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Couldn't read that image"));
+      reject(new Error(copy.common.imageReadError));
     };
     img.src = url;
   });

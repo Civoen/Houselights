@@ -1,16 +1,33 @@
-// All user-facing text in the app lives here. Edit strings directly in this
-// file (in the GitHub repo, or locally) to change wording anywhere in the
-// app without touching component logic. Anything with {placeholders} like
-// {name} is filled in with real data at runtime — keep those tokens intact,
-// just reword the surrounding text.
+// All user-facing text in the app lives here — including error messages,
+// toast message prefixes, and accessibility labels, not just visible
+// labels. Edit strings directly in this file (in the GitHub repo, or
+// locally) to change wording anywhere in the app without touching
+// component logic. Anything with {placeholders} like {name} is filled in
+// with real data at runtime — keep those tokens intact, just reword the
+// surrounding text.
 //
-// A few pieces of text are NOT here on purpose: things assembled from
-// multiple dynamic parts (like "Removed {trackName}" toasts, or the
-// per-artist error list) live next to the logic that builds them, since
-// they're closer to behavior than copy. Everything else — titles, button
-// labels, hints, placeholders, empty states — is here.
+// The one deliberate exception: public/manifest.json (the PWA name and
+// description) can't reference this file at all, since it's a static file
+// the browser reads directly before any of this app's code runs. Once this
+// app is packaged for the App Store, a few more strings will live outside
+// this file for the same reason — permission usage descriptions and the
+// App Store listing itself are read by iOS/App Store Connect, not by this
+// codebase.
 
 export const copy = {
+  common: {
+    appName: "Houselights",
+    settingsLabel: "Settings",
+    closeLabel: "Close",
+    earnedPrefix: "Earned",
+    removedPrefix: "Removed",
+    imageReadError: "Couldn't read that image",
+    imageShrinkError: "Couldn't shrink that image enough for a Spotify cover.",
+    canvasNotSupportedError: "Canvas not supported",
+    setlistNotConfiguredError: "Setlist data isn't set up yet — add a SETLISTFM_API_KEY to enable it.",
+    missingSpotifyIdError: "This artist is missing its Spotify ID — try removing and re-adding them.",
+  },
+
   home: {
     tagline: "Create better playlists.",
     ctaConnect: "Connect Spotify",
@@ -41,12 +58,20 @@ export const copy = {
     posterCancel: "Cancel",
     posterAddOne: "Add",
     posterAddMany: "artists",
+    posterNotConfigured: "Poster reading isn't set up yet — add an ANTHROPIC_API_KEY to enable it.",
+    posterReadError: "Couldn't read that poster.",
+    posterNoNamesFound: "Couldn't find any artist names on that image. Try a clearer photo.",
+    posterImageReadError: "Couldn't read that image.",
+    decreaseLabel: "Decrease",
+    increaseLabel: "Increase",
 
     connectPrompt: "Connect Spotify to search for artists.",
     connectButton: "Connect Spotify",
     searching: "Searching...",
     artistFallbackGenre: "Artist",
     seenPrefix: "You've seen them",
+    editingBanner: "Editing an existing playlist — Create will save changes to it instead of making a new one.",
+    cancelEdit: "Cancel edit",
     timeSuffix: "time",
     timesSuffix: "times",
     lastPlayedPrefix: "Last played",
@@ -90,12 +115,26 @@ export const copy = {
     searchSongPlaceholder: "Search a song title",
     add: "Add",
     createButton: "Create playlist",
+    continueToSave: "Continue to save changes",
   },
 
   create: {
     title: "New playlist",
+    editTitle: "Edit playlist",
+    saveChanges: "Save changes",
+    coverImageError: "Couldn't use that image — try a different one.",
+    saveAsNew: "Save as a new playlist instead",
     addCover: "Add cover",
     changeCover: "Change cover",
+    coverHint: "JPEG or PNG",
+    coverModalTitle: "Cover",
+    uploadTab: "Upload photo",
+    generateTab: "Generate cover",
+    uploadPrompt: "Tap to choose a photo",
+    backgroundLabel: "Background",
+    artistsToIncludeLabel: "Artists to include",
+    artistsToIncludeNote: "Up to 2 — pick one for it to appear twice, or two to pair them.",
+    useThisCover: "Use this cover",
     playlistNameLabel: "Playlist name",
     descriptionLabel: "Description",
     doneButton: "Done",
@@ -105,17 +144,19 @@ export const copy = {
   success: {
     title: "Added to Spotify",
     firstTitle: "Your first show, prepped 🎉",
+    updatedTitle: "Changes saved",
     firstSuffix: "welcome to Houselights",
     coverFailed: "Playlist's live, but the cover image didn't attach — you can add one later from Spotify.",
     openInSpotify: "Open in Spotify",
     buildAnother: "Build another",
+    viewPlaylists: "View playlists",
     fallbackName: "Your playlist",
   },
 
   playlists: {
     title: "Playlists",
     subtitleEmpty: "Playlists you've already sent to Spotify",
-    encoreButton: "Encore",
+    encoreButton: "Stats",
     emptyMessage: "Nothing here yet — build your first lineup and it'll show up once it's live on Spotify.",
     buildLineupLink: "Build your lineup",
     open: "Spotify",
@@ -150,6 +191,10 @@ export const copy = {
     colorblindRedGreenNote: "For protanopia and deuteranopia, the most common types.",
     colorblindBlueYellow: "Blue-yellow",
     colorblindBlueYellowNote: "For tritanopia, a rarer type.",
+    appearanceLabel: "Appearance",
+    lightsUp: "Lights up",
+    lightsDown: "Lights down",
+    appearanceNote: "Switches between light and dark mode.",
     backupLabel: "Backup",
     backupNote: "Everything lives only on this device — export a backup to keep it safe, or bring it to a new phone.",
     exportButton: "Export a backup",
@@ -192,6 +237,8 @@ export const copy = {
 
   wristbands: {
     title: "Wristbands",
+    unlockedToastLabel: "Wristband unlocked",
+    viewAction: "View",
   },
 
   encore: {

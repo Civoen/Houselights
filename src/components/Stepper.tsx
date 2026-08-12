@@ -1,4 +1,6 @@
 "use client";
+import { copy } from "@/lib/copy";
+
 export function Stepper({
   value,
   onChange,
@@ -16,7 +18,7 @@ export function Stepper({
     <div className="flex items-center gap-2">
       <button
         type="button"
-        aria-label="Decrease"
+        aria-label={copy.lineup.decreaseLabel}
         onClick={() => onChange(Math.max(min, value - step))}
         className="w-6 h-6 rounded-lg border border-lineStrong bg-surfaceAlt text-muted text-sm font-bold flex items-center justify-center transition-transform duration-100 active:scale-90 hover:border-accent hover:text-accent"
       >
@@ -27,7 +29,7 @@ export function Stepper({
       </span>
       <button
         type="button"
-        aria-label="Increase"
+        aria-label={copy.lineup.increaseLabel}
         onClick={() => onChange(Math.min(max, value + step))}
         className="w-6 h-6 rounded-lg border border-lineStrong bg-surfaceAlt text-muted text-sm font-bold flex items-center justify-center transition-transform duration-100 active:scale-90 hover:border-accent hover:text-accent"
       >

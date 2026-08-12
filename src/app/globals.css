@@ -16,6 +16,10 @@
   --color-muted: #64748B;
   --color-faint: #93A0AB;
   --color-accent: #115067;
+  --color-green: #14CC9B;
+  --color-teal: #115067;
+  --color-grad-start: #115067;
+  --color-grad-end: #14CC9B;
 }
 
 .dark {
@@ -28,6 +32,33 @@
   --color-muted: #9FB0BB;
   --color-faint: #6C8894;
   --color-accent: #2EDCB0;
+  --color-green: #2EDCB0;
+  --color-teal: #2A6B82;
+  --color-grad-start: #0D3C4D;
+  --color-grad-end: #2EDCB0;
+}
+
+/* Colorblind mode overrides the brand accent/green/teal/gradient colors
+   with palette-safe alternatives — layered on top of light/dark rather
+   than needing a full combined matrix, since these rules are placed after
+   .dark in source order and win for the specific variables they set,
+   regardless of which theme is also active. One set of values per mode is
+   used for both light and dark, since colorblind-safe hues are already
+   chosen at a middle brightness/saturation that reads reasonably on both. */
+[data-cb="redGreen"] {
+  --color-accent: #0072B2;
+  --color-green: #0072B2;
+  --color-teal: #0072B2;
+  --color-grad-start: #0072B2;
+  --color-grad-end: #56B4E9;
+}
+
+[data-cb="blueYellow"] {
+  --color-accent: #2F9E44;
+  --color-green: #40C057;
+  --color-teal: #2F9E44;
+  --color-grad-start: #2F9E44;
+  --color-grad-end: #40C057;
 }
 
 body {
@@ -37,7 +68,7 @@ body {
 }
 
 .bg-grad {
-  background-image: linear-gradient(115deg, #115067, #14CC9B);
+  background-image: linear-gradient(115deg, var(--color-grad-start), var(--color-grad-end));
 }
 
 .nav-frosted {

@@ -17,12 +17,13 @@
 // way SPOTIFY_CLIENT_ID etc. are set.
 
 import { getEnv } from "./env";
+import { copy } from "./copy";
 
 const BASE = "https://api.setlist.fm/rest/1.0";
 
 function requireApiKey(): string {
   const key = getEnv("SETLISTFM_API_KEY");
-  if (!key) throw new Error("Setlist data isn't set up yet — add a SETLISTFM_API_KEY to enable it.");
+  if (!key) throw new Error(copy.common.setlistNotConfiguredError);
   return key;
 }
 

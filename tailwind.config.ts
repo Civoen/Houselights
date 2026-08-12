@@ -13,13 +13,10 @@ const config: Config = {
         ink: "var(--color-ink)",
         muted: "var(--color-muted)",
         faint: "var(--color-faint)",
-        teal: "#115067",
-        green: "#14CC9B",
+        teal: "var(--color-teal)",
+        green: "var(--color-green)",
         navy: "#0A1F26",
         accent: "var(--color-accent)",
-      },
-      backgroundImage: {
-        grad: "linear-gradient(115deg, #115067, #14CC9B)",
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],

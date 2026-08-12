@@ -38,28 +38,28 @@ export function BrandMark({ size = 40, className = "" }: { size?: number; classN
       />
       <defs>
         <linearGradient id="hlLogoGradA" x1="14.5556" y1="205" x2="16.0212" y2="0.00491954" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#115067" />
-          <stop offset="1" stopColor="#14CC9B" />
+          <stop stopColor="var(--color-grad-start)" />
+          <stop offset="1" stopColor="var(--color-grad-end)" />
         </linearGradient>
         <linearGradient id="hlLogoGradB" x1="110.556" y1="205" x2="112.021" y2="0.00491954" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#115067" />
-          <stop offset="1" stopColor="#14CC9B" />
+          <stop stopColor="var(--color-grad-start)" />
+          <stop offset="1" stopColor="var(--color-grad-end)" />
         </linearGradient>
         <linearGradient id="hlLogoGradC" x1="62.5556" y1="165" x2="63.1005" y2="39.999" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#115067" />
-          <stop offset="1" stopColor="#14CC9B" />
+          <stop stopColor="var(--color-grad-start)" />
+          <stop offset="1" stopColor="var(--color-grad-end)" />
         </linearGradient>
         <linearGradient id="hlLogoGradD" x1="12.2222" y1="111" x2="12.2428" y2="81.9992" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#115067" />
-          <stop offset="1" stopColor="#14CC9B" />
+          <stop stopColor="var(--color-grad-start)" />
+          <stop offset="1" stopColor="var(--color-grad-end)" />
         </linearGradient>
         <linearGradient id="hlLogoGradE" x1="60.2222" y1="145" x2="60.2428" y2="115.999" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#115067" />
-          <stop offset="1" stopColor="#14CC9B" />
+          <stop stopColor="var(--color-grad-start)" />
+          <stop offset="1" stopColor="var(--color-grad-end)" />
         </linearGradient>
         <linearGradient id="hlLogoGradF" x1="108.222" y1="82" x2="108.243" y2="52.9992" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#115067" />
-          <stop offset="1" stopColor="#14CC9B" />
+          <stop stopColor="var(--color-grad-start)" />
+          <stop offset="1" stopColor="var(--color-grad-end)" />
         </linearGradient>
       </defs>
     </svg>

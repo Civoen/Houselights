@@ -13,6 +13,7 @@ function SuccessInner() {
   const url = params.get("url");
   const name = params.get("name") || copy.success.fallbackName;
   const isFirst = params.get("first") === "1";
+  const wasUpdated = params.get("updated") === "1";
   const coverFailed = params.get("coverFailed") === "1";
   const coverErrorStatus = params.get("coverErrorStatus");
   const coverErrorBody = params.get("coverErrorBody");
@@ -41,7 +42,7 @@ function SuccessInner() {
           </svg>
         </div>
         <h1 className="font-display text-xl font-bold mb-1">
-          {isFirst ? copy.success.firstTitle : copy.success.title}
+          {wasUpdated ? copy.success.updatedTitle : isFirst ? copy.success.firstTitle : copy.success.title}
         </h1>
         <p className="text-sm text-muted mb-1">{name}</p>
         <p className="text-xs text-faint mb-8">
@@ -73,9 +74,19 @@ function SuccessInner() {
             reset();
             router.push("/lineup");
           }}
-          className="block w-full bg-surface text-muted py-3.5 rounded-2xl font-bold text-sm shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 active:scale-[0.97]"
+          className="block w-full bg-surface text-muted py-3.5 rounded-2xl font-bold text-sm shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 active:scale-[0.97] mb-3"
         >
           {copy.success.buildAnother}
+        </button>
+        <button
+          onClick={() => {
+            haptic(HAPTIC.tap);
+            reset();
+            router.push("/playlists");
+          }}
+          className="block w-full bg-surface text-muted py-3.5 rounded-2xl font-bold text-sm shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 active:scale-[0.97]"
+        >
+          {copy.success.viewPlaylists}
         </button>
       </div>
     </main>

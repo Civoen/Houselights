@@ -4,6 +4,7 @@ import { LineupProvider } from "@/lib/lineupStore";
 import { ThemeProvider } from "@/lib/themeStore";
 import { ColorblindProvider } from "@/lib/colorblindStore";
 import { AppChrome } from "@/components/AppChrome";
+import { copy } from "@/lib/copy";
 
 // iOS's icon-grow launch animation ignores manifest.json's background_color
 // entirely (that's an Android/Chrome behavior) — without explicit
@@ -27,13 +28,13 @@ const startupImage = splashDevices.flatMap(({ file, w, h, dpr }) =>
 );
 
 export const metadata: Metadata = {
-  title: "Houselights",
-  description: "Create better playlists.",
+  title: copy.common.appName,
+  description: copy.home.tagline,
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Houselights",
+    title: copy.common.appName,
     startupImage,
   },
 };

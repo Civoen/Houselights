@@ -87,7 +87,7 @@ export default function WristbandsPage() {
                     {wristband.requirement}
                   </div>
                   {unlocked && (
-                    <div className="text-[10px] font-bold mt-0.5 text-green">{`Earned ${formatEarnedDate(earnedOn)}`}</div>
+                    <div className="text-[10px] font-bold mt-0.5 text-green">{`${copy.common.earnedPrefix} ${formatEarnedDate(earnedOn)}`}</div>
                   )}
                 </button>
               );
@@ -102,7 +102,7 @@ export default function WristbandsPage() {
         >
           <button
             onClick={() => setSelected(null)}
-            aria-label="Close"
+            aria-label={copy.common.closeLabel}
             className="absolute top-[calc(env(safe-area-inset-top)+1.5rem)] right-6 w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ✕
@@ -122,7 +122,7 @@ export default function WristbandsPage() {
             {selected.requirement}
           </p>
           {selectedUnlocked && (
-            <p className="text-xs font-bold text-green mt-3">{`Earned ${formatEarnedDate(selectedEarnedOn!)}`}</p>
+            <p className="text-xs font-bold text-green mt-3">{`${copy.common.earnedPrefix} ${formatEarnedDate(selectedEarnedOn!)}`}</p>
           )}
         </div>
       )}

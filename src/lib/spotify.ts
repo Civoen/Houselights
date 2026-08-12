@@ -413,6 +413,39 @@ export async function getPlaylistTracks(playlistId: string, accessToken: string)
   return tracks;
 }
 
+async function uploadPlaylistCover(playlistId: string, accessToken: string, coverImageBase64: string) {
+  let coverUploaded = false;
+  let coverErrorStatus: number | undefined;
+  let coverErrorBody: string | undefined;
+  try {
+    const coverRes = await fetch(`${API_BASE}/playlists/${playlistId}/images`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "image/jpeg",
+      },
+      body: coverImageBase64,
+    });
+    if (coverRes.ok) {
+      coverUploaded = true;
+    } else {
+      // Cover upload is best-effort — the playlist itself still succeeds
+      // without one — but a silent catch() here previously meant this
+      // failure (over Spotify's 256KB/JPEG-only limit, a stale token,
+      // etc.) never surfaced anywhere, not even in logs. Now it's
+      // captured here directly rather than only in server logs, which
+      // require live-tailing Cloudflare's dashboard to ever see.
+      coverErrorStatus = coverRes.status;
+      coverErrorBody = (await coverRes.text().catch(() => "")).slice(0, 200);
+      console.error("Cover image upload failed", coverErrorStatus, coverErrorBody);
+    }
+  } catch (err: any) {
+    coverErrorBody = err?.message || "network error";
+    console.error("Cover image upload threw", err);
+  }
+  return { coverUploaded, coverErrorStatus, coverErrorBody };
+}
+
 export async function createSpotifyPlaylist(params: {
   accessToken: string;
   name: string;
@@ -442,43 +475,67 @@ export async function createSpotifyPlaylist(params: {
     });
   }
 
-  let coverUploaded = false;
-  let coverErrorStatus: number | undefined;
-  let coverErrorBody: string | undefined;
-  if (params.coverImageBase64) {
-    try {
-      const coverRes = await fetch(`${API_BASE}/playlists/${playlist.id}/images`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${params.accessToken}`,
-          "Content-Type": "image/jpeg",
-        },
-        body: params.coverImageBase64,
-      });
-      if (coverRes.ok) {
-        coverUploaded = true;
-      } else {
-        // Cover upload is best-effort — the playlist itself still succeeds
-        // without one — but a silent catch() here previously meant this
-        // failure (over Spotify's 256KB/JPEG-only limit, a stale token,
-        // etc.) never surfaced anywhere, not even in logs. Now it's
-        // captured here directly rather than only in server logs, which
-        // require live-tailing Cloudflare's dashboard to ever see.
-        coverErrorStatus = coverRes.status;
-        coverErrorBody = (await coverRes.text().catch(() => "")).slice(0, 200);
-        console.error("Cover image upload failed", coverErrorStatus, coverErrorBody);
-      }
-    } catch (err: any) {
-      coverErrorBody = err?.message || "network error";
-      console.error("Cover image upload threw", err);
-    }
-  }
+  const cover = params.coverImageBase64
+    ? await uploadPlaylistCover(playlist.id, params.accessToken, params.coverImageBase64)
+    : { coverUploaded: false, coverErrorStatus: undefined, coverErrorBody: undefined };
 
   return {
     id: playlist.id,
     url: playlist.external_urls?.spotify as string,
-    coverUploaded,
-    coverErrorStatus,
-    coverErrorBody,
+    ...cover,
+  };
+}
+
+// Updates an existing playlist in place, rather than creating a new one —
+// used by "Save changes" when a playlist was loaded via Edit. Spotify's
+// February 2026 changes renamed PUT /playlists/{id}/tracks (the "replace
+// all items" endpoint) to PUT /playlists/{id}/items; that rename is easy
+// to miss since the POST (append) variant at the same new path already
+// existed and worked, so this could look like it's working when it's
+// actually silently hitting the old, now-removed path.
+export async function updateSpotifyPlaylist(params: {
+  accessToken: string;
+  playlistId: string;
+  name: string;
+  description: string;
+  trackUris: string[];
+  coverImageBase64?: string;
+}) {
+  await spotifyFetch(`/playlists/${params.playlistId}`, params.accessToken, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: params.name, description: params.description }),
+  });
+
+  // Replacing with an empty array has been reported to 502 on Spotify's
+  // side — the UI is expected to block saving an empty playlist before it
+  // ever reaches here, but this guard avoids hitting that specific
+  // failure mode even if that validation is ever bypassed.
+  if (params.trackUris.length > 0) {
+    const first100 = params.trackUris.slice(0, 100);
+    await spotifyFetch(`/playlists/${params.playlistId}/items`, params.accessToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uris: first100 }),
+    });
+
+    for (let i = 100; i < params.trackUris.length; i += 100) {
+      const chunk = params.trackUris.slice(i, i + 100);
+      await spotifyFetch(`/playlists/${params.playlistId}/items`, params.accessToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uris: chunk }),
+      });
+    }
+  }
+
+  const cover = params.coverImageBase64
+    ? await uploadPlaylistCover(params.playlistId, params.accessToken, params.coverImageBase64)
+    : { coverUploaded: false, coverErrorStatus: undefined, coverErrorBody: undefined };
+
+  return {
+    id: params.playlistId,
+    url: `https://open.spotify.com/playlist/${params.playlistId}`,
+    ...cover,
   };
 }

@@ -28,6 +28,11 @@ interface LineupState {
   addTrackToPlaylist: (track: PlaylistTrack) => void;
   setPlaylistMeta: (name: string, description: string) => void;
   setCoverImage: (base64: string | undefined) => void;
+  // Set when a lineup was loaded via Edit from an existing playlist — lets
+  // the Create screen offer "Save changes" (update that playlist in place)
+  // instead of only ever creating a new one. Null for a normal fresh build.
+  editingPlaylistId: string | null;
+  setEditingPlaylistId: (id: string | null) => void;
   reset: () => void;
 }
 
@@ -46,6 +51,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
   const [eventDate, setEventDateState] = useState("");
   const [playlistSizeMode, setPlaylistSizeMode] = useState<PlaylistSizeMode>(DEFAULT_SIZE_MODE);
   const [playlistSizeValue, setPlaylistSizeValue] = useState(DEFAULT_SIZE_VALUE);
+  const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -60,6 +66,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setEventDateState(parsed.eventDate || "");
         setPlaylistSizeMode(parsed.playlistSizeMode || DEFAULT_SIZE_MODE);
         setPlaylistSizeValue(parsed.playlistSizeValue || DEFAULT_SIZE_VALUE);
+        setEditingPlaylistId(parsed.editingPlaylistId || null);
       } catch {}
     }
   }, []);
@@ -76,9 +83,20 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         eventDate,
         playlistSizeMode,
         playlistSizeValue,
+        editingPlaylistId,
       })
     );
-  }, [lineup, playlist, playlistName, playlistDescription, coverImageBase64, eventDate, playlistSizeMode, playlistSizeValue]);
+  }, [
+    lineup,
+    playlist,
+    playlistName,
+    playlistDescription,
+    coverImageBase64,
+    eventDate,
+    playlistSizeMode,
+    playlistSizeValue,
+    editingPlaylistId,
+  ]);
 
   const addArtist = useCallback((artist: SpotifyArtist) => {
     setLineup((prev) => {
@@ -193,6 +211,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setEventDateState("");
     setPlaylistSizeMode(DEFAULT_SIZE_MODE);
     setPlaylistSizeValue(DEFAULT_SIZE_VALUE);
+    setEditingPlaylistId(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
@@ -224,6 +243,8 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         addTrackToPlaylist,
         setPlaylistMeta,
         setCoverImage,
+        editingPlaylistId,
+        setEditingPlaylistId,
         reset,
       }}
     >

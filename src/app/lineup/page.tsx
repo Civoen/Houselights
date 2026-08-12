@@ -85,6 +85,8 @@ export default function LineupPage() {
     addPickedTrack,
     removePickedTrack,
     setPlaylist,
+    editingPlaylistId,
+    setEditingPlaylistId,
   } = useLineup();
 
   const [query, setQuery] = useState("");
@@ -99,7 +101,6 @@ export default function LineupPage() {
   const [posterError, setPosterError] = useState<string | null>(null);
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
-  const [addedResultId, setAddedResultId] = useState<string | null>(null);
   const [history, setHistory] = useState<PastEvent[]>([]);
   const [setlistSummaries, setSetlistSummaries] = useState<Record<string, SetlistSummary | null>>({});
   const fetchedSummaryIds = useRef<Set<string>>(new Set());
@@ -156,7 +157,7 @@ export default function LineupPage() {
   function handleRemoveArtist(entry: LineupArtist, index: number) {
     haptic(HAPTIC.remove);
     removeArtist(entry.artist.id);
-    showRemoveToast(`Removed ${entry.artist.name}`, { entry, index });
+    showRemoveToast(`${copy.common.removedPrefix} ${entry.artist.name}`, { entry, index });
   }
 
   function undoRemoveArtist() {
@@ -176,14 +177,7 @@ export default function LineupPage() {
     haptic(HAPTIC.add);
     addArtist(artist);
     setJustAddedId(artist.id);
-    setAddedResultId(artist.id);
-    // Clearing the search immediately would remove this row from the DOM
-    // before the checkmark/dim animation above ever had a chance to be
-    // seen — this short delay just gives it time to actually play out.
-    setTimeout(() => {
-      setQuery("");
-      setAddedResultId(null);
-    }, 350);
+    setQuery("");
   }
 
   useEffect(() => {
@@ -234,16 +228,16 @@ export default function LineupPage() {
       });
       const json = await res.json();
       if (res.status === 501) {
-        setPosterError("Poster reading isn't set up yet — add an ANTHROPIC_API_KEY to enable it.");
+        setPosterError(copy.lineup.posterNotConfigured);
         return;
       }
       if (!res.ok) {
-        setPosterError(json.error || "Couldn't read that poster.");
+        setPosterError(json.error || copy.lineup.posterReadError);
         return;
       }
       const names: string[] = json.names || [];
       if (names.length === 0) {
-        setPosterError("Couldn't find any artist names on that image. Try a clearer photo.");
+        setPosterError(copy.lineup.posterNoNamesFound);
         return;
       }
       const matched = await Promise.all(
@@ -262,7 +256,7 @@ export default function LineupPage() {
       setPosterReview(matched);
       haptic(HAPTIC.tap);
     } catch (err: any) {
-      setPosterError(err.message || "Couldn't read that image.");
+      setPosterError(err.message || copy.lineup.posterImageReadError);
     } finally {
       setPosterLoading(false);
       if (posterInputRef.current) posterInputRef.current.value = "";
@@ -289,7 +283,7 @@ export default function LineupPage() {
     let error: string | undefined;
 
     if (!entry.artist.id) {
-      error = "This artist is missing its Spotify ID — try removing and re-adding them.";
+      error = copy.common.missingSpotifyIdError;
     } else {
       const params = new URLSearchParams({
         artistId: entry.artist.id,
@@ -400,6 +394,20 @@ export default function LineupPage() {
             <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
           </div>
         </div>
+        {editingPlaylistId && (
+          <div className="bg-accent/10 border border-accent/25 rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
+            <span className="text-xs font-semibold text-accent">{copy.lineup.editingBanner}</span>
+            <button
+              onClick={() => {
+                haptic(HAPTIC.tap);
+                setEditingPlaylistId(null);
+              }}
+              className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0"
+            >
+              {copy.lineup.cancelEdit}
+            </button>
+          </div>
+        )}
         <div className="bg-surface rounded-2xl px-4 py-3 flex items-center gap-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="#93A0AB" strokeWidth="2.2" />
@@ -505,11 +513,9 @@ export default function LineupPage() {
               <div
                 key={artist.id}
                 className={
-                  "flex items-center gap-3 py-2.5 transition-all duration-300 " +
-                  (i > 0 ? "border-t border-line " : "") +
-                  (addedResultId === artist.id ? "opacity-40 scale-[0.98]" : "animate-fade-slide-up")
+                  "flex items-center gap-3 py-2.5 animate-fade-slide-up " + (i > 0 ? "border-t border-line" : "")
                 }
-                style={addedResultId === artist.id ? undefined : { animationDelay: `${i * 30}ms` }}
+                style={{ animationDelay: `${i * 30}ms` }}
               >
                 <ArtistAvatar src={artist.image} size={36} />
                 <div className="flex-1 min-w-0">
@@ -527,19 +533,9 @@ export default function LineupPage() {
                 </div>
                 <button
                   onClick={() => handleAddFromSearch(artist)}
-                  disabled={addedResultId === artist.id}
-                  className={
-                    "w-7 h-7 rounded-lg text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-all duration-200 " +
-                    (addedResultId === artist.id ? "bg-green scale-110" : "bg-grad hover:scale-110 active:scale-90")
-                  }
+                  className="w-7 h-7 rounded-lg bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
                 >
-                  {addedResultId === artist.id ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                      <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  ) : (
-                    "+"
-                  )}
+                  +
                 </button>
               </div>
             ))}
@@ -611,7 +607,7 @@ export default function LineupPage() {
 
         {lineup.length > 0 && (
           <div className="mb-3">
-            <div className="w-full h-2.5 rounded-full overflow-hidden flex bg-surfaceAlt">
+            <div className="w-full h-5 rounded-full overflow-hidden flex bg-surfaceAlt">
               {lineup.map((entry, i) => {
                 const pct = (entry.weight / totalWeight) * 100;
                 return (
@@ -698,7 +694,7 @@ export default function LineupPage() {
                 ✕
               </button>
             </div>
-            <FilterChips value={entry.filters[0] ?? "popular"} onChange={(f) => setFilter(entry.artist.id, f)} />
+            <FilterChips value={entry.filters[0] ?? "popular"} onChange={(f) => setFilter(entry.artist.id, f)} artistColor={artistColor} />
             {lineup.length > 1 && (
               <div className="flex items-center justify-between mb-3 animate-fade-slide-up">
                 <span className="text-xs text-faint font-semibold">

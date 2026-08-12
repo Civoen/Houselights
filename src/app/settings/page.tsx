@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { saveAllEvents } from "@/lib/eventHistory";
 import { resetWristbandProgress } from "@/lib/wristbandTracker";
 import { useColorblindMode, ColorblindMode } from "@/lib/colorblindStore";
+import { useTheme } from "@/lib/themeStore";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { buildBackupPayload, backupFilename, parseBackup, applyBackup } from "@/lib/backup";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { copy } from "@/lib/copy";
@@ -14,6 +16,7 @@ type ConfirmTarget = "deleteAll" | "clearProgress" | null;
 export default function SettingsPage() {
   const router = useRouter();
   const { mode: colorblindMode, setMode: setColorblindMode } = useColorblindMode();
+  const { theme } = useTheme();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   const [doneTarget, setDoneTarget] = useState<ConfirmTarget>(null);
@@ -168,6 +171,17 @@ export default function SettingsPage() {
               );
             })}
           </div>
+        </div>
+
+        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.appearanceLabel}</div>
+        <div className="bg-surface rounded-2xl p-4 mb-6 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold">
+              {theme === "dark" ? copy.settings.lightsDown : copy.settings.lightsUp}
+            </div>
+            <div className="text-xs text-faint mt-0.5">{copy.settings.appearanceNote}</div>
+          </div>
+          <ThemeToggle className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted flex-shrink-0" />
         </div>
 
         <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.accountLabel}</div>

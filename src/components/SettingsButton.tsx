@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
+import { copy } from "@/lib/copy";
 
 export function SettingsButton({ className = "" }: { className?: string }) {
   return (
     <Link
       href="/settings"
-      aria-label="Settings"
+      aria-label={copy.common.settingsLabel}
       className={
         "flex items-center justify-center transition-transform duration-150 active:scale-90 " + className
       }

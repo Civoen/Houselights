@@ -16,12 +16,15 @@ export function ColorblindProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const stored = localStorage.getItem(COLORBLIND_STORAGE_KEY) as ColorblindMode | null;
-    if (stored === "redGreen" || stored === "blueYellow" || stored === "off") setModeState(stored);
+    const initial = stored === "redGreen" || stored === "blueYellow" ? stored : "off";
+    setModeState(initial);
+    document.documentElement.setAttribute("data-cb", initial);
   }, []);
 
   const setMode = useCallback((m: ColorblindMode) => {
     setModeState(m);
     localStorage.setItem(COLORBLIND_STORAGE_KEY, m);
+    document.documentElement.setAttribute("data-cb", m);
   }, []);
 
   return <ColorblindContext.Provider value={{ mode, setMode }}>{children}</ColorblindContext.Provider>;

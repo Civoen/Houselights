@@ -9,6 +9,35 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "1.7",
+    notes: [
+      "Shrunk the cover image picker on the create screen — cover, title, description, and the button should now all fit on one screen without scrolling",
+      "Added cover generation as an alternative to uploading a photo — pick a background color and up to 2 artists, and it renders an oversized rotated wordmark cover directly (no upload, no compression issues)",
+    ],
+  },
+  {
+    version: "1.6",
+    notes: [
+      "Consolidated every remaining piece of app text into copy.ts — toast messages, error messages, and accessibility labels, not just visible button/label text",
+      "Fixed a real gap where editing a playlist you'd abandoned mid-way could silently overwrite an unrelated playlist you built afterward — New Event now shows a clear banner (with a Cancel edit option) whenever an edit session is still active",
+    ],
+  },
+  {
+    version: "1.5",
+    notes: [
+      "Edit now has a real Save changes option that overwrites the original playlist on Spotify, instead of always creating a new one — with Save as a new playlist instead if you want a copy",
+      "Every button shape is now consistent — rounded rectangles throughout, including the filter and toggle buttons",
+      "Removed swipe-to-delete on Playlists — the Delete button in each card handles it now, which also removed a few long-standing swipe-related bugs",
+      "Removed icons from the Spotify/Copy link/Edit/Delete buttons on Playlists",
+      "Fixed auto-generated playlist names/descriptions sometimes including artists you never added, caused by reading each track's own Spotify-reported artist instead of your actual lineup",
+      "Renamed the Encore button to Stats and made it full-width and more prominent",
+      "Songs are now indented under their artist on Preview, and the spectrum bar on New Event is thicker",
+      "Most Popular/Setlist buttons now use a gradient built from that artist's own color instead of the app-wide gradient",
+      "Added a View Playlists button to the success screen",
+      "Fixed Next Up on Playlists still showing more than one result in some cases",
+    ],
+  },
+  {
     version: "1.4",
     notes: [
       "Added Export/Import backup in Settings, so your history isn't only ever on one device",
