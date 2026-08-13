@@ -3,6 +3,7 @@
 // need to understand the internal shape of any of them.
 const BACKUP_KEYS = [
   "houselights_events_v1",
+  "houselights_drafts_v1",
   "houselights_wristbands_seen_v1",
   "houselights_wristbands_earned_v1",
   "houselights_theme",

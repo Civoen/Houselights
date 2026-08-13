@@ -16,6 +16,7 @@ import { useUndoToast } from "@/lib/useUndoToast";
 import { resizeImageToBase64 } from "@/lib/resizeImage";
 import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode, PastEvent } from "@/lib/types";
 import { getAllEvents } from "@/lib/eventHistory";
+import { useConnectionStatus } from "@/lib/useConnectionStatus";
 import type { SetlistSummary } from "@/lib/setlistfm";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
@@ -68,6 +69,7 @@ export default function LineupPage() {
   const { mode: colorblindMode } = useColorblindMode();
   const ARTIST_COLORS = getArtistColors(colorblindMode);
   const router = useRouter();
+  const connected = useConnectionStatus();
   const {
     lineup,
     playlistSizeMode,
@@ -91,6 +93,7 @@ export default function LineupPage() {
   const [results, setResults] = useState<SpotifyArtist[]>([]);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [pickingFor, setPickingFor] = useState<string | null>(null);
   const [pickQuery, setPickQuery] = useState("");
   const [pickResults, setPickResults] = useState<SpotifyTrack[]>([]);
@@ -205,20 +208,33 @@ export default function LineupPage() {
   useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
+      setSearchError(null);
       return;
     }
     const handle = setTimeout(async () => {
       setLoading(true);
-      const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(query)}`);
-      if (res.status === 401) {
-        setNeedsAuth(true);
+      setSearchError(null);
+      try {
+        const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(query)}`);
+        if (res.status === 401) {
+          setNeedsAuth(true);
+          setResults([]);
+        } else if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          setNeedsAuth(false);
+          setResults([]);
+          setSearchError(errJson.error || `${copy.lineup.searchFailedPrefix} (HTTP ${res.status})`);
+        } else {
+          const json = await res.json();
+          setResults(json.artists || []);
+          setNeedsAuth(false);
+        }
+      } catch (err: any) {
         setResults([]);
-      } else {
-        const json = await res.json();
-        setResults(json.artists || []);
-        setNeedsAuth(false);
+        setSearchError(err.message || copy.lineup.searchFailedPrefix);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }, 350);
     return () => clearTimeout(handle);
   }, [query]);
@@ -417,6 +433,14 @@ export default function LineupPage() {
     <main className="min-h-screen pb-52 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-3">{copy.lineup.title}</h1>
+        {connected === false && !editingPlaylistId && (
+          <div className="bg-surfaceAlt rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
+            <span className="text-xs font-semibold text-muted">{copy.lineup.guestBanner}</span>
+            <a href="/api/auth/login" className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0">
+              {copy.lineup.guestBannerAction}
+            </a>
+          </div>
+        )}
         {editingPlaylistId && (
           <div className="bg-accent/10 border border-accent/25 rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
             <span className="text-xs font-semibold text-accent">{copy.lineup.editingBanner}</span>
@@ -459,7 +483,9 @@ export default function LineupPage() {
       <div className="px-6 py-4 max-w-lg mx-auto">
         {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
 
-        {!loading && !needsAuth && query.trim().length >= 2 && results.length === 0 && (
+        {searchError && <p className="text-xs text-red-600 mb-4">{searchError}</p>}
+
+        {!loading && !needsAuth && !searchError && query.trim().length >= 2 && results.length === 0 && (
           <p className="text-xs text-faint mb-4">{copy.lineup.noResults}</p>
         )}
 

@@ -31,6 +31,7 @@ export const copy = {
   home: {
     tagline: "Create better playlists.",
     ctaConnect: "Connect Spotify",
+    ctaGuest: "Continue as guest — search and build a lineup, connect later to save it",
   },
 
   lineup: {
@@ -67,12 +68,15 @@ export const copy = {
     connectPrompt: "Connect Spotify to search for artists.",
     connectButton: "Connect Spotify",
     searching: "Searching...",
+    searchFailedPrefix: "Search failed",
     noResults: "No artists found — try a different spelling or search.",
     setlistFilterFailedPrefix: "Setlist filter couldn't load for",
     artistFallbackGenre: "Artist",
     seenPrefix: "You've seen them",
     editingBanner: "Editing an existing playlist — Create will save changes to it instead of making a new one.",
     cancelEdit: "Cancel edit",
+    guestBanner: "Browsing as a guest — connect Spotify to save this playlist.",
+    guestBannerAction: "Connect",
     timeSuffix: "time",
     timesSuffix: "times",
     lastPlayedPrefix: "Last played",
@@ -117,6 +121,8 @@ export const copy = {
     add: "Add",
     createButton: "Create playlist",
     continueToSave: "Continue to save changes",
+    saveAsDraft: "Save as draft",
+    loginToCreate: "Connect Spotify to create",
   },
 
   create: {
@@ -164,6 +170,9 @@ export const copy = {
     encoreButton: "Stats",
     emptyMessage: "Nothing here yet — build your first lineup and it'll show up once it's live on Spotify.",
     buildLineupLink: "Build your lineup",
+    resumeDraft: "Resume",
+    draftsLabel: "Drafts",
+    draftsNote: "Built as a guest, not yet sent to Spotify — connect and resume to finish one.",
     open: "Spotify",
     copyLink: "Copy link",
     linkCopied: "Copied!",

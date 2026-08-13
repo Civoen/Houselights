@@ -14,6 +14,11 @@ interface LineupState {
   playlistSizeValue: number;
   setPlaylistSize: (mode: PlaylistSizeMode, value: number) => void;
   addArtist: (artist: SpotifyArtist) => void;
+  // Replaces the entire lineup array in one shot, preserving each entry's
+  // exact filters/weight/pickedTracks — addArtist can't do this since it
+  // always creates a fresh default entry. Used specifically for resuming
+  // a saved Draft, which stored the full LineupArtist[] already.
+  restoreFullLineup: (lineup: LineupArtist[]) => void;
   removeArtist: (artistId: string) => void;
   restoreArtist: (entry: LineupArtist, index: number) => void;
   reorderArtist: (from: number, to: number) => void;
@@ -29,6 +34,12 @@ interface LineupState {
   // from "the Setlist filter is broken and fell back silently."
   previewWarning: string | null;
   setPreviewWarning: (msg: string | null) => void;
+  // Set when a lineup was loaded by resuming a saved Draft — lets the
+  // create flow know to remove the draft once it's actually sent to
+  // Spotify, so it doesn't linger duplicated as both a draft and a real
+  // playlist. Null for a normal fresh build or an Edit session.
+  resumedDraftId: string | null;
+  setResumedDraftId: (id: string | null) => void;
   removeTrack: (index: number) => void;
   restoreTrack: (track: PlaylistTrack, index: number) => void;
   reorderTrack: (from: number, to: number) => void;
@@ -60,6 +71,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
   const [playlistSizeValue, setPlaylistSizeValue] = useState(DEFAULT_SIZE_VALUE);
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
   const [previewWarning, setPreviewWarning] = useState<string | null>(null);
+  const [resumedDraftId, setResumedDraftId] = useState<string | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -75,6 +87,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setPlaylistSizeMode(parsed.playlistSizeMode || DEFAULT_SIZE_MODE);
         setPlaylistSizeValue(parsed.playlistSizeValue || DEFAULT_SIZE_VALUE);
         setEditingPlaylistId(parsed.editingPlaylistId || null);
+        setResumedDraftId(parsed.resumedDraftId || null);
       } catch {}
     }
   }, []);
@@ -92,6 +105,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         playlistSizeMode,
         playlistSizeValue,
         editingPlaylistId,
+        resumedDraftId,
       })
     );
   }, [
@@ -104,6 +118,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     playlistSizeMode,
     playlistSizeValue,
     editingPlaylistId,
+    resumedDraftId,
   ]);
 
   const addArtist = useCallback((artist: SpotifyArtist) => {
@@ -112,6 +127,10 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
       const isFirst = prev.length === 0;
       return [...prev, { artist, filters: ["popular"] as FilterType[], weight: isFirst ? 2 : 1, pickedTracks: [] }];
     });
+  }, []);
+
+  const restoreFullLineup = useCallback((lineup: LineupArtist[]) => {
+    setLineup(lineup);
   }, []);
 
   const removeArtist = useCallback((artistId: string) => {
@@ -221,6 +240,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setPlaylistSizeValue(DEFAULT_SIZE_VALUE);
     setEditingPlaylistId(null);
     setPreviewWarning(null);
+    setResumedDraftId(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
@@ -238,6 +258,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         playlistSizeValue,
         setPlaylistSize,
         addArtist,
+        restoreFullLineup,
         removeArtist,
         restoreArtist,
         reorderArtist,
@@ -256,6 +277,8 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setEditingPlaylistId,
         previewWarning,
         setPreviewWarning,
+        resumedDraftId,
+        setResumedDraftId,
         reset,
       }}
     >

@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAllEvents, saveAllEvents, getPastDatedEvents, getUpcomingEvents } from "@/lib/eventHistory";
+import { getAllDrafts, removeDraft as removeDraftFromStorage } from "@/lib/drafts";
 import { useLineup } from "@/lib/lineupStore";
-import { PastEvent, PlaylistTrack, SpotifyTrack } from "@/lib/types";
+import { PastEvent, PlaylistTrack, SpotifyTrack, DraftPlaylist } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
 import { EqSpinner } from "@/components/EqSpinner";
@@ -28,10 +29,12 @@ function formatCountdown(days: number) {
 
 export default function PlaylistsPage() {
   const router = useRouter();
-  const { reset, addArtist, setPlaylist, setPlaylistMeta, setEventDate, setEditingPlaylistId } = useLineup();
+  const { reset, addArtist, restoreFullLineup, setPlaylist, setPlaylistMeta, setEventDate, setPlaylistSize, setEditingPlaylistId, setResumedDraftId } =
+    useLineup();
   const [events, setEvents] = useState<PastEvent[]>([]);
   const [upcoming, setUpcoming] = useState<PastEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<PastEvent[]>([]);
+  const [drafts, setDrafts] = useState<DraftPlaylist[]>([]);
   const [showPrevious, setShowPrevious] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [removedPlaylist, setRemovedPlaylist] = useState<{ event: PastEvent; index: number } | null>(null);
@@ -54,6 +57,7 @@ export default function PlaylistsPage() {
     setEvents(getAllEvents());
     setUpcoming(getUpcomingEvents());
     setPastEvents(getPastDatedEvents());
+    setDrafts(getAllDrafts());
     setLoaded(true);
   }, []);
 
@@ -232,6 +236,43 @@ export default function PlaylistsPage() {
     }
   }
 
+  // A Draft's own card — deliberately simpler than a real playlist's:
+  // no Spotify link, no copy-link, no Edit-via-fetch, since none of that
+  // applies to something that was never actually sent to Spotify. Just
+  // enough to pick it back up or discard it.
+  function renderDraftCard(d: DraftPlaylist) {
+    return (
+      <div
+        key={d.id}
+        className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up"
+      >
+        <div className="flex items-start gap-3">
+          <ArtistAvatar src={d.headliner?.image} size={38} />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold truncate mb-1">{d.name}</div>
+            <div className="text-xs text-muted font-semibold">
+              {d.trackCount} tracks · {fmtMinutes(d.totalMinutes)}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <button
+            onClick={() => resumeDraft(d)}
+            className="py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+          >
+            {copy.playlists.resumeDraft}
+          </button>
+          <button
+            onClick={() => handleDeleteDraft(d.id)}
+            className="py-2.5 rounded-xl bg-surfaceAlt text-red-500 text-[10px] font-bold transition-all duration-150 hover:bg-red-50 active:scale-95"
+          >
+            {copy.playlists.deleteAction}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Shared by both the instant (local snapshot) and fallback (network)
   // paths — rebuild a minimal lineup — one entry per distinct artist
   // actually present in the tracks, in order of first appearance — so
@@ -249,6 +290,27 @@ export default function PlaylistsPage() {
     setEventDate(e.eventDate || "");
     setEditingPlaylistId(e.id);
     router.push("/lineup/preview");
+  }
+
+  function resumeDraft(d: DraftPlaylist) {
+    reset();
+    // Unlike loadIntoPreview (which has to reconstruct a lineup from track
+    // metadata for playlists that predate the tracks snapshot), a Draft
+    // already has the exact original LineupArtist[] — filters, weights,
+    // hand-picked tracks and all — so restoreFullLineup puts it back
+    // exactly as it was, not just a same-artists approximation.
+    restoreFullLineup(d.lineup);
+    setPlaylist(d.tracks);
+    setEventDate(d.eventDate || "");
+    setPlaylistSize(d.playlistSizeMode, d.playlistSizeValue);
+    setResumedDraftId(d.id);
+    router.push("/lineup/preview");
+  }
+
+  function handleDeleteDraft(id: string) {
+    haptic(HAPTIC.remove);
+    removeDraftFromStorage(id);
+    setDrafts(getAllDrafts());
   }
 
   function handleRemovePlaylist(event: PastEvent, index: number) {
@@ -397,6 +459,16 @@ export default function PlaylistsPage() {
 
         {visibleEvents.map(({ e, i }) => renderPlaylistCard(e, i, true))}
       </div>
+
+      {drafts.length > 0 && (
+        <div className="px-6 pb-5 max-w-lg mx-auto">
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
+            {copy.playlists.draftsLabel} · {drafts.length}
+          </h2>
+          <p className="text-xs text-faint mb-3">{copy.playlists.draftsNote}</p>
+          {drafts.map((d) => renderDraftCard(d))}
+        </div>
+      )}
 
       {removedPlaylist && (
         <UndoToast

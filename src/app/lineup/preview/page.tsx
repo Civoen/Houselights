@@ -15,6 +15,8 @@ import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
 import { buildArtistColorMap } from "@/lib/artistColors";
 import { useColorblindMode } from "@/lib/colorblindStore";
+import { useConnectionStatus } from "@/lib/useConnectionStatus";
+import { addDraft, updateDraft } from "@/lib/drafts";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -32,6 +34,7 @@ interface ArtistGroup {
 
 export default function PreviewPage() {
   const router = useRouter();
+  const connected = useConnectionStatus();
   const {
     lineup,
     playlist,
@@ -48,6 +51,10 @@ export default function PreviewPage() {
     editingPlaylistId,
     previewWarning,
     setPreviewWarning,
+    playlistSizeMode,
+    playlistSizeValue,
+    resumedDraftId,
+    reset,
   } = useLineup();
   const eventDateInputRef = useRef<HTMLInputElement>(null);
   const [addingSongForId, setAddingSongForId] = useState<string | null>(null);
@@ -134,6 +141,44 @@ export default function PreviewPage() {
   const artistCount = new Set(playlist.map((t) => t.sourceArtistId)).size;
   const { mode: colorblindMode } = useColorblindMode();
   const artistColorMap = buildArtistColorMap(lineup, colorblindMode);
+
+  function handleSaveDraft() {
+    if (lineup.length === 0 || playlist.length === 0) return;
+    haptic(HAPTIC.add);
+    const headliner = lineup[0].artist;
+    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const draftFields = {
+      name: `${headliner.name} — ${today}`,
+      artistNames: lineup.map((a) => a.artist.name),
+      headliner,
+      trackCount: playlist.length,
+      totalMinutes: totalMin,
+      eventDate: eventDate || undefined,
+      lineup,
+      tracks: playlist,
+      playlistSizeMode,
+      playlistSizeValue,
+    };
+    if (resumedDraftId) {
+      updateDraft(resumedDraftId, draftFields);
+    } else {
+      addDraft({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...draftFields });
+    }
+    reset();
+    router.push("/playlists");
+  }
+
+  function handleCreateOrLogin() {
+    if (connected === false) {
+      // A guest hitting the one wall in this whole flow — the draft
+      // (lineup, tracks, weights, everything) is already safely persisted
+      // regardless, so there's nothing to lose by sending them to log in
+      // here rather than trying to auto-resume afterward.
+      window.location.href = "/api/auth/login";
+      return;
+    }
+    router.push("/lineup/create");
+  }
 
   // Contiguous runs of same-artist tracks in the current flat order — used
   // to draw the colored box around each artist's block of songs. Recomputed
@@ -674,12 +719,25 @@ export default function PreviewPage() {
       {removeArtistToast && <UndoToast message={removeArtistToast.message} onUndo={undoRemoveArtistGroup} className="bottom-[calc(72px+24px+52px+16px+env(safe-area-inset-bottom))]" />}
 
       <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+        {connected === false && (
+          <button
+            onClick={handleSaveDraft}
+            disabled={playlist.length === 0}
+            className="block w-full text-center py-3.5 rounded-2xl bg-surface text-muted text-sm font-bold shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 active:scale-[0.98] mb-3 disabled:opacity-50"
+          >
+            {copy.preview.saveAsDraft}
+          </button>
+        )}
         <GradientButton
-          onClick={() => router.push("/lineup/create")}
+          onClick={handleCreateOrLogin}
           disabled={playlist.length === 0}
           className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]"
         >
-          {editingPlaylistId ? copy.preview.continueToSave : copy.preview.createButton}
+          {editingPlaylistId
+            ? copy.preview.continueToSave
+            : connected === false
+            ? copy.preview.loginToCreate
+            : copy.preview.createButton}
         </GradientButton>
       </div>
     </main>

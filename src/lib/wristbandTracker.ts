@@ -99,8 +99,13 @@ export function checkForNewWristbands(): WristbandDef[] {
 // unlocked despite Clear progress's own promise to reset everything).
 export function resetWristbandProgress() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(SEEN_KEY);
   localStorage.removeItem(EARNED_KEY);
+  // Explicit empty array, not a removed key — removing it entirely would
+  // make the very next check indistinguishable from a brand-new install,
+  // which silently absorbs whatever's already true without ever popping a
+  // toast. That would mean the next genuine unlock after Clear progress
+  // goes silent too, defeating the point of clearing progress at all.
+  saveSeenIds([]);
 }
 
 // Used by AppChrome — the only place that actually owns the unlock-toast

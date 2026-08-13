@@ -6,9 +6,20 @@ import {
   searchTracksForArtist,
   getTracksByIds,
 } from "@/lib/spotify";
+import { getAppAccessToken } from "@/lib/spotifyAppToken";
 import { FilterType } from "@/lib/types";
 
 export const runtime = "edge";
+
+async function resolveAccessToken(): Promise<string | null> {
+  const userToken = await getValidAccessToken();
+  if (userToken) return userToken;
+  try {
+    return await getAppAccessToken();
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: NextRequest) {
   const artistId = req.nextUrl.searchParams.get("artistId");
@@ -20,7 +31,7 @@ export async function GET(req: NextRequest) {
   const trackIds = req.nextUrl.searchParams.get("trackIds");
 
   if (trackIds) {
-    const accessToken = await getValidAccessToken();
+    const accessToken = await resolveAccessToken();
     if (!accessToken) return NextResponse.json({ error: "not_connected" }, { status: 401 });
     try {
       const tracks = await getTracksByIds(trackIds.split(","), accessToken);
@@ -32,7 +43,7 @@ export async function GET(req: NextRequest) {
 
   if (!artistId) return NextResponse.json({ error: "missing_artist" }, { status: 400 });
 
-  const accessToken = await getValidAccessToken();
+  const accessToken = await resolveAccessToken();
   if (!accessToken) return NextResponse.json({ error: "not_connected" }, { status: 401 });
 
   try {

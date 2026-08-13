@@ -25,15 +25,23 @@ export default function Home() {
         <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center animate-lights-up">
           <BrandMark size={56} />
         </div>
-        <h1 className="font-display text-2xl font-bold mb-2">Houselights</h1>
+        <h1 className="font-display text-2xl font-bold mb-2">{copy.common.appName}</h1>
         <p className="text-muted text-sm mb-8">{copy.home.tagline}</p>
         {!connected && (
-          <a
-            href="/api/auth/login"
-            className="inline-block w-full bg-grad text-white py-4 rounded-2xl font-extrabold text-sm transition-all duration-150 hover:brightness-[1.05] hover:scale-[1.02] active:scale-[0.97]"
-          >
-            {copy.home.ctaConnect}
-          </a>
+          <>
+            <a
+              href="/api/auth/login"
+              className="inline-block w-full bg-grad text-white py-4 rounded-2xl font-extrabold text-sm transition-all duration-150 hover:brightness-[1.05] hover:scale-[1.02] active:scale-[0.97]"
+            >
+              {copy.home.ctaConnect}
+            </a>
+            <button
+              onClick={() => router.push("/lineup")}
+              className="block w-full text-center text-xs font-bold text-muted mt-4 underline decoration-dotted underline-offset-4"
+            >
+              {copy.home.ctaGuest}
+            </button>
+          </>
         )}
       </div>
     </main>

@@ -52,3 +52,23 @@ export interface PastEvent {
   // re-fetching from Spotify for those specifically.
   tracks?: PlaylistTrack[];
 }
+
+// A lineup built as a guest (or saved intentionally before finishing) —
+// everything needed to resume exactly where it was left off, but never
+// actually sent to Spotify. Kept as its own type rather than reusing
+// PastEvent, since a draft has no Spotify id/url yet and needs the full
+// lineup (not just tracks) to resume building rather than just viewing.
+export interface DraftPlaylist {
+  id: string;
+  name: string;
+  artistNames: string[];
+  headliner: SpotifyArtist;
+  trackCount: number;
+  totalMinutes: number;
+  eventDate?: string;
+  createdAt: string;
+  lineup: LineupArtist[];
+  tracks: PlaylistTrack[];
+  playlistSizeMode: PlaylistSizeMode;
+  playlistSizeValue: number;
+}

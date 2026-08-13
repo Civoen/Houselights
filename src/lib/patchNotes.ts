@@ -9,6 +9,16 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.1",
+    notes: [
+      "Added Guest mode — search and build a full lineup without logging in, via \"Continue as guest\" on the home screen",
+      "Added Save as Draft on Preview for guests, plus a new Drafts section at the bottom of Playlists to resume or delete them",
+      "Connecting Spotify is now only required at the final step — creating the playlist",
+      "Added a Settings \"Connect Spotify\" button for logged-out users",
+      "Removed the nav bar and header icons from the home screen — its only job is getting you to Connect or Continue as guest",
+    ],
+  },
+  {
     version: "2.0",
     notes: [
       "Fixed the Stats page still saying \"Encore\" as its own title",

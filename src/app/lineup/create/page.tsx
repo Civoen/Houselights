@@ -7,6 +7,7 @@ import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
 import { addEvent, updateEvent, getAllEvents } from "@/lib/eventHistory";
+import { removeDraft } from "@/lib/drafts";
 import { triggerWristbandCheck } from "@/lib/wristbandTracker";
 import { resizeImageForSpotifyCover } from "@/lib/resizeImage";
 import { generateWordmarkCover, COVER_BACKGROUND_SWATCHES } from "@/lib/coverGenerator";
@@ -27,6 +28,7 @@ export default function CreatePage() {
     setPlaylistMeta,
     setCoverImage,
     editingPlaylistId,
+    resumedDraftId,
   } = useLineup();
   const fileInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(playlistName);
@@ -150,6 +152,10 @@ export default function CreatePage() {
         updateEvent(editingPlaylistId!, eventFields);
       } else {
         addEvent({ id: playlistId || crypto.randomUUID(), createdAt: new Date().toISOString(), ...eventFields });
+        // This session started from resuming a saved Draft and just
+        // actually became a real playlist — remove the draft so it
+        // doesn't linger duplicated as both a draft and a real playlist.
+        if (resumedDraftId) removeDraft(resumedDraftId);
       }
       triggerWristbandCheck();
       router.push(
