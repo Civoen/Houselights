@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getAllEvents, saveAllEvents, getPastDatedEvents, getUpcomingEvents } from "@/lib/eventHistory";
 import { getAllDrafts, removeDraft as removeDraftFromStorage } from "@/lib/drafts";
 import { useLineup } from "@/lib/lineupStore";
+import { useConnectionStatus } from "@/lib/useConnectionStatus";
 import { PastEvent, PlaylistTrack, SpotifyTrack, DraftPlaylist } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
@@ -29,6 +30,7 @@ function formatCountdown(days: number) {
 
 export default function PlaylistsPage() {
   const router = useRouter();
+  const connected = useConnectionStatus();
   const { reset, addArtist, restoreFullLineup, setPlaylist, setPlaylistMeta, setEventDate, setPlaylistSize, setEditingPlaylistId, setResumedDraftId } =
     useLineup();
   const [events, setEvents] = useState<PastEvent[]>([]);
@@ -53,12 +55,19 @@ export default function PlaylistsPage() {
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => !(e.eventDate && e.eventDate < todayStr));
 
+  const [draftSavedToast, setDraftSavedToast] = useState(false);
+
   useEffect(() => {
     setEvents(getAllEvents());
     setUpcoming(getUpcomingEvents());
     setPastEvents(getPastDatedEvents());
     setDrafts(getAllDrafts());
     setLoaded(true);
+    if (typeof window !== "undefined" && window.location.search.includes("draftSaved=1")) {
+      setDraftSavedToast(true);
+      window.history.replaceState({}, "", "/playlists");
+      setTimeout(() => setDraftSavedToast(false), 3000);
+    }
   }, []);
 
   function reorder(from: number, to: number) {
@@ -348,6 +357,14 @@ export default function PlaylistsPage() {
     <main className="min-h-screen pb-24 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.playlists.title}</h1>
+        {connected === false && (
+          <div className="bg-surfaceAlt border border-green rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
+            <span className="text-xs font-semibold text-muted">{copy.lineup.guestBanner}</span>
+            <a href="/api/auth/login" className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0">
+              {copy.lineup.guestBannerAction}
+            </a>
+          </div>
+        )}
         <p className="text-sm text-muted font-medium mb-3">
           {events.length > 0
             ? `${events.length} show${events.length === 1 ? "" : "s"} prepped · ${totalSongs} songs queued up`
@@ -476,6 +493,17 @@ export default function PlaylistsPage() {
           onUndo={undoRemovePlaylist}
           className="bottom-[calc(72px+16px+env(safe-area-inset-bottom))]"
         />
+      )}
+
+      {draftSavedToast && (
+        <div
+          className="fixed left-6 right-6 z-50 max-w-lg mx-auto animate-fade-slide-up"
+          style={{ bottom: "calc(72px + 16px + env(safe-area-inset-bottom))" }}
+        >
+          <div className="bg-navy text-white text-xs font-semibold pl-4 pr-4 py-2.5 rounded-full shadow-lg text-center">
+            {copy.playlists.draftSavedToast}
+          </div>
+        </div>
       )}
     </main>
   );

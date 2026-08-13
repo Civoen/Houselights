@@ -165,7 +165,7 @@ export default function PreviewPage() {
       addDraft({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...draftFields });
     }
     reset();
-    router.push("/playlists");
+    router.push("/playlists?draftSaved=1");
   }
 
   function handleCreateOrLogin() {

@@ -31,7 +31,8 @@ export const copy = {
   home: {
     tagline: "Create better playlists.",
     ctaConnect: "Connect Spotify",
-    ctaGuest: "Continue as guest — search and build a lineup, connect later to save it",
+    ctaGuest: "Continue as Guest",
+    ctaGuestNote: "Search and build a lineup now — connect later to save it to Spotify.",
   },
 
   lineup: {
@@ -75,6 +76,8 @@ export const copy = {
     seenPrefix: "You've seen them",
     editingBanner: "Editing an existing playlist — Create will save changes to it instead of making a new one.",
     cancelEdit: "Cancel edit",
+    resumingDraftBanner: "Resuming a saved draft — creating this playlist will remove it from Drafts.",
+    cancelResumeDraft: "Cancel",
     guestBanner: "Browsing as a guest — connect Spotify to save this playlist.",
     guestBannerAction: "Connect",
     timeSuffix: "time",
@@ -173,6 +176,7 @@ export const copy = {
     resumeDraft: "Resume",
     draftsLabel: "Drafts",
     draftsNote: "Built as a guest, not yet sent to Spotify — connect and resume to finish one.",
+    draftSavedToast: "Saved to Drafts",
     open: "Spotify",
     copyLink: "Copy link",
     linkCopied: "Copied!",

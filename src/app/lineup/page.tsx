@@ -87,6 +87,8 @@ export default function LineupPage() {
     setPreviewWarning,
     editingPlaylistId,
     setEditingPlaylistId,
+    resumedDraftId,
+    setResumedDraftId,
   } = useLineup();
 
   const [query, setQuery] = useState("");
@@ -434,11 +436,25 @@ export default function LineupPage() {
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-3">{copy.lineup.title}</h1>
         {connected === false && !editingPlaylistId && (
-          <div className="bg-surfaceAlt rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
+          <div className="bg-surfaceAlt border border-green rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
             <span className="text-xs font-semibold text-muted">{copy.lineup.guestBanner}</span>
             <a href="/api/auth/login" className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0">
               {copy.lineup.guestBannerAction}
             </a>
+          </div>
+        )}
+        {resumedDraftId && (
+          <div className="bg-accent/10 border border-accent/25 rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
+            <span className="text-xs font-semibold text-accent">{copy.lineup.resumingDraftBanner}</span>
+            <button
+              onClick={() => {
+                haptic(HAPTIC.tap);
+                setResumedDraftId(null);
+              }}
+              className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0"
+            >
+              {copy.lineup.cancelResumeDraft}
+            </button>
           </div>
         )}
         {editingPlaylistId && (
@@ -651,15 +667,22 @@ export default function LineupPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 mt-5 mb-1">
+        <div className="flex items-center justify-between gap-2 mt-5 mb-1">
           <span className="text-xs font-extrabold uppercase tracking-wide text-faint">
             {copy.lineup.lineupLabel} · {lineup.length}
           </span>
-          <div className="flex-1 h-px bg-lineStrong" />
+          {lineup.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="px-3 py-1.5 rounded-lg bg-surfaceAlt text-red-500 text-[11px] font-bold transition-all duration-150 hover:bg-red-50 active:scale-95"
+            >
+              {copy.lineup.clearAll}
+            </button>
+          )}
         </div>
 
         {lineup.length > 0 && (
-          <div className="mb-3">
+          <div className="mb-3 mt-2">
             <div className="w-full h-5 rounded-full overflow-hidden flex bg-surfaceAlt">
               {lineup.map((entry, i) => {
                 const pct = (entry.weight / totalWeight) * 100;
@@ -675,17 +698,7 @@ export default function LineupPage() {
           </div>
         )}
 
-        {lineup.length > 0 && (
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] text-faint">{lineup.length > 1 ? copy.lineup.dragHint : ""}</p>
-            <button
-              onClick={handleClearAll}
-              className="text-[11px] font-bold text-red-500 underline decoration-dotted underline-offset-4"
-            >
-              {copy.lineup.clearAll}
-            </button>
-          </div>
-        )}
+        {lineup.length > 1 && <p className="text-[11px] text-faint mb-3">{copy.lineup.dragHint}</p>}
 
         {lineup.length === 0 && (
           <p className="text-sm text-faint text-center py-6">{copy.lineup.emptyLineup}</p>

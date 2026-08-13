@@ -9,6 +9,16 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.2",
+    notes: [
+      "Added a confirmation toast when saving a playlist as a Draft",
+      "Fixed a gap where abandoning a resumed Draft to build something unrelated could silently delete the original Draft — New Event now shows a banner while resuming one, with a Cancel option",
+      "Added the guest banner to the Playlists page, and a green outline to make it more noticeable",
+      "Moved Clear all above the spectrum bar, aligned with \"Your lineup\", and restyled it to match other buttons",
+      "Continue as Guest now matches the size and style of the Connect Spotify button",
+    ],
+  },
+  {
     version: "2.1",
     notes: [
       "Added Guest mode — search and build a full lineup without logging in, via \"Continue as guest\" on the home screen",

@@ -37,10 +37,11 @@ export default function Home() {
             </a>
             <button
               onClick={() => router.push("/lineup")}
-              className="block w-full text-center text-xs font-bold text-muted mt-4 underline decoration-dotted underline-offset-4"
+              className="block w-full bg-surface text-muted py-4 rounded-2xl font-extrabold text-sm mt-3 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 hover:scale-[1.01] active:scale-[0.97]"
             >
               {copy.home.ctaGuest}
             </button>
+            <p className="text-[11px] text-faint mt-2">{copy.home.ctaGuestNote}</p>
           </>
         )}
       </div>
