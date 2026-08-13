@@ -45,6 +45,10 @@ const config: Config = {
           "60%": { transform: "scale(1.08)", opacity: "1" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        confettiBurst: {
+          "0%": { transform: "translate(0, 0) scale(1)", opacity: "1" },
+          "100%": { transform: "var(--burst-transform)", opacity: "0" },
+        },
         lightsUp: {
           "0%": { opacity: "0", filter: "brightness(0.35)", transform: "scale(0.88)" },
           "55%": { opacity: "1", filter: "brightness(1.2)" },
@@ -79,6 +83,7 @@ const config: Config = {
         "pop-in": "popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both",
         "check-draw": "checkDraw 0.5s ease-out 0.1s both",
         "ring-pop": "ringPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
+        "confetti-burst": "confettiBurst 0.7s cubic-bezier(0.2,0.8,0.3,1) both",
         "lights-up": "lightsUp 0.8s ease-out both",
         "theme-flick": "themeFlick 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
         "eq-bounce": "eqBounce 0.8s ease-in-out infinite",

@@ -2,6 +2,14 @@ import { WRISTBANDS, WristbandDef } from "./wristbands";
 import { getAllEvents, getPastDatedEvents } from "./eventHistory";
 
 const SEEN_KEY = "houselights_wristbands_seen_v1";
+// Wristbands were previously evaluated live against current playlist
+// history on every check — meaning deleting the one playlist that had
+// satisfied a condition (5+ artists, 4h+, etc.) would silently re-lock a
+// wristband the user had genuinely already earned. This record latches
+// each wristband permanently the first time it's ever true, so earning
+// something is a one-way door regardless of what happens to the
+// underlying data afterward.
+const EARNED_KEY = "houselights_wristbands_earned_v1";
 
 function getSeenIds(): string[] {
   if (typeof window === "undefined") return [];
@@ -18,14 +26,45 @@ function saveSeenIds(ids: string[]) {
   localStorage.setItem(SEEN_KEY, JSON.stringify(ids));
 }
 
+function getEarnedRecord(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(EARNED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveEarnedRecord(record: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(EARNED_KEY, JSON.stringify(record));
+}
+
 export function getUnlockedWristbands(): { def: WristbandDef; earnedOn: string }[] {
   const all = getAllEvents();
   const past = getPastDatedEvents();
+  const earnedRecord = getEarnedRecord();
+  let recordChanged = false;
   const unlocked: { def: WristbandDef; earnedOn: string }[] = [];
+
   WRISTBANDS.forEach((def) => {
+    const alreadyEarned = earnedRecord[def.id];
+    if (alreadyEarned) {
+      // Already permanently latched — skip live evaluation entirely, so
+      // this can never be affected by data changing afterward.
+      unlocked.push({ def, earnedOn: alreadyEarned });
+      return;
+    }
     const earnedOn = def.evaluate(all, past);
-    if (earnedOn) unlocked.push({ def, earnedOn });
+    if (earnedOn) {
+      unlocked.push({ def, earnedOn });
+      earnedRecord[def.id] = earnedOn;
+      recordChanged = true;
+    }
   });
+
+  if (recordChanged) saveEarnedRecord(earnedRecord);
   return unlocked;
 }
 
@@ -54,14 +93,14 @@ export function checkForNewWristbands(): WristbandDef[] {
   return fresh.map((f) => f.def);
 }
 
-// Used by Settings' "Clear progress" — wipes the unlock-tracking record so
-// every wristband re-locks (they're evaluated live from playlist history,
-// so once that's also cleared they'll naturally show as locked; this
-// specifically clears the separate "what's already been shown" record so
-// a future re-unlock pops the toast again instead of staying silent).
+// Used by Settings' "Clear progress" — wipes both the "what's already been
+// shown" record and the permanent earned-record latch, so every wristband
+// genuinely re-locks (rather than the earned latch silently keeping them
+// unlocked despite Clear progress's own promise to reset everything).
 export function resetWristbandProgress() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(SEEN_KEY);
+  localStorage.removeItem(EARNED_KEY);
 }
 
 // Used by AppChrome — the only place that actually owns the unlock-toast

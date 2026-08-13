@@ -22,6 +22,13 @@ interface LineupState {
   addPickedTrack: (artistId: string, track: SpotifyTrack) => void;
   removePickedTrack: (artistId: string, trackId: string) => void;
   setPlaylist: (tracks: PlaylistTrack[]) => void;
+  // Set right before navigating to Preview when a filter someone actually
+  // chose (like Setlist) silently failed for one or more artists and fell
+  // back to other sources — without this there was no way to tell "the
+  // Setlist filter worked and happened to look similar to Popular" apart
+  // from "the Setlist filter is broken and fell back silently."
+  previewWarning: string | null;
+  setPreviewWarning: (msg: string | null) => void;
   removeTrack: (index: number) => void;
   restoreTrack: (track: PlaylistTrack, index: number) => void;
   reorderTrack: (from: number, to: number) => void;
@@ -52,6 +59,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
   const [playlistSizeMode, setPlaylistSizeMode] = useState<PlaylistSizeMode>(DEFAULT_SIZE_MODE);
   const [playlistSizeValue, setPlaylistSizeValue] = useState(DEFAULT_SIZE_VALUE);
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
+  const [previewWarning, setPreviewWarning] = useState<string | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -212,6 +220,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setPlaylistSizeMode(DEFAULT_SIZE_MODE);
     setPlaylistSizeValue(DEFAULT_SIZE_VALUE);
     setEditingPlaylistId(null);
+    setPreviewWarning(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
@@ -245,6 +254,8 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setCoverImage,
         editingPlaylistId,
         setEditingPlaylistId,
+        previewWarning,
+        setPreviewWarning,
         reset,
       }}
     >

@@ -9,6 +9,17 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.0",
+    notes: [
+      "Fixed the Stats page still saying \"Encore\" as its own title",
+      "Back/close buttons are now a consistent dark colour, easier to spot and less like a forward step",
+      "Wristbands now stay unlocked permanently once earned — previously deleting the playlist that satisfied one could silently re-lock it",
+      "Added a warning banner on Preview when the Setlist filter fails for an artist and silently falls back — previously this had no visible indicator at all",
+      "Moved search results and \"no artists found\" to appear directly under the search field, instead of after the poster upload section",
+      "Added confetti, haptic feedback, and a bouncier entrance to Wristband unlocks and the playlist-created screen",
+    ],
+  },
+  {
     version: "1.9",
     notes: [
       "Removed the duplicate track/time estimate under the spectrum bar on New Event — same numbers already shown in Playlist size",

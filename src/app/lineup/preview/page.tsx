@@ -46,6 +46,8 @@ export default function PreviewPage() {
     restoreArtist,
     reorderArtist,
     editingPlaylistId,
+    previewWarning,
+    setPreviewWarning,
   } = useLineup();
   const eventDateInputRef = useRef<HTMLInputElement>(null);
   const [addingSongForId, setAddingSongForId] = useState<string | null>(null);
@@ -338,7 +340,7 @@ export default function PreviewPage() {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={() => router.push("/lineup")}
-            className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+            className="w-11 h-11 rounded-xl bg-navy text-white text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ‹
           </button>
@@ -347,6 +349,18 @@ export default function PreviewPage() {
         <p className="text-sm text-muted font-medium">
           {playlist.length} tracks · {fmtMinutes(totalMin)} · {artistCount} artists
         </p>
+        {previewWarning && (
+          <div className="bg-red-50 rounded-xl p-3 mt-3 flex items-start gap-2 animate-fade-slide-up">
+            <p className="text-xs text-red-600 flex-1">{previewWarning}</p>
+            <button
+              onClick={() => setPreviewWarning(null)}
+              aria-label={copy.common.closeLabel}
+              className="text-red-600 flex-shrink-0 text-sm font-bold leading-none"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">

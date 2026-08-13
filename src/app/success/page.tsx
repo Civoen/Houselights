@@ -6,6 +6,25 @@ import { GradientButton } from "@/components/GradientButton";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { copy } from "@/lib/copy";
 
+// Bigger, wider-spread version of the same particle-burst technique used
+// for Wristband unlocks — this moment (a real playlist just went live on
+// Spotify) is arguably the bigger achievement of the two, so it gets more
+// particles and more spread rather than reusing the toast's exact values.
+const PARTICLES = [
+  { x: -70, y: -50, color: "#F5A623", delay: 0 },
+  { x: 65, y: -55, color: "#14CC9B", delay: 40 },
+  { x: -85, y: 10, color: "#4FA8E8", delay: 80 },
+  { x: 80, y: 15, color: "#E14D9F", delay: 20 },
+  { x: -40, y: -80, color: "#8BC34A", delay: 120 },
+  { x: 40, y: -85, color: "#F5A623", delay: 60 },
+  { x: -65, y: 60, color: "#4FA8E8", delay: 100 },
+  { x: 70, y: 65, color: "#14CC9B", delay: 140 },
+  { x: 0, y: -95, color: "#E14D9F", delay: 30 },
+  { x: -95, y: -20, color: "#8BC34A", delay: 90 },
+  { x: 95, y: -15, color: "#F5A623", delay: 50 },
+  { x: 0, y: 90, color: "#4FA8E8", delay: 110 },
+];
+
 function SuccessInner() {
   const params = useSearchParams();
   const router = useRouter();
@@ -27,19 +46,37 @@ function SuccessInner() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
       <div className="max-w-sm w-full text-center animate-fade-slide-up">
-        <div className="w-14 h-14 rounded-full bg-grad mx-auto mb-5 flex items-center justify-center animate-ring-pop">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M5 13l4 4L19 7"
-              stroke="#fff"
-              strokeWidth="2.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray="24"
-              strokeDashoffset="24"
-              className="animate-check-draw"
-            />
-          </svg>
+        <div className="relative w-14 h-14 mx-auto mb-5">
+          <div className="absolute inset-0 rounded-full bg-grad blur-lg opacity-60 scale-150 animate-pulse" aria-hidden="true" />
+          {!wasUpdated &&
+            PARTICLES.map((p, i) => (
+              <span
+                key={i}
+                className="absolute left-1/2 top-1/2 w-2 h-2 rounded-full animate-confetti-burst pointer-events-none"
+                style={
+                  {
+                    backgroundColor: p.color,
+                    animationDelay: `${p.delay}ms`,
+                    "--burst-transform": `translate(${p.x}px, ${p.y}px) scale(0)`,
+                  } as React.CSSProperties
+                }
+                aria-hidden="true"
+              />
+            ))}
+          <div className="relative w-14 h-14 rounded-full bg-grad flex items-center justify-center animate-ring-pop">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 13l4 4L19 7"
+                stroke="#fff"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="24"
+                strokeDashoffset="24"
+                className="animate-check-draw"
+              />
+            </svg>
+          </div>
         </div>
         <h1 className="font-display text-xl font-bold mb-1">
           {wasUpdated ? copy.success.updatedTitle : isFirst ? copy.success.firstTitle : copy.success.title}

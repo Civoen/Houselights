@@ -46,7 +46,7 @@ export default function EncorePage() {
         <div className="flex items-center gap-1 mb-2">
           <button
             onClick={() => router.back()}
-            className="w-11 h-11 -ml-2 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+            className="w-11 h-11 -ml-2 rounded-xl bg-navy text-white text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ‹
           </button>

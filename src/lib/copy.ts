@@ -68,6 +68,7 @@ export const copy = {
     connectButton: "Connect Spotify",
     searching: "Searching...",
     noResults: "No artists found — try a different spelling or search.",
+    setlistFilterFailedPrefix: "Setlist filter couldn't load for",
     artistFallbackGenre: "Artist",
     seenPrefix: "You've seen them",
     editingBanner: "Editing an existing playlist — Create will save changes to it instead of making a new one.",
@@ -184,6 +185,7 @@ export const copy = {
     connectedNote: "Your session is active on this device.",
     notConnectedNote: "Connect from the home screen to build a lineup.",
     switchAccount: "Switch account",
+    connectButton: "Connect Spotify",
     logout: "Log out",
     switchNote:
       "Switching account sends you back through Spotify's login screen, so you can sign in with a different account if you have more than one.",
@@ -246,7 +248,7 @@ export const copy = {
   },
 
   encore: {
-    title: "Encore",
+    title: "Stats",
     subtitle: "A look back at everything you've built",
     emptyMessage: "Nothing to look back on yet — build your first lineup and it'll show up here.",
     showsPrepped: "Shows prepped",

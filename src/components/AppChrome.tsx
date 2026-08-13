@@ -6,14 +6,19 @@ import { WristbandUnlockToast } from "./WristbandUnlockToast";
 import { ThemeToggle } from "./ThemeToggle";
 import { SettingsButton } from "./SettingsButton";
 import { checkForNewWristbands, WRISTBAND_CHECK_EVENT } from "@/lib/wristbandTracker";
+import { haptic, HAPTIC } from "@/lib/haptics";
 import { WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
 
-const HIDE_NAV_ON = ["/success"];
+const HIDE_NAV_ON = ["/", "/success"];
 // Settings excludes itself for the same reason it never shows its own
 // SettingsButton — you're already there — and it has its own, more
 // detailed theme control further down the page instead of the header icon.
-const HIDE_HEADER_ICONS_ON = ["/success", "/settings"];
+// Home excludes both — the screen's only job is getting you to Connect,
+// and dark/light already defaults from the device's own system setting,
+// so nothing here is actually unreachable, just deferred until after
+// connecting.
+const HIDE_HEADER_ICONS_ON = ["/", "/success", "/settings"];
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -49,6 +54,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, []);
 
   const current = unlockQueue[0] || null;
+
+  useEffect(() => {
+    if (current) haptic(HAPTIC.success);
+  }, [current]);
 
   useEffect(() => {
     if (!current) return;

@@ -4,6 +4,7 @@
 const BACKUP_KEYS = [
   "houselights_events_v1",
   "houselights_wristbands_seen_v1",
+  "houselights_wristbands_earned_v1",
   "houselights_theme",
   "houselights_colorblind_mode",
   "houselights_lineup_v4",

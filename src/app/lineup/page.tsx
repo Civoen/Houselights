@@ -82,6 +82,7 @@ export default function LineupPage() {
     addPickedTrack,
     removePickedTrack,
     setPlaylist,
+    setPreviewWarning,
     editingPlaylistId,
     setEditingPlaylistId,
   } = useLineup();
@@ -397,6 +398,13 @@ export default function LineupPage() {
     // standing disclaimer above the button already sets that expectation.
     // An entirely empty result still routes through; the preview page has
     // its own empty-state message for that case.
+    const setlistFailures = outcomes.filter((o) => o.entry.filters.includes("setlist") && o.error);
+    if (setlistFailures.length > 0) {
+      const names = setlistFailures.map((o) => o.entry.artist.name).join(", ");
+      setPreviewWarning(`${copy.lineup.setlistFilterFailedPrefix} ${names}: ${setlistFailures[0].error}`);
+    } else {
+      setPreviewWarning(null);
+    }
     setPlaylist(allTracks);
     router.push("/lineup/preview");
   }
@@ -449,6 +457,47 @@ export default function LineupPage() {
       </div>
 
       <div className="px-6 py-4 max-w-lg mx-auto">
+        {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
+
+        {!loading && !needsAuth && query.trim().length >= 2 && results.length === 0 && (
+          <p className="text-xs text-faint mb-4">{copy.lineup.noResults}</p>
+        )}
+
+        {results.length > 0 && (
+          <div className="bg-surface rounded-2xl px-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
+            {results.map((artist, i) => (
+              <div
+                key={artist.id}
+                className={
+                  "flex items-center gap-3 py-2.5 animate-fade-slide-up " + (i > 0 ? "border-t border-line" : "")
+                }
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                <ArtistAvatar src={artist.image} size={36} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold truncate">{artist.name}</div>
+                  {(() => {
+                    const seen = timesSeen(artist.id, artist.name);
+                    return (
+                      <div className={"text-xs truncate " + (seen > 0 ? "text-accent font-semibold" : "text-faint")}>
+                        {seen > 0
+                          ? `${copy.lineup.seenPrefix} ${seen} ${seen === 1 ? copy.lineup.timeSuffix : copy.lineup.timesSuffix}`
+                          : artist.genres[0] || copy.lineup.artistFallbackGenre}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <button
+                  onClick={() => handleAddFromSearch(artist)}
+                  className="w-7 h-7 rounded-lg bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
+                >
+                  +
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <input
           ref={posterInputRef}
           type="file"
@@ -528,47 +577,6 @@ export default function LineupPage() {
                 {posterReview.filter((p) => p.selected).length === 1 ? "" : "s"}
               </GradientButton>
             </div>
-          </div>
-        )}
-
-        {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
-
-        {!loading && !needsAuth && query.trim().length >= 2 && results.length === 0 && (
-          <p className="text-xs text-faint mb-4">{copy.lineup.noResults}</p>
-        )}
-
-        {results.length > 0 && (
-          <div className="bg-surface rounded-2xl px-4 mb-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.22)]">
-            {results.map((artist, i) => (
-              <div
-                key={artist.id}
-                className={
-                  "flex items-center gap-3 py-2.5 animate-fade-slide-up " + (i > 0 ? "border-t border-line" : "")
-                }
-                style={{ animationDelay: `${i * 30}ms` }}
-              >
-                <ArtistAvatar src={artist.image} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate">{artist.name}</div>
-                  {(() => {
-                    const seen = timesSeen(artist.id, artist.name);
-                    return (
-                      <div className={"text-xs truncate " + (seen > 0 ? "text-accent font-semibold" : "text-faint")}>
-                        {seen > 0
-                          ? `${copy.lineup.seenPrefix} ${seen} ${seen === 1 ? copy.lineup.timeSuffix : copy.lineup.timesSuffix}`
-                          : artist.genres[0] || copy.lineup.artistFallbackGenre}
-                      </div>
-                    );
-                  })()}
-                </div>
-                <button
-                  onClick={() => handleAddFromSearch(artist)}
-                  className="w-7 h-7 rounded-lg bg-grad text-white text-sm font-bold flex items-center justify-center flex-shrink-0 transition-transform duration-150 hover:scale-110 active:scale-90"
-                >
-                  +
-                </button>
-              </div>
-            ))}
           </div>
         )}
 
