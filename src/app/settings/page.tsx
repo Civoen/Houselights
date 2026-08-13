@@ -16,7 +16,7 @@ type ConfirmTarget = "deleteAll" | "clearProgress" | null;
 export default function SettingsPage() {
   const router = useRouter();
   const { mode: colorblindMode, setMode: setColorblindMode } = useColorblindMode();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   const [doneTarget, setDoneTarget] = useState<ConfirmTarget>(null);
@@ -132,7 +132,7 @@ export default function SettingsPage() {
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <button
           onClick={() => router.back()}
-          className="w-11 h-11 rounded-xl bg-navy text-white text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
+          className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
         >
           ‹
         </button>
@@ -140,50 +140,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="px-6 py-5 max-w-lg mx-auto">
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.colorblindLabel}</div>
-        <div className="bg-surface rounded-2xl p-4 mb-6 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
-          <p className="text-xs text-faint mb-3">{copy.settings.colorblindNote}</p>
-          <div className="flex flex-col gap-2">
-            {colorblindOptions.map((opt) => {
-              const active = colorblindMode === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    haptic(HAPTIC.tap);
-                    setColorblindMode(opt.id);
-                  }}
-                  className={
-                    "flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
-                    (active ? "bg-grad text-white" : "bg-surfaceAlt text-muted")
-                  }
-                >
-                  <div>
-                    <div className="text-sm font-bold">{opt.label}</div>
-                    <div className={"text-[11px] mt-0.5 " + (active ? "text-white/80" : "text-faint")}>{opt.note}</div>
-                  </div>
-                  {active && (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 ml-2">
-                      <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.appearanceLabel}</div>
-        <div className="bg-surface rounded-2xl p-4 mb-6 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold">
-              {theme === "dark" ? copy.settings.lightsDown : copy.settings.lightsUp}
-            </div>
-            <div className="text-xs text-faint mt-0.5">{copy.settings.appearanceNote}</div>
-          </div>
-          <ThemeToggle className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted flex-shrink-0" />
-        </div>
-
         <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.accountLabel}</div>
         <div className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
           <div className="flex items-center gap-2 mb-1">
@@ -228,6 +184,56 @@ export default function SettingsPage() {
         <p className="text-[11px] text-faint mb-6 text-center">
           {copy.settings.switchNote}
         </p>
+
+        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.colorblindLabel}</div>
+        <div className="bg-surface rounded-2xl p-4 mb-6 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
+          <p className="text-xs text-faint mb-3">{copy.settings.colorblindNote}</p>
+          <div className="flex flex-col gap-2">
+            {colorblindOptions.map((opt) => {
+              const active = colorblindMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => {
+                    haptic(HAPTIC.tap);
+                    setColorblindMode(opt.id);
+                  }}
+                  className={
+                    "flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
+                    (active ? "bg-grad text-white" : "bg-surfaceAlt text-muted")
+                  }
+                >
+                  <div>
+                    <div className="text-sm font-bold">{opt.label}</div>
+                    <div className={"text-[11px] mt-0.5 " + (active ? "text-white/80" : "text-faint")}>{opt.note}</div>
+                  </div>
+                  {active && (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 ml-2">
+                      <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.appearanceLabel}</div>
+        <button
+          onClick={() => {
+            haptic(HAPTIC.tap);
+            toggleTheme();
+          }}
+          className="w-full text-left bg-surface rounded-2xl p-4 mb-6 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] flex items-center justify-between gap-3 transition-transform duration-150 active:scale-[0.98]"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold">
+              {theme === "dark" ? copy.settings.lightsDown : copy.settings.lightsUp}
+            </div>
+            <div className="text-xs text-faint mt-0.5">{copy.settings.appearanceNote}</div>
+          </div>
+          <ThemeToggle asButton={false} className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted flex-shrink-0" />
+        </button>
 
         <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.backupLabel}</div>
         <div className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">

@@ -173,7 +173,7 @@ export default function CreatePage() {
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <button
           onClick={() => router.back()}
-          className="w-11 h-11 rounded-xl bg-navy text-white text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
+          className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
         >
           ‹
         </button>

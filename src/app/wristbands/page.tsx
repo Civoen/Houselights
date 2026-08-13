@@ -97,7 +97,7 @@ export default function WristbandsPage() {
             <button
               onClick={() => setSelected(null)}
               aria-label={copy.common.closeLabel}
-              className="absolute top-[calc(env(safe-area-inset-top)+1.5rem)] right-6 w-11 h-11 rounded-xl bg-navy text-white text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+              className="absolute top-[calc(env(safe-area-inset-top)+1.5rem)] right-6 w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
             >
               ✕
             </button>

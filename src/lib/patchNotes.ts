@@ -9,6 +9,17 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.3",
+    notes: [
+      "Replaced the Headliner/Hype toggle on Preview with a single Flip order button, matching the style of the Shuffle button",
+      "Removed the connector arrow between the view toggle and the old order toggle",
+      "Artist cards on Preview now use a thin colored border matching New Event, instead of a thick left accent stripe",
+      "Moved Account to the top of Settings",
+      "The Lights up/down bar is now fully tappable, not just the icon, and the icon now shows the current mode (sun for Lights up, moon for Lights down) instead of the mode you'd switch to",
+      "Back buttons across the app now match the Settings button's style",
+    ],
+  },
+  {
     version: "2.2",
     notes: [
       "Added a confirmation toast when saving a playlist as a Draft",

@@ -385,7 +385,7 @@ export default function PreviewPage() {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={() => router.push("/lineup")}
-            className="w-11 h-11 rounded-xl bg-navy text-white text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
+            className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90"
           >
             ‹
           </button>
@@ -454,7 +454,7 @@ export default function PreviewPage() {
 
         {playlist.length > 0 && (
           <SegmentedControl
-            className="mb-0"
+            className="mb-4"
             accent
             value={viewMode}
             onChange={(id) => {
@@ -468,26 +468,22 @@ export default function PreviewPage() {
           />
         )}
 
-        {playlist.length > 0 && (
-          <div className="flex flex-col items-center" aria-hidden="true">
-            <div className="w-px h-2 bg-line" />
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-faint -mt-0.5 -mb-0.5">
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-        )}
-
         {playlist.length > 0 && viewMode === "grouped" && (
-          <SegmentedControl
-            className="mb-4 mt-1"
-            accent
-            value={groupOrder}
-            onChange={(id) => handleGroupOrderChange(id as "hype" | "headliner")}
-            options={[
-              { id: "headliner", label: copy.preview.headliner },
-              { id: "hype", label: copy.preview.hype },
-            ]}
-          />
+          <button
+            onClick={() => handleGroupOrderChange(groupOrder === "headliner" ? "hype" : "headliner")}
+            className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 rounded-xl bg-surfaceAlt text-muted text-xs font-bold transition-all duration-150 active:scale-95"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M17 3l4 4-4 4M21 7H8M7 21l-4-4 4-4M3 17h13"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {copy.preview.flipOrder}
+          </button>
         )}
 
         {playlist.length > 0 && viewMode === "flat" && (
@@ -595,15 +591,15 @@ export default function PreviewPage() {
                   key={group.id}
                   ref={setGroupCardRef(i)}
                   className={
-                    "bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] mb-2 overflow-hidden " +
+                    "bg-surface border rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] mb-2 overflow-hidden " +
                     (isDragging ? "shadow-2xl relative z-20" : "transition-all duration-150 " + (isDropTarget ? "ring-2 ring-accent" : ""))
                   }
                   style={{
-                    borderLeft: `4px solid ${color}`,
+                    borderColor: color,
                     ...(isDragging ? { transform: `translateY(${cardDragOffsetY}px) scale(1.02)`, transition: "box-shadow 0.15s ease" } : {}),
                   }}
                 >
-                  <div className="flex items-center gap-1 pl-1 pr-2">
+                  <div className="flex items-center gap-1 pl-2 pr-2">
                     <span
                       data-no-swipe
                       onPointerDown={handleGroupCardPointerDown(i)}

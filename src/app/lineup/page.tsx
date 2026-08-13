@@ -87,8 +87,6 @@ export default function LineupPage() {
     setPreviewWarning,
     editingPlaylistId,
     setEditingPlaylistId,
-    resumedDraftId,
-    setResumedDraftId,
   } = useLineup();
 
   const [query, setQuery] = useState("");
@@ -441,20 +439,6 @@ export default function LineupPage() {
             <a href="/api/auth/login" className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0">
               {copy.lineup.guestBannerAction}
             </a>
-          </div>
-        )}
-        {resumedDraftId && (
-          <div className="bg-accent/10 border border-accent/25 rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
-            <span className="text-xs font-semibold text-accent">{copy.lineup.resumingDraftBanner}</span>
-            <button
-              onClick={() => {
-                haptic(HAPTIC.tap);
-                setResumedDraftId(null);
-              }}
-              className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0"
-            >
-              {copy.lineup.cancelResumeDraft}
-            </button>
           </div>
         )}
         {editingPlaylistId && (

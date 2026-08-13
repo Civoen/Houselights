@@ -64,8 +64,8 @@ const config: Config = {
           "50%": { transform: "scaleY(1)" },
         },
         faderDrift: {
-          "0%, 100%": { transform: "translateY(-3px)" },
-          "50%": { transform: "translateY(3px)" },
+          "0%, 100%": { transform: "translateY(-10px)" },
+          "50%": { transform: "translateY(10px)" },
         },
         pillSqueeze: {
           "0%": { transform: "scaleX(0.88) scaleY(1.08)" },
