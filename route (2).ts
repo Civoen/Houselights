@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getValidAccessToken, createSpotifyPlaylist } from "@/lib/spotify";
+import { getValidAccessToken, updateSpotifyPlaylist } from "@/lib/spotify";
 
 export const runtime = "edge";
 
@@ -8,20 +8,22 @@ export async function POST(req: NextRequest) {
   if (!accessToken) return NextResponse.json({ error: "not_connected" }, { status: 401 });
 
   const body = await req.json();
-  const { name, description, trackUris, coverImageBase64 } = body as {
+  const { playlistId, name, description, trackUris, coverImageBase64 } = body as {
+    playlistId: string;
     name: string;
     description: string;
     trackUris: string[];
     coverImageBase64?: string;
   };
 
-  if (!name || !Array.isArray(trackUris) || trackUris.length === 0) {
+  if (!playlistId || !name || !Array.isArray(trackUris) || trackUris.length === 0) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
   try {
-    const playlist = await createSpotifyPlaylist({
+    const playlist = await updateSpotifyPlaylist({
       accessToken,
+      playlistId,
       name,
       description: description || "",
       trackUris,

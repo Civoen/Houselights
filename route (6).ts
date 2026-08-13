@@ -1,9 +1,19 @@
-import { NextResponse } from "next/server";
-import { getValidAccessToken } from "@/lib/spotify";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthorizeUrl } from "@/lib/spotify";
 
 export const runtime = "edge";
 
-export async function GET() {
-  const accessToken = await getValidAccessToken();
-  return NextResponse.json({ connected: !!accessToken });
+export async function GET(req: NextRequest) {
+  const state = crypto.randomUUID();
+  const forceDialog = req.nextUrl.searchParams.get("switch") === "1";
+  const url = getAuthorizeUrl(state, forceDialog);
+  const res = NextResponse.redirect(url);
+  res.cookies.set("fp_oauth_state", state, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 600,
+  });
+  return res;
 }
