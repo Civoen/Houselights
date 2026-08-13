@@ -9,6 +9,16 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.4",
+    notes: [
+      "Setlist now uses the actual performance order from the artist's most recent show, instead of an unordered mix of popular songs they've played live",
+      "Checks the next couple of recent shows too, to catch a song that was likely just missed at one specific night rather than genuinely dropped",
+      "Added a confirmation on Preview when the Setlist filter actually worked, not just a warning when it fails",
+      "Added a status line under Most Popular/Setlist on New Event — shows whether a setlist was found, still checking, or falling back to popular songs",
+      "Fixed only 401 errors being distinguished from a genuine empty search result — other failures (like an account not yet added to the Spotify app) now show the real reason instead of looking identical to \"no matches\"",
+    ],
+  },
+  {
     version: "2.3",
     notes: [
       "Replaced the Headliner/Hype toggle on Preview with a single Flip order button, matching the style of the Shuffle button",

@@ -51,6 +51,8 @@ export default function PreviewPage() {
     editingPlaylistId,
     previewWarning,
     setPreviewWarning,
+    previewSetlistNote,
+    setPreviewSetlistNote,
     playlistSizeMode,
     playlistSizeValue,
     resumedDraftId,
@@ -401,6 +403,21 @@ export default function PreviewPage() {
               onClick={() => setPreviewWarning(null)}
               aria-label={copy.common.closeLabel}
               className="text-red-600 flex-shrink-0 text-sm font-bold leading-none"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {previewSetlistNote && (
+          <div className="bg-green/10 rounded-xl p-3 mt-3 flex items-start gap-2 animate-fade-slide-up">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-green flex-shrink-0 mt-0.5">
+              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <p className="text-xs text-green flex-1">{previewSetlistNote}</p>
+            <button
+              onClick={() => setPreviewSetlistNote(null)}
+              aria-label={copy.common.closeLabel}
+              className="text-green flex-shrink-0 text-sm font-bold leading-none"
             >
               ✕
             </button>

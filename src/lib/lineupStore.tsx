@@ -34,6 +34,13 @@ interface LineupState {
   // from "the Setlist filter is broken and fell back silently."
   previewWarning: string | null;
   setPreviewWarning: (msg: string | null) => void;
+  // Positive counterpart to previewWarning — set when the Setlist filter
+  // was actually used and succeeded, so there's a real "yes, this worked"
+  // signal rather than only ever hearing about it when it fails. Without
+  // this, a working integration and a silently-never-attempted one look
+  // identical: neither shows anything.
+  previewSetlistNote: string | null;
+  setPreviewSetlistNote: (msg: string | null) => void;
   // Set when a lineup was loaded by resuming a saved Draft — lets the
   // create flow know to remove the draft once it's actually sent to
   // Spotify, so it doesn't linger duplicated as both a draft and a real
@@ -71,6 +78,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
   const [playlistSizeValue, setPlaylistSizeValue] = useState(DEFAULT_SIZE_VALUE);
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
   const [previewWarning, setPreviewWarning] = useState<string | null>(null);
+  const [previewSetlistNote, setPreviewSetlistNote] = useState<string | null>(null);
   const [resumedDraftId, setResumedDraftId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -240,6 +248,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setPlaylistSizeValue(DEFAULT_SIZE_VALUE);
     setEditingPlaylistId(null);
     setPreviewWarning(null);
+    setPreviewSetlistNote(null);
     setResumedDraftId(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
@@ -277,6 +286,8 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setEditingPlaylistId,
         previewWarning,
         setPreviewWarning,
+        previewSetlistNote,
+        setPreviewSetlistNote,
         resumedDraftId,
         setResumedDraftId,
         reset,

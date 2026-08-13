@@ -72,6 +72,7 @@ export const copy = {
     searchFailedPrefix: "Search failed",
     noResults: "No artists found — try a different spelling or search.",
     setlistFilterFailedPrefix: "Setlist filter couldn't load for",
+    setlistFilterWorkedPrefix: "Using recent setlists for",
     artistFallbackGenre: "Artist",
     seenPrefix: "You've seen them",
     editingBanner: "Editing an existing playlist — Create will save changes to it instead of making a new one.",
@@ -81,6 +82,9 @@ export const copy = {
     timeSuffix: "time",
     timesSuffix: "times",
     lastPlayedPrefix: "Last played",
+    setlistChecking: "Checking for a recent setlist...",
+    setlistFound: "Setlist found",
+    setlistNotFound: "No recent setlist found — using popular songs instead.",
     songsSuffix: "songs",
 
     lineupLabel: "Your lineup",

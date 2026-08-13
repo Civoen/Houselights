@@ -85,6 +85,7 @@ export default function LineupPage() {
     removePickedTrack,
     setPlaylist,
     setPreviewWarning,
+    setPreviewSetlistNote,
     editingPlaylistId,
     setEditingPlaylistId,
   } = useLineup();
@@ -414,12 +415,20 @@ export default function LineupPage() {
     // standing disclaimer above the button already sets that expectation.
     // An entirely empty result still routes through; the preview page has
     // its own empty-state message for that case.
-    const setlistFailures = outcomes.filter((o) => o.entry.filters.includes("setlist") && o.error);
+    const setlistOutcomes = outcomes.filter((o) => o.entry.filters.includes("setlist"));
+    const setlistFailures = setlistOutcomes.filter((o) => o.error);
+    const setlistSuccesses = setlistOutcomes.filter((o) => !o.error);
     if (setlistFailures.length > 0) {
       const names = setlistFailures.map((o) => o.entry.artist.name).join(", ");
       setPreviewWarning(`${copy.lineup.setlistFilterFailedPrefix} ${names}: ${setlistFailures[0].error}`);
     } else {
       setPreviewWarning(null);
+    }
+    if (setlistSuccesses.length > 0) {
+      const names = setlistSuccesses.map((o) => o.entry.artist.name).join(", ");
+      setPreviewSetlistNote(`${copy.lineup.setlistFilterWorkedPrefix} ${names}.`);
+    } else {
+      setPreviewSetlistNote(null);
     }
     setPlaylist(allTracks);
     router.push("/lineup/preview");
@@ -750,6 +759,17 @@ export default function LineupPage() {
               </button>
             </div>
             <FilterChips value={entry.filters[0] ?? "popular"} onChange={(f) => setFilter(entry.artist.id, f)} artistColor={artistColor} />
+            {entry.filters[0] === "setlist" && (
+              <p className="text-[11px] font-semibold mt-1.5 mb-3">
+                {setlistSummaries[entry.artist.id] === undefined ? (
+                  <span className="text-faint">{copy.lineup.setlistChecking}</span>
+                ) : setlistSummaries[entry.artist.id] ? (
+                  <span className="text-green">{copy.lineup.setlistFound}</span>
+                ) : (
+                  <span className="text-faint">{copy.lineup.setlistNotFound}</span>
+                )}
+              </p>
+            )}
             {lineup.length > 1 && (
               <div className="flex items-center justify-between mb-3 animate-fade-slide-up">
                 <span className="text-xs text-faint font-semibold">

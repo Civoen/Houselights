@@ -1,7 +1,7 @@
 import { getTokens, setTokens, StoredTokens } from "./session";
 import { SpotifyArtist, SpotifyTrack, FilterType } from "./types";
 import { getEnv } from "./env";
-import { resolveArtistMbid, getRecentSetlistSongTitles } from "./setlistfm";
+import { resolveArtistMbid, getOrderedSetlistSongTitles } from "./setlistfm";
 
 // NOTE: Spotify's February 2026 Development Mode changes removed several
 // endpoints this app used to rely on (artist top-tracks, batch track/album
@@ -202,13 +202,16 @@ async function getArtistSupplementalTracks(artistId: string, artistName: string,
 
 // "Setlist" — resolves what this artist has actually been playing live
 // recently, via setlist.fm, then matches each song title back to a real
-// Spotify track. Titles that don't cleanly resolve (typos, live-only
-// mashups, songs setlist.fm has but Spotify's search can't match) are
-// just skipped rather than failing the whole pool.
+// Spotify track, in the same order the titles arrived in (Promise.all
+// preserves input order regardless of which request actually finishes
+// first) — so if titles is in real performance order, so is this pool.
+// Titles that don't cleanly resolve (typos, live-only mashups, songs
+// setlist.fm has but Spotify's search can't match) are just skipped
+// rather than failing the whole pool.
 async function getArtistSetlistTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
   const mbid = await resolveArtistMbid(artistName);
   if (!mbid) return [];
-  const titles = await getRecentSetlistSongTitles(mbid);
+  const titles = await getOrderedSetlistSongTitles(mbid);
   if (titles.length === 0) return [];
 
   const seen = new Set<string>();
