@@ -1,7 +1,0 @@
-node_modules
-.next
-.open-next
-.env.local
-.wrangler
-.vercel
-tsconfig.tsbuildinfo
