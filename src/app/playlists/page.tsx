@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAllEvents, saveAllEvents, getPastDatedEvents, getUpcomingEvents } from "@/lib/eventHistory";
 import { getAllDrafts, removeDraft as removeDraftFromStorage } from "@/lib/drafts";
-import { markPlaylistsSeen } from "@/lib/unreadTracker";
 import { useLineup } from "@/lib/lineupStore";
 import { useConnectionStatus } from "@/lib/useConnectionStatus";
 import { PastEvent, PlaylistTrack, SpotifyTrack, DraftPlaylist } from "@/lib/types";
@@ -64,7 +63,6 @@ export default function PlaylistsPage() {
     setPastEvents(getPastDatedEvents());
     setDrafts(getAllDrafts());
     setLoaded(true);
-    markPlaylistsSeen();
     if (typeof window !== "undefined" && window.location.search.includes("draftSaved=1")) {
       setDraftSavedToast(true);
       window.history.replaceState({}, "", "/playlists");

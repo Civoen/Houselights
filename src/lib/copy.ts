@@ -28,18 +28,6 @@ export const copy = {
     missingSpotifyIdError: "This artist is missing its Spotify ID — try removing and re-adding them.",
   },
 
-  // Shown once, ever, the first time each page is visited — keyed by
-  // route. Deliberately only covers pages with something non-obvious
-  // going on; Home, Create, and Settings are self-explanatory enough on
-  // their own not to need one.
-  firstVisit: {
-    "/lineup": "Search for artists playing your show, then adjust how much of each one you want in the mix.",
-    "/lineup/preview": "Review your playlist here — reorder tracks, flip the artist order, or save it as a draft to finish later.",
-    "/playlists": "Every playlist you've created lives here — tap one to open it in Spotify, or edit it anytime.",
-    "/wristbands": "Unlock these by hitting real milestones — build lineups, attend shows, and grow your collection.",
-    "/encore": "A quick look back at your stats — shows prepped, songs queued, and more.",
-  } as Record<string, string>,
-
   home: {
     tagline: "Create better playlists.",
     ctaConnect: "Connect Spotify",

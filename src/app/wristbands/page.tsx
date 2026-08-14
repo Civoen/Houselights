@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import { WRISTBANDS, WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
 import { getUnlockedWristbands } from "@/lib/wristbandTracker";
-import { markWristbandsSeen } from "@/lib/unreadTracker";
 import { WristbandIcon } from "@/components/WristbandIcon";
 import { copy } from "@/lib/copy";
 
@@ -28,7 +27,6 @@ export default function WristbandsPage() {
     });
     setUnlockedIds(map);
     setLoaded(true);
-    markWristbandsSeen();
   }, []);
 
   const earnedCount = Object.keys(unlockedIds).length;

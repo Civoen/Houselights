@@ -3,15 +3,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BottomNav } from "./BottomNav";
 import { WristbandUnlockToast } from "./WristbandUnlockToast";
-import { FirstVisitToast } from "./FirstVisitToast";
 import { ThemeToggle } from "./ThemeToggle";
 import { SettingsButton } from "./SettingsButton";
 import { checkForNewWristbands, WRISTBAND_CHECK_EVENT } from "@/lib/wristbandTracker";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
-import { hasSeenPage, markPageSeen } from "@/lib/firstVisit";
-import { copy } from "@/lib/copy";
 
 const HIDE_NAV_ON = ["/", "/success"];
 // Settings excludes itself for the same reason it never shows its own
@@ -29,7 +26,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const showNav = !HIDE_NAV_ON.includes(pathname);
   const showHeaderIcons = !HIDE_HEADER_ICONS_ON.includes(pathname);
   const [unlockQueue, setUnlockQueue] = useState<WristbandDef[]>([]);
-  const [firstVisitMessage, setFirstVisitMessage] = useState<string | null>(null);
   const { mode: colorblindMode } = useColorblindMode();
 
   useEffect(() => {
@@ -69,29 +65,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [current]);
 
-  useEffect(() => {
-    const message = copy.firstVisit[pathname];
-    if (!message || hasSeenPage(pathname)) return;
-    markPageSeen(pathname);
-    // Same top-of-screen spot the Wristband unlock toast uses — if one's
-    // already showing, wait for it to clear rather than stacking two
-    // toasts on top of each other. A short poll is simpler and safer here
-    // than threading this into the wristband queue's own state, since
-    // they're otherwise fully independent mechanisms.
-    if (current) {
-      const timer = setTimeout(() => setFirstVisitMessage(message), 6500);
-      return () => clearTimeout(timer);
-    }
-    setFirstVisitMessage(message);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!firstVisitMessage) return;
-    const timer = setTimeout(() => setFirstVisitMessage(null), 7000);
-    return () => clearTimeout(timer);
-  }, [firstVisitMessage]);
-
   return (
     <>
       {children}
@@ -117,9 +90,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             router.push("/wristbands");
           }}
         />
-      )}
-      {!current && firstVisitMessage && (
-        <FirstVisitToast message={firstVisitMessage} onDismiss={() => setFirstVisitMessage(null)} />
       )}
       {showNav && <BottomNav />}
     </>

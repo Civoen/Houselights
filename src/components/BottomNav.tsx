@@ -1,11 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { copy } from "@/lib/copy";
 import { haptic, HAPTIC } from "@/lib/haptics";
-import { hasUnreadPlaylists, hasUnreadWristbands } from "@/lib/unreadTracker";
-import { WRISTBAND_CHECK_EVENT } from "@/lib/wristbandTracker";
 
 const TABS = [
   {
@@ -50,22 +47,6 @@ export function BottomNav() {
   const pathname = usePathname();
   const activeIndex = TABS.findIndex((t) => t.match(pathname));
   const tabWidthPct = 100 / TABS.length;
-  const [unreadPlaylists, setUnreadPlaylists] = useState(false);
-  const [unreadWristbands, setUnreadWristbands] = useState(false);
-
-  useEffect(() => {
-    // Re-checked on every navigation (covers the common case: create a
-    // playlist, land on a different page, badge appears) and whenever a
-    // wristband unlock is explicitly signalled (covers unlocking while
-    // staying put — e.g. a passive time-based one like "Show day").
-    function check() {
-      setUnreadPlaylists(hasUnreadPlaylists());
-      setUnreadWristbands(hasUnreadWristbands());
-    }
-    check();
-    window.addEventListener(WRISTBAND_CHECK_EVENT, check);
-    return () => window.removeEventListener(WRISTBAND_CHECK_EVENT, check);
-  }, [pathname]);
 
   return (
     <nav
@@ -88,7 +69,6 @@ export function BottomNav() {
 
         {TABS.map((tab, i) => {
           const active = i === activeIndex;
-          const unread = (tab.key === "playlists" && unreadPlaylists) || (tab.key === "wristbands" && unreadWristbands);
           return (
             <Link
               key={tab.key}
@@ -99,11 +79,8 @@ export function BottomNav() {
                 (active ? "text-white" : "text-faint")
               }
             >
-              <span key={active ? `${tab.key}-on` : `${tab.key}-off`} className={"relative " + (active ? "animate-pop-in" : "")}>
+              <span key={active ? `${tab.key}-on` : `${tab.key}-off`} className={active ? "animate-pop-in" : ""}>
                 {tab.icon}
-                {unread && !active && (
-                  <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-green border border-bg" />
-                )}
               </span>
               {tab.label}
             </Link>

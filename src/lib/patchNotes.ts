@@ -9,14 +9,6 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
-    version: "2.5",
-    notes: [
-      "Added proper error screens showing the real error message, code, and stack trace instead of a generic crash page",
-      "Added a one-time explainer toast the first time you visit New Event, Preview, Playlists, Wristbands, or Stats",
-      "Added a small unread dot on the Playlists and Wristbands nav tabs when there's something new you haven't seen",
-    ],
-  },
-  {
     version: "2.4",
     notes: [
       "Setlist now uses the actual performance order from the artist's most recent show, instead of an unordered mix of popular songs they've played live",
