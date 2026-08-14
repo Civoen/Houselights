@@ -1,400 +1,512 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveAllEvents } from "@/lib/eventHistory";
-import { resetWristbandProgress } from "@/lib/wristbandTracker";
-import { useColorblindMode, ColorblindMode } from "@/lib/colorblindStore";
-import { useTheme } from "@/lib/themeStore";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { buildBackupPayload, backupFilename, parseBackup, applyBackup } from "@/lib/backup";
+import Link from "next/link";
+import { getAllEvents, saveAllEvents, getPastDatedEvents, getUpcomingEvents } from "@/lib/eventHistory";
+import { getAllDrafts, removeDraft as removeDraftFromStorage } from "@/lib/drafts";
+import { markPlaylistsSeen } from "@/lib/unreadTracker";
+import { useLineup } from "@/lib/lineupStore";
+import { useConnectionStatus } from "@/lib/useConnectionStatus";
+import { PastEvent, PlaylistTrack, SpotifyTrack, DraftPlaylist } from "@/lib/types";
+import { ArtistAvatar } from "@/components/ArtistAvatar";
+import { UndoToast } from "@/components/UndoToast";
+import { EqSpinner } from "@/components/EqSpinner";
 import { haptic, HAPTIC } from "@/lib/haptics";
+import { useReorder } from "@/lib/useReorder";
 import { copy } from "@/lib/copy";
-import { PATCH_NOTES } from "@/lib/patchNotes";
+import { fmtMinutes } from "@/lib/format";
 
-type ConfirmTarget = "deleteAll" | "clearProgress" | null;
 
-export default function SettingsPage() {
+function daysUntil(dateStr: string) {
+  return Math.round(
+    (new Date(dateStr + "T00:00:00").getTime() - new Date(new Date().toDateString()).getTime()) / 86400000
+  );
+}
+
+function formatCountdown(days: number) {
+  if (days <= 0) return "today";
+  if (days === 1) return "tomorrow";
+  return `in ${days} days`;
+}
+
+export default function PlaylistsPage() {
   const router = useRouter();
-  const { mode: colorblindMode, setMode: setColorblindMode } = useColorblindMode();
-  const { theme, toggleTheme } = useTheme();
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
-  const [doneTarget, setDoneTarget] = useState<ConfirmTarget>(null);
-  const [notesOpen, setNotesOpen] = useState(false);
+  const connected = useConnectionStatus();
+  const { reset, addArtist, restoreFullLineup, setPlaylist, setPlaylistMeta, setEventDate, setPlaylistSize, setEditingPlaylistId, setResumedDraftId } =
+    useLineup();
+  const [events, setEvents] = useState<PastEvent[]>([]);
+  const [upcoming, setUpcoming] = useState<PastEvent[]>([]);
+  const [pastEvents, setPastEvents] = useState<PastEvent[]>([]);
+  const [drafts, setDrafts] = useState<DraftPlaylist[]>([]);
+  const [showPrevious, setShowPrevious] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [removedPlaylist, setRemovedPlaylist] = useState<{ event: PastEvent; index: number } | null>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+  const [previewErrorId, setPreviewErrorId] = useState<string | null>(null);
+  const [previewErrorKind, setPreviewErrorKind] = useState<"scope" | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [exportDone, setExportDone] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [pendingImport, setPendingImport] = useState<{ data: Record<string, string>; exportedAt: string } | null>(null);
-  const [importing, setImporting] = useState(false);
+
+  // The main list excludes anything whose event date has already passed —
+  // those live in the "Previous events" section instead now. Indices are
+  // preserved from the full `events` array (not re-numbered), since
+  // reorder/remove/drag all operate on that array's real positions.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const visibleEvents = events
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => !(e.eventDate && e.eventDate < todayStr));
+
+  const [draftSavedToast, setDraftSavedToast] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/status")
-      .then((r) => r.json())
-      .then((d) => setConnected(!!d.connected))
-      .catch(() => setConnected(false));
+    setEvents(getAllEvents());
+    setUpcoming(getUpcomingEvents());
+    setPastEvents(getPastDatedEvents());
+    setDrafts(getAllDrafts());
+    setLoaded(true);
+    markPlaylistsSeen();
+    if (typeof window !== "undefined" && window.location.search.includes("draftSaved=1")) {
+      setDraftSavedToast(true);
+      window.history.replaceState({}, "", "/playlists");
+      setTimeout(() => setDraftSavedToast(false), 3000);
+    }
   }, []);
 
-  function handleDeleteAllPlaylists() {
-    haptic(HAPTIC.remove);
-    saveAllEvents([]);
-    setConfirmTarget(null);
-    setDoneTarget("deleteAll");
-    setTimeout(() => setDoneTarget(null), 3000);
+  function reorder(from: number, to: number) {
+    setEvents((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      saveAllEvents(next);
+      return next;
+    });
   }
 
-  function handleClearProgress() {
-    haptic(HAPTIC.remove);
-    saveAllEvents([]);
-    resetWristbandProgress();
-    setConfirmTarget(null);
-    setDoneTarget("clearProgress");
-    setTimeout(() => setDoneTarget(null), 3000);
-  }
+  const { dragIndex, overIndex, dragOffsetY, setItemRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } =
+    useReorder(events.length, (from, to) => {
+      reorder(from, to);
+      haptic(HAPTIC.reorder);
+    });
 
-  function downloadBlob(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  // Shared by both the main Playlists list and Previous Events — the full
+  // card (avatar, stats, swipe-to-delete, Spotify/Copy link/Edit actions).
+  // Drag-reorder is optional since it only makes sense for the main list;
+  // reordering shows that already happened doesn't have a clear purpose.
+  function renderPlaylistCard(e: PastEvent, globalIndex: number, dragEnabled: boolean) {
+    const rowId = e.id + e.createdAt;
+    const isThisDragging = dragEnabled && dragIndex === globalIndex;
+    const isThisDropTarget = dragEnabled && overIndex === globalIndex && dragIndex !== null;
 
-  function showExportDone() {
-    setExportDone(true);
-    setTimeout(() => setExportDone(false), 3000);
-  }
-
-  async function handleExport() {
-    haptic(HAPTIC.tap);
-    const payload = buildBackupPayload();
-    const filename = backupFilename();
-    const blob = new Blob([payload], { type: "application/json" });
-    const file = new File([blob], filename, { type: "application/json" });
-
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: "Houselights backup" });
-        showExportDone();
-      } catch (err: any) {
-        // AbortError means the user dismissed the share sheet themselves —
-        // that's a deliberate cancel, not a failure, so no fallback there.
-        if (err?.name !== "AbortError") {
-          downloadBlob(blob, filename);
-          showExportDone();
+    return (
+      <div
+        key={rowId}
+        ref={dragEnabled ? setItemRef(globalIndex) : undefined}
+        onClick={(ev) => {
+          if ((ev.target as HTMLElement).closest("[data-no-card-click]")) return;
+          window.location.href = e.url;
+        }}
+        className={
+          "relative bg-surface rounded-2xl p-4 mb-3 cursor-pointer " +
+          (isThisDragging
+            ? "shadow-2xl z-20"
+            : "shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up transition-all duration-150 " +
+              (isThisDropTarget ? "ring-2 ring-accent" : ""))
         }
-      }
+        style={{
+          animationDelay: isThisDragging ? undefined : `${globalIndex * 30}ms`,
+          transform: isThisDragging ? `translateY(${dragOffsetY}px) scale(1.02)` : undefined,
+          transition: isThisDragging ? "box-shadow 0.15s ease" : undefined,
+        }}
+      >
+        <div className="flex items-start gap-3">
+          {dragEnabled && (
+            <span
+              data-no-card-click
+              onPointerDown={handlePointerDown(globalIndex)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+              className="text-faint text-base select-none cursor-grab active:cursor-grabbing pt-1 px-1 -mx-1"
+              style={{ touchAction: "none" }}
+            >
+              ⠿
+            </span>
+          )}
+          <ArtistAvatar src={e.headliner?.image} size={38} />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold truncate mb-1">{e.name}</div>
+            <div className="text-xs text-muted font-semibold">
+              {e.trackCount} tracks · {fmtMinutes(e.totalMinutes)}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-2 mt-3">
+          <button
+            data-no-card-click
+            onClick={() => {
+              haptic(HAPTIC.tap);
+              window.location.href = e.url;
+            }}
+            className="flex items-center justify-center py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+          >
+            {copy.playlists.open}
+          </button>
+          <button
+            data-no-card-click
+            onClick={() => copyLink(e)}
+            className="flex items-center justify-center py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+          >
+            {copiedId === rowId ? copy.playlists.linkCopied : copy.playlists.copyLink}
+          </button>
+          <button
+            data-no-card-click
+            onClick={() => openInPreview(e)}
+            disabled={previewLoadingId === rowId}
+            className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95 disabled:opacity-70"
+          >
+            {previewLoadingId === rowId && <EqSpinner className="text-white" />}
+            {copy.playlists.edit}
+          </button>
+          <button
+            data-no-card-click
+            onClick={() => handleRemovePlaylist(e, globalIndex)}
+            className="flex items-center justify-center py-2.5 rounded-xl bg-surfaceAlt text-red-500 text-[10px] font-bold transition-all duration-150 hover:bg-red-50 active:scale-95"
+          >
+            {copy.playlists.deleteAction}
+          </button>
+        </div>
+        {previewErrorId === rowId && (
+          <p className="text-[11px] text-red-600 mt-2 text-center">
+            {previewErrorKind === "scope" ? (
+              <>
+                {copy.playlists.previewErrorScope}{" "}
+                <a href="/api/auth/login?switch=1" className="underline font-bold">
+                  {copy.playlists.reconnect}
+                </a>
+              </>
+            ) : (
+              copy.playlists.previewError
+            )}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  function copyLink(e: PastEvent) {
+    haptic(HAPTIC.tap);
+    navigator.clipboard.writeText(e.url).then(() => {
+      setCopiedId(e.id + e.createdAt);
+      setTimeout(() => setCopiedId(null), 1500);
+    });
+  }
+
+  // Playlists now carry their own track snapshot from creation time (no
+  // extra cost — the data was already in memory right when the playlist
+  // was made). Loading Edit is instant and offline-capable for these.
+  // Playlists saved before this existed don't have that snapshot, so for
+  // those specifically this still falls back to re-fetching from Spotify
+  // — meaning only that older subset needs network time or can hit the
+  // scope/permission failure mode.
+  async function openInPreview(e: PastEvent) {
+    const key = e.id + e.createdAt;
+    haptic(HAPTIC.tap);
+    setPreviewErrorId(null);
+    setPreviewErrorKind(null);
+
+    if (e.tracks && e.tracks.length > 0) {
+      loadIntoPreview(e, e.tracks);
       return;
     }
-    downloadBlob(blob, filename);
-    showExportDone();
-  }
 
-  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setImportError(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const parsed = parseBackup(reader.result as string);
-      if (!parsed) {
-        setImportError(copy.settings.importInvalidFile);
-        return;
+    setPreviewLoadingId(key);
+    try {
+      const res = await fetch(`/api/playlist/${e.id}/tracks`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.error === "insufficient_scope") {
+          setPreviewErrorKind("scope");
+        }
+        throw new Error();
       }
-      setPendingImport(parsed);
-    };
-    reader.onerror = () => setImportError(copy.settings.importInvalidFile);
-    reader.readAsText(file);
+      const json = await res.json();
+      const sourceTracks: SpotifyTrack[] = json.tracks || [];
+      if (sourceTracks.length === 0) throw new Error();
+
+      const playlistTracks: PlaylistTrack[] = sourceTracks.map((t) => ({
+        ...t,
+        sourceArtistId: t.artistId,
+        handpicked: false,
+      }));
+      loadIntoPreview(e, playlistTracks);
+    } catch {
+      haptic(HAPTIC.remove);
+      setPreviewErrorId(key);
+    } finally {
+      setPreviewLoadingId(null);
+    }
   }
 
-  function handleConfirmImport() {
-    if (!pendingImport) return;
+  // A Draft's own card — deliberately simpler than a real playlist's:
+  // no Spotify link, no copy-link, no Edit-via-fetch, since none of that
+  // applies to something that was never actually sent to Spotify. Just
+  // enough to pick it back up or discard it.
+  function renderDraftCard(d: DraftPlaylist) {
+    return (
+      <div
+        key={d.id}
+        className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up"
+      >
+        <div className="flex items-start gap-3">
+          <ArtistAvatar src={d.headliner?.image} size={38} />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold truncate mb-1">{d.name}</div>
+            <div className="text-xs text-muted font-semibold">
+              {d.trackCount} tracks · {fmtMinutes(d.totalMinutes)}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <button
+            onClick={() => resumeDraft(d)}
+            className="py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+          >
+            {copy.playlists.resumeDraft}
+          </button>
+          <button
+            onClick={() => handleDeleteDraft(d.id)}
+            className="py-2.5 rounded-xl bg-surfaceAlt text-red-500 text-[10px] font-bold transition-all duration-150 hover:bg-red-50 active:scale-95"
+          >
+            {copy.playlists.deleteAction}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Shared by both the instant (local snapshot) and fallback (network)
+  // paths — rebuild a minimal lineup — one entry per distinct artist
+  // actually present in the tracks, in order of first appearance — so
+  // Preview's artist-grouping and color-coding has something to key off.
+  function loadIntoPreview(e: PastEvent, tracks: PlaylistTrack[]) {
+    reset();
+    const seen = new Set<string>();
+    tracks.forEach((t) => {
+      if (!t.sourceArtistId || seen.has(t.sourceArtistId)) return;
+      seen.add(t.sourceArtistId);
+      addArtist({ id: t.sourceArtistId, name: t.artist, genres: [] });
+    });
+    setPlaylist(tracks);
+    setPlaylistMeta(e.name, e.description || "");
+    setEventDate(e.eventDate || "");
+    setEditingPlaylistId(e.id);
+    router.push("/lineup/preview");
+  }
+
+  function resumeDraft(d: DraftPlaylist) {
+    reset();
+    // Unlike loadIntoPreview (which has to reconstruct a lineup from track
+    // metadata for playlists that predate the tracks snapshot), a Draft
+    // already has the exact original LineupArtist[] — filters, weights,
+    // hand-picked tracks and all — so restoreFullLineup puts it back
+    // exactly as it was, not just a same-artists approximation.
+    restoreFullLineup(d.lineup);
+    setPlaylist(d.tracks);
+    setEventDate(d.eventDate || "");
+    setPlaylistSize(d.playlistSizeMode, d.playlistSizeValue);
+    setResumedDraftId(d.id);
+    router.push("/lineup/preview");
+  }
+
+  function handleDeleteDraft(id: string) {
+    haptic(HAPTIC.remove);
+    removeDraftFromStorage(id);
+    setDrafts(getAllDrafts());
+  }
+
+  function handleRemovePlaylist(event: PastEvent, index: number) {
+    haptic(HAPTIC.remove);
+    const next = events.filter((_, i) => i !== index);
+    setEvents(next);
+    saveAllEvents(next);
+    // events.filter/saveAllEvents only ever touched the flat `events` array
+    // — pastEvents and upcoming are separate state derived from it, so
+    // without this they'd keep showing the just-removed playlist even
+    // though storage was already correctly updated underneath them.
+    setPastEvents(getPastDatedEvents());
+    setUpcoming(getUpcomingEvents());
+    setRemovedPlaylist({ event, index });
+  }
+
+  // No auto-dismiss timer here on purpose — this stays up until the user
+  // either undoes it or navigates away (which unmounts this page and clears
+  // the state naturally), matching what was asked for.
+  function undoRemovePlaylist() {
+    if (!removedPlaylist) return;
     haptic(HAPTIC.add);
-    applyBackup(pendingImport.data);
-    setPendingImport(null);
-    setImporting(true);
-    // Most pages only read localStorage once on mount, so a reload is the
-    // simplest way to guarantee every page reflects the restored data
-    // rather than showing a mix of old and new state.
-    setTimeout(() => window.location.reload(), 900);
+    const next = [...events];
+    next.splice(removedPlaylist.index, 0, removedPlaylist.event);
+    setEvents(next);
+    saveAllEvents(next);
+    setPastEvents(getPastDatedEvents());
+    setUpcoming(getUpcomingEvents());
+    setRemovedPlaylist(null);
   }
 
-  const colorblindOptions: { id: ColorblindMode; label: string; note: string }[] = [
-    { id: "off", label: copy.settings.colorblindOff, note: copy.settings.colorblindOffNote },
-    { id: "redGreen", label: copy.settings.colorblindRedGreen, note: copy.settings.colorblindRedGreenNote },
-    { id: "blueYellow", label: copy.settings.colorblindBlueYellow, note: copy.settings.colorblindBlueYellowNote },
-  ];
+  const totalSongs = events.reduce((s, e) => s + e.trackCount, 0);
 
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
-        <button
-          onClick={() => router.back()}
-          className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
-        >
-          ‹
-        </button>
-        <h1 className="font-display text-3xl font-bold tracking-tight">{copy.settings.title}</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.playlists.title}</h1>
+        {connected === false && (
+          <div className="bg-surfaceAlt border border-green rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
+            <span className="text-xs font-semibold text-muted">{copy.lineup.guestBanner}</span>
+            <a href="/api/auth/login" className="text-[11px] font-bold text-accent underline decoration-dotted underline-offset-4 flex-shrink-0">
+              {copy.lineup.guestBannerAction}
+            </a>
+          </div>
+        )}
+        <p className="text-sm text-muted font-medium mb-3">
+          {events.length > 0
+            ? `${events.length} show${events.length === 1 ? "" : "s"} prepped · ${totalSongs} songs queued up`
+            : copy.playlists.subtitleEmpty}
+        </p>
+        {events.length > 0 && (
+          <Link
+            href="/encore"
+            className="flex items-center justify-center gap-2 w-full bg-grad text-white text-sm font-bold py-3.5 rounded-2xl mb-3 transition-all duration-150 hover:brightness-[1.05] active:scale-[0.98] shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)]"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 12a8 8 0 1 1 2.34 5.66M4 12v5M4 12H9"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {copy.playlists.encoreButton}
+          </Link>
+        )}
       </div>
 
-      <div className="px-6 py-5 max-w-lg mx-auto">
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.accountLabel}</div>
-        <div className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={"w-2 h-2 rounded-full " + (connected ? "bg-green" : "bg-faint")} />
-            <span className="text-sm font-bold">
-              {connected === null ? copy.settings.checking : connected ? copy.settings.connected : copy.settings.notConnected}
-            </span>
-          </div>
-          <p className="text-xs text-faint">
-            {connected
-              ? copy.settings.connectedNote
-              : copy.settings.notConnectedNote}
-          </p>
+      <div className="px-6 pt-2 max-w-lg mx-auto">
+        <div className="flex items-center justify-between mb-2 mt-1">
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint">{copy.nextUp.title}</h2>
         </div>
-
-        {connected && (
-          <div className="flex flex-col gap-2 mb-3">
+        {upcoming.length === 0 ? (
+          <p className="text-xs text-faint pb-4">{copy.nextUp.emptyMessage}</p>
+        ) : (
+          <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] px-4 mb-4">
             <a
-              href="/api/auth/login?switch=1"
-              className="w-full text-center py-3 rounded-xl bg-surface text-muted text-sm font-bold shadow-[0_6px_18px_-10px_rgba(10,31,38,0.2)] transition-all duration-150 active:scale-[0.98]"
+              href={upcoming[0].url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 py-3.5 transition-transform duration-150 active:scale-[0.99]"
             >
-              {copy.settings.switchAccount}
-            </a>
-            <a
-              href="/api/auth/logout"
-              className="w-full text-center py-3 rounded-xl bg-surface text-red-500 text-sm font-bold shadow-[0_6px_18px_-10px_rgba(10,31,38,0.2)] transition-all duration-150 active:scale-[0.98]"
-            >
-              {copy.settings.logout}
+              <ArtistAvatar src={upcoming[0].headliner?.image} size={40} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold truncate">{upcoming[0].headliner?.name || upcoming[0].name}</div>
+                <div className="text-xs text-faint truncate">{upcoming[0].artistNames.join(", ")}</div>
+              </div>
+              <span className="text-xs font-bold text-accent flex-shrink-0">
+                {formatCountdown(daysUntil(upcoming[0].eventDate!))}
+              </span>
             </a>
           </div>
         )}
 
-        {connected === false && (
-          <a
-            href="/api/auth/login"
-            className="block w-full text-center py-3 rounded-xl bg-grad text-white text-sm font-bold shadow-[0_10px_24px_-16px_rgba(17,80,103,0.55)] transition-all duration-150 hover:brightness-[1.05] active:scale-[0.98] mb-3"
-          >
-            {copy.settings.connectButton}
-          </a>
-        )}
-
-        <p className="text-[11px] text-faint mb-6 text-center">
-          {copy.settings.switchNote}
-        </p>
-
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.colorblindLabel}</div>
-        <div className="bg-surface rounded-2xl p-4 mb-6 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
-          <p className="text-xs text-faint mb-3">{copy.settings.colorblindNote}</p>
-          <div className="flex flex-col gap-2">
-            {colorblindOptions.map((opt) => {
-              const active = colorblindMode === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    haptic(HAPTIC.tap);
-                    setColorblindMode(opt.id);
-                  }}
-                  className={
-                    "flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
-                    (active ? "bg-grad text-white" : "bg-surfaceAlt text-muted")
-                  }
-                >
-                  <div>
-                    <div className="text-sm font-bold">{opt.label}</div>
-                    <div className={"text-[11px] mt-0.5 " + (active ? "text-white/80" : "text-faint")}>{opt.note}</div>
-                  </div>
-                  {active && (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 ml-2">
-                      <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.appearanceLabel}</div>
         <button
           onClick={() => {
             haptic(HAPTIC.tap);
-            toggleTheme();
+            setShowPrevious((v) => !v);
           }}
-          className="w-full text-left bg-surface rounded-2xl p-4 mb-6 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] flex items-center justify-between gap-3 transition-transform duration-150 active:scale-[0.98]"
+          className="w-full flex items-center justify-between bg-surface rounded-2xl px-4 py-3.5 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]"
         >
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold">
-              {theme === "dark" ? copy.settings.lightsDown : copy.settings.lightsUp}
-            </div>
-            <div className="text-xs text-faint mt-0.5">{copy.settings.appearanceNote}</div>
-          </div>
-          <ThemeToggle asButton={false} className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted flex-shrink-0" />
+          <span className="text-sm font-bold">
+            {copy.playlists.previousEventsLabel}
+            {pastEvents.length > 0 && <span className="text-faint font-semibold"> · {pastEvents.length}</span>}
+          </span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="transition-transform duration-200 text-faint flex-shrink-0"
+            style={{ transform: showPrevious ? "rotate(180deg)" : "rotate(0deg)" }}
+          >
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
 
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.backupLabel}</div>
-        <div className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
-          <p className="text-xs text-faint mb-3">{copy.settings.backupNote}</p>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={handleExport}
-              className="w-full text-center py-3 rounded-xl bg-surfaceAlt text-muted text-sm font-bold transition-all duration-150 active:scale-[0.98]"
-            >
-              {copy.settings.exportButton}
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full text-center py-3 rounded-xl bg-surfaceAlt text-muted text-sm font-bold transition-all duration-150 active:scale-[0.98]"
-            >
-              {copy.settings.importButton}
-            </button>
-            <input ref={fileInputRef} type="file" accept="application/json" onChange={handleFileSelected} className="hidden" />
-          </div>
-          {exportDone && <p className="text-xs text-green font-bold mt-3 animate-fade-slide-up">{copy.settings.exportDone}</p>}
-          {importError && <p className="text-xs text-red-600 mt-3 animate-fade-slide-up">{importError}</p>}
-          {pendingImport && !importing && (
-            <div className="mt-3 pt-3 border-t border-line animate-fade-slide-up">
-              <p className="text-xs text-faint mb-2">
-                {copy.settings.importConfirmPrompt}
-                {pendingImport.exportedAt ? ` (${new Date(pendingImport.exportedAt).toLocaleDateString()})` : ""}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPendingImport(null)}
-                  className="text-xs font-bold text-muted flex-1 py-2 rounded-lg bg-surfaceAlt transition-transform duration-150 active:scale-95"
-                >
-                  {copy.settings.cancel}
-                </button>
-                <button
-                  onClick={handleConfirmImport}
-                  className="text-xs font-bold text-white flex-1 py-2 rounded-lg bg-grad transition-transform duration-150 active:scale-95"
-                >
-                  {copy.settings.importConfirmButton}
-                </button>
+        {showPrevious && (
+          <div className="mt-2 animate-fade-slide-up">
+            {pastEvents.length === 0 ? (
+              <div className="bg-surface rounded-2xl px-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
+                <p className="text-xs text-faint py-4 text-center">{copy.playlists.previousEventsEmpty}</p>
               </div>
-            </div>
-          )}
-          {importing && <p className="text-xs text-faint mt-3 animate-fade-slide-up">{copy.settings.importingMessage}</p>}
-        </div>
-
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2 mt-6">{copy.settings.dangerLabel}</div>
-        <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] overflow-hidden mb-3">
-          <div className="p-4 border-b border-line">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold">{copy.settings.deleteAllTitle}</div>
-                <div className="text-xs text-faint mt-0.5">{copy.settings.deleteAllNote}</div>
-              </div>
-              <button
-                onClick={() => setConfirmTarget(confirmTarget === "deleteAll" ? null : "deleteAll")}
-                className="text-xs font-bold text-red-500 flex-shrink-0 px-3 py-2 rounded-xl bg-red-50 transition-transform duration-150 active:scale-95"
-              >
-                {copy.settings.deleteAllButton}
-              </button>
-            </div>
-            {confirmTarget === "deleteAll" && (
-              <div className="mt-3 pt-3 border-t border-line flex items-center gap-2 animate-fade-slide-up">
-                <p className="text-xs text-faint flex-1">{copy.settings.confirmPrompt}</p>
-                <button
-                  onClick={() => setConfirmTarget(null)}
-                  className="text-xs font-bold text-muted flex-shrink-0 px-3 py-1.5 rounded-lg bg-surfaceAlt transition-transform duration-150 active:scale-95"
-                >
-                  {copy.settings.cancel}
-                </button>
-                <button
-                  onClick={handleDeleteAllPlaylists}
-                  className="text-xs font-bold text-white flex-shrink-0 px-3 py-1.5 rounded-lg bg-red-500 transition-transform duration-150 active:scale-95"
-                >
-                  {copy.settings.confirmDelete}
-                </button>
-              </div>
-            )}
-            {doneTarget === "deleteAll" && (
-              <p className="text-xs text-green font-bold mt-2 animate-fade-slide-up">{copy.settings.deletedConfirmation}</p>
+            ) : (
+              pastEvents.map((e) => {
+                const globalIndex = events.findIndex((ev) => ev.id === e.id && ev.createdAt === e.createdAt);
+                return renderPlaylistCard(e, globalIndex, false);
+              })
             )}
           </div>
-
-          <div className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold">{copy.settings.clearProgressTitle}</div>
-                <div className="text-xs text-faint mt-0.5">{copy.settings.clearProgressNote}</div>
-              </div>
-              <button
-                onClick={() => setConfirmTarget(confirmTarget === "clearProgress" ? null : "clearProgress")}
-                className="text-xs font-bold text-red-500 flex-shrink-0 px-3 py-2 rounded-xl bg-red-50 transition-transform duration-150 active:scale-95"
-              >
-                {copy.settings.clearProgressButton}
-              </button>
-            </div>
-            {confirmTarget === "clearProgress" && (
-              <div className="mt-3 pt-3 border-t border-line flex items-center gap-2 animate-fade-slide-up">
-                <p className="text-xs text-faint flex-1">{copy.settings.confirmPromptProgress}</p>
-                <button
-                  onClick={() => setConfirmTarget(null)}
-                  className="text-xs font-bold text-muted flex-shrink-0 px-3 py-1.5 rounded-lg bg-surfaceAlt transition-transform duration-150 active:scale-95"
-                >
-                  {copy.settings.cancel}
-                </button>
-                <button
-                  onClick={handleClearProgress}
-                  className="text-xs font-bold text-white flex-shrink-0 px-3 py-1.5 rounded-lg bg-red-500 transition-transform duration-150 active:scale-95"
-                >
-                  {copy.settings.confirmDelete}
-                </button>
-              </div>
-            )}
-            {doneTarget === "clearProgress" && (
-              <p className="text-xs text-green font-bold mt-2 animate-fade-slide-up">{copy.settings.clearedConfirmation}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2 mt-6">{copy.settings.patchNotesLabel}</div>
-        <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] overflow-hidden">
-          <button
-            onClick={() => {
-              haptic(HAPTIC.tap);
-              setNotesOpen((v) => !v);
-            }}
-            className="w-full flex items-center justify-between px-4 py-3.5"
-          >
-            <span className="text-sm font-bold">
-              {copy.settings.currentVersionPrefix} {PATCH_NOTES[0]?.version}
-            </span>
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="transition-transform duration-200 text-faint flex-shrink-0"
-              style={{ transform: notesOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-            >
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          {notesOpen && (
-            <div className="px-4 pb-4 animate-fade-slide-up">
-              {PATCH_NOTES.map((v, vi) => (
-                <div key={v.version} className={vi > 0 ? "mt-4 pt-4 border-t border-line" : ""}>
-                  <div className="text-xs font-extrabold text-accent mb-1.5">{v.version}</div>
-                  <ul className="space-y-1">
-                    {v.notes.map((note, ni) => (
-                      <li key={ni} className="text-xs text-faint flex gap-2">
-                        <span className="text-accent flex-shrink-0">·</span>
-                        <span>{note}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
+
+      <div className="px-6 py-5 max-w-lg mx-auto">
+        {loaded && events.length > 0 && (
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
+            {copy.playlists.title} · {visibleEvents.length}
+          </h2>
+        )}
+        {loaded && events.length === 0 && (
+          <div className="text-center py-14">
+            <p className="text-sm text-faint mb-5">
+              {copy.playlists.emptyMessage}
+            </p>
+            <Link
+              href="/lineup"
+              className="inline-block bg-grad text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-[0.96]"
+            >
+              {copy.playlists.buildLineupLink}
+            </Link>
+          </div>
+        )}
+
+        {visibleEvents.map(({ e, i }) => renderPlaylistCard(e, i, true))}
+      </div>
+
+      {drafts.length > 0 && (
+        <div className="px-6 pb-5 max-w-lg mx-auto">
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
+            {copy.playlists.draftsLabel} · {drafts.length}
+          </h2>
+          <p className="text-xs text-faint mb-3">{copy.playlists.draftsNote}</p>
+          {drafts.map((d) => renderDraftCard(d))}
+        </div>
+      )}
+
+      {removedPlaylist && (
+        <UndoToast
+          message={`${copy.common.removedPrefix} ${removedPlaylist.event.name}`}
+          onUndo={undoRemovePlaylist}
+          className="bottom-[calc(72px+16px+env(safe-area-inset-bottom))]"
+        />
+      )}
+
+      {draftSavedToast && (
+        <div
+          className="fixed left-6 right-6 z-50 max-w-lg mx-auto animate-fade-slide-up"
+          style={{ bottom: "calc(72px + 16px + env(safe-area-inset-bottom))" }}
+        >
+          <div className="bg-navy text-white text-xs font-semibold pl-4 pr-4 py-2.5 rounded-full shadow-lg text-center">
+            {copy.playlists.draftSavedToast}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
