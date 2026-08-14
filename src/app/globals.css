@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Poppins", sans-serif;
+  --font-body: "Poppins", sans-serif;
+
+  --color-bg: #F6F7F5;
+  --color-surface: #FFFFFF;
+  --color-surfaceAlt: #EEF1F0;
+  --color-line: rgba(10,31,38,0.08);
+  --color-lineStrong: rgba(10,31,38,0.14);
+  --color-ink: #0A1F26;
+  --color-muted: #64748B;
+  --color-faint: #93A0AB;
+  --color-accent: #115067;
+  --color-green: #14CC9B;
+  --color-teal: #115067;
+  --color-grad-start: #115067;
+  --color-grad-end: #14CC9B;
+}
+
+.dark {
+  --color-bg: #021A23;
+  --color-surface: #12313B;
+  --color-surfaceAlt: #173944;
+  --color-line: rgba(255,255,255,0.08);
+  --color-lineStrong: rgba(255,255,255,0.16);
+  --color-ink: #F6F7F5;
+  --color-muted: #9FB0BB;
+  --color-faint: #6C8894;
+  --color-accent: #2EDCB0;
+  --color-green: #2EDCB0;
+  --color-teal: #2A6B82;
+  --color-grad-start: #0D3C4D;
+  --color-grad-end: #2EDCB0;
+}
+
+/* Colorblind mode overrides the brand accent/green/teal/gradient colors
+   with palette-safe alternatives — layered on top of light/dark rather
+   than needing a full combined matrix, since these rules are placed after
+   .dark in source order and win for the specific variables they set,
+   regardless of which theme is also active. One set of values per mode is
+   used for both light and dark, since colorblind-safe hues are already
+   chosen at a middle brightness/saturation that reads reasonably on both. */
+[data-cb="redGreen"] {
+  --color-accent: #0072B2;
+  --color-green: #0072B2;
+  --color-teal: #0072B2;
+  --color-grad-start: #0072B2;
+  --color-grad-end: #56B4E9;
+}
+
+[data-cb="blueYellow"] {
+  --color-accent: #2F9E44;
+  --color-green: #40C057;
+  --color-teal: #2F9E44;
+  --color-grad-start: #2F9E44;
+  --color-grad-end: #40C057;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.bg-grad {
+  background-image: linear-gradient(115deg, var(--color-grad-start), var(--color-grad-end));
+}
+
+.nav-frosted {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.dark .nav-frosted {
+  background: rgba(18, 49, 59, 0.72);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
