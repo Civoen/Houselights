@@ -795,14 +795,21 @@ export default function LineupPage() {
                 setPickQuery("");
                 setPickResults([]);
               }}
-              className="flex items-center gap-2 text-xs font-bold text-accent pt-2 border-t border-line w-full transition-opacity duration-150 active:opacity-60"
+              className="flex items-center gap-2 text-xs font-bold pt-2 border-t border-line w-full transition-opacity duration-150 active:opacity-60"
+              style={{ color: artistColor }}
             >
-              <span className="w-5 h-5 rounded-md border border-dashed border-accent flex items-center justify-center transition-transform duration-200">
+              <span
+                className="w-5 h-5 rounded-md border border-dashed flex items-center justify-center transition-transform duration-200"
+                style={{ borderColor: artistColor }}
+              >
                 {pickingFor === entry.artist.id ? "−" : "+"}
               </span>
               {copy.lineup.addSpecificSongs}
               {entry.pickedTracks.length > 0 && (
-                <span className="ml-auto bg-accent/10 text-accent text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                <span
+                  className="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded-md"
+                  style={{ backgroundColor: `${artistColor}1a`, color: artistColor }}
+                >
                   {entry.pickedTracks.length} picked
                 </span>
               )}
@@ -836,7 +843,8 @@ export default function LineupPage() {
                     runTrackSearch(entry.artist.id, entry.artist.name, e.target.value);
                   }}
                   placeholder={copy.lineup.searchSongPlaceholder}
-                  className="w-full bg-surfaceAlt border border-line rounded-xl px-3 py-2 text-[16px] mb-2 outline-none transition-shadow focus:ring-2 focus:ring-accent/30"
+                  className="w-full bg-surfaceAlt border rounded-xl px-3 py-2 text-[16px] mb-2 outline-none transition-shadow focus:ring-2"
+                  style={{ borderColor: artistColor, boxShadow: "none", "--tw-ring-color": `${artistColor}4d` } as React.CSSProperties}
                 />
                 {pickResults.map((t, i) => (
                   <div

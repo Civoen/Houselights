@@ -17,6 +17,8 @@ import { buildArtistColorMap } from "@/lib/artistColors";
 import { useColorblindMode } from "@/lib/colorblindStore";
 import { useConnectionStatus } from "@/lib/useConnectionStatus";
 import { addDraft, updateDraft } from "@/lib/drafts";
+import { createOrUpdatePlaylist, defaultPlaylistName, defaultPlaylistDescription } from "@/lib/createPlaylist";
+import { EqSpinner } from "@/components/EqSpinner";
 
 function fmtDuration(ms: number) {
   const totalSec = Math.round(ms / 1000);
@@ -56,6 +58,8 @@ export default function PreviewPage() {
     playlistSizeMode,
     playlistSizeValue,
     resumedDraftId,
+    coverImageBase64,
+    setPlaylistMeta,
     reset,
   } = useLineup();
   const eventDateInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +72,8 @@ export default function PreviewPage() {
   // with shuffling, since a shuffled order isn't "headliner first" or
   // "hype" by definition, so shuffle lives as an action on the flat view
   // instead of a third peer state.
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
   const [groupOrder, setGroupOrder] = useState<"hype" | "headliner">("headliner");
   const [expandedArtists, setExpandedArtists] = useState<Set<string>>(new Set());
@@ -148,9 +154,8 @@ export default function PreviewPage() {
     if (lineup.length === 0 || playlist.length === 0) return;
     haptic(HAPTIC.add);
     const headliner = lineup[0].artist;
-    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     const draftFields = {
-      name: `${headliner.name} — ${today}`,
+      name: defaultPlaylistName(headliner.name),
       artistNames: lineup.map((a) => a.artist.name),
       headliner,
       trackCount: playlist.length,
@@ -170,7 +175,7 @@ export default function PreviewPage() {
     router.push("/playlists?draftSaved=1");
   }
 
-  function handleCreateOrLogin() {
+  function handleEditCoverOrLogin() {
     if (connected === false) {
       // A guest hitting the one wall in this whole flow — the draft
       // (lineup, tracks, weights, everything) is already safely persisted
@@ -180,6 +185,40 @@ export default function PreviewPage() {
       return;
     }
     router.push("/lineup/create");
+  }
+
+  // "Create playlist" skips the cover screen entirely — generates the same
+  // default name/description Create would have pre-filled, sends whatever
+  // cover is already set (none, unless one was picked via Edit Cover or
+  // this is a resumed/edit session that already had one), and creates
+  // straight away rather than making everyone visit a screen they'd have
+  // clicked straight past anyway.
+  async function handleCreateDirect() {
+    if (connected === false) {
+      window.location.href = "/api/auth/login";
+      return;
+    }
+    setCreateSubmitting(true);
+    setCreateError(null);
+    const name = defaultPlaylistName(lineup[0]?.artist.name);
+    const description = defaultPlaylistDescription(lineup.map((a) => a.artist.name));
+    setPlaylistMeta(name, description);
+    try {
+      const successPath = await createOrUpdatePlaylist({
+        name,
+        description,
+        coverImageBase64,
+        playlist,
+        lineup,
+        eventDate,
+        editingPlaylistId,
+        resumedDraftId,
+      });
+      router.push(successPath);
+    } catch (e: any) {
+      setCreateError(e.message || "Couldn't create the playlist. Try again.");
+      setCreateSubmitting(false);
+    }
   }
 
   // Contiguous runs of same-artist tracks in the current flat order — used
@@ -732,6 +771,7 @@ export default function PreviewPage() {
       {removeArtistToast && <UndoToast message={removeArtistToast.message} onUndo={undoRemoveArtistGroup} className="bottom-[calc(72px+24px+52px+16px+env(safe-area-inset-bottom))]" />}
 
       <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+        {createError && <p className="text-xs text-red-600 mb-2 text-center">{createError}</p>}
         {connected === false && (
           <button
             onClick={handleSaveDraft}
@@ -741,18 +781,30 @@ export default function PreviewPage() {
             {copy.preview.saveAsDraft}
           </button>
         )}
+        <button
+          onClick={handleEditCoverOrLogin}
+          disabled={playlist.length === 0 || createSubmitting}
+          className="block w-full text-center py-3.5 rounded-2xl bg-surface text-muted text-sm font-bold shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 active:scale-[0.98] mb-3 disabled:opacity-50"
+        >
+          {copy.preview.editCoverButton}
+        </button>
         <GradientButton
-          onClick={handleCreateOrLogin}
-          disabled={playlist.length === 0}
+          onClick={handleCreateDirect}
+          disabled={playlist.length === 0 || createSubmitting}
           className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]"
         >
-          {editingPlaylistId
-            ? copy.preview.continueToSave
-            : connected === false
-            ? copy.preview.loginToCreate
-            : copy.preview.createButton}
+          {createSubmitting ? (
+            <EqSpinner />
+          ) : editingPlaylistId ? (
+            copy.preview.continueToSave
+          ) : connected === false ? (
+            copy.preview.loginToCreate
+          ) : (
+            copy.preview.createButton
+          )}
         </GradientButton>
       </div>
     </main>
   );
 }
+

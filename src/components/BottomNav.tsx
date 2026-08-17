@@ -56,14 +56,14 @@ export function BottomNav() {
       <div className="relative flex items-stretch h-[72px]">
         {activeIndex >= 0 && (
           <div
-            className="absolute top-[6px] h-[60px] rounded-full bg-grad shadow-[0_6px_16px_-6px_rgba(17,80,103,0.5)] pointer-events-none"
+            className="absolute top-[6px] h-[60px] rounded-2xl bg-grad shadow-[0_6px_16px_-6px_rgba(17,80,103,0.5)] pointer-events-none"
             style={{
               left: `calc(${activeIndex * tabWidthPct}% + 8px)`,
               width: `calc(${tabWidthPct}% - 16px)`,
               transition: "left 0.45s cubic-bezier(0.3,1.2,0.4,1), width 0.45s cubic-bezier(0.3,1.2,0.4,1)",
             }}
           >
-            <div key={activeIndex} className="w-full h-full rounded-full animate-pill-squeeze" />
+            <div key={activeIndex} className="w-full h-full rounded-2xl animate-pill-squeeze" />
           </div>
         )}
 

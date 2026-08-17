@@ -125,6 +125,7 @@ export const copy = {
     searchSongPlaceholder: "Search a song title",
     add: "Add",
     createButton: "Create playlist",
+    editCoverButton: "Edit cover",
     continueToSave: "Continue to save changes",
     saveAsDraft: "Save as draft",
     loginToCreate: "Connect Spotify to create",

@@ -6,9 +6,7 @@ import { useLineup } from "@/lib/lineupStore";
 import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
-import { addEvent, updateEvent, getAllEvents } from "@/lib/eventHistory";
-import { removeDraft } from "@/lib/drafts";
-import { triggerWristbandCheck } from "@/lib/wristbandTracker";
+import { createOrUpdatePlaylist, defaultPlaylistName, defaultPlaylistDescription } from "@/lib/createPlaylist";
 import { resizeImageForSpotifyCover } from "@/lib/resizeImage";
 import { generateWordmarkCover, COVER_BACKGROUND_SWATCHES } from "@/lib/coverGenerator";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -48,11 +46,10 @@ export default function CreatePage() {
   useEffect(() => {
     const artists = lineup.map((a) => a.artist.name);
     if (!name) {
-      const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      setName(artists[0] ? `${artists[0]} — ${today}` : `My playlist — ${today}`);
+      setName(defaultPlaylistName(artists[0]));
     }
     if (!description) {
-      setDescription(`${artists.join(", ")} · Prepped with Houselights`);
+      setDescription(defaultPlaylistDescription(artists));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -112,55 +109,19 @@ export default function CreatePage() {
     setError(null);
     setPlaylistMeta(name, description);
     const isEditing = !!editingPlaylistId && !forceNew;
-    const isFirstEver = !isEditing && getAllEvents().length === 0;
     try {
-      const res = await fetch(isEditing ? "/api/playlist/update" : "/api/playlist/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(isEditing ? { playlistId: editingPlaylistId } : {}),
-          name,
-          description,
-          trackUris: playlist.map((t) => t.uri),
-          coverImageBase64,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || `Something went wrong ${isEditing ? "saving" : "creating"} the playlist.`);
-      }
-      const url = json.playlist?.url as string;
-      const playlistId = json.playlist?.id as string;
-      const coverFailed = !!coverImageBase64 && json.playlist?.coverUploaded === false;
-      const coverErrorStatus = json.playlist?.coverErrorStatus as number | undefined;
-      const coverErrorBody = json.playlist?.coverErrorBody as string | undefined;
-      const totalMs = playlist.reduce((s, t) => s + t.durationMs, 0);
-      const eventFields = {
+      const successPath = await createOrUpdatePlaylist({
         name,
         description,
-        url: url || "",
-        trackCount: playlist.length,
-        totalMinutes: Math.round(totalMs / 60000),
-        artistNames: lineup.map((a) => a.artist.name),
-        headliner:
-          lineup[0]?.artist ||
-          { id: playlist[0]?.artistId || "", name: playlist[0]?.artist || "Unknown", genres: [] },
-        eventDate: eventDate || undefined,
-        tracks: playlist,
-      };
-      if (isEditing) {
-        updateEvent(editingPlaylistId!, eventFields);
-      } else {
-        addEvent({ id: playlistId || crypto.randomUUID(), createdAt: new Date().toISOString(), ...eventFields });
-        // This session started from resuming a saved Draft and just
-        // actually became a real playlist — remove the draft so it
-        // doesn't linger duplicated as both a draft and a real playlist.
-        if (resumedDraftId) removeDraft(resumedDraftId);
-      }
-      triggerWristbandCheck();
-      router.push(
-        `/success?url=${encodeURIComponent(url || "")}&name=${encodeURIComponent(name)}${isFirstEver ? "&first=1" : ""}${coverFailed ? "&coverFailed=1" : ""}${coverFailed && coverErrorStatus ? `&coverErrorStatus=${coverErrorStatus}` : ""}${coverFailed && coverErrorBody ? `&coverErrorBody=${encodeURIComponent(coverErrorBody)}` : ""}${isEditing ? "&updated=1" : ""}`
-      );
+        coverImageBase64,
+        playlist,
+        lineup,
+        eventDate,
+        editingPlaylistId,
+        resumedDraftId,
+        forceNew,
+      });
+      router.push(successPath);
     } catch (e: any) {
       setError(e.message || `Couldn't ${isEditing ? "save" : "create"} the playlist. Try again.`);
     } finally {
