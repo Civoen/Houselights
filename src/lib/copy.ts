@@ -190,6 +190,8 @@ export const copy = {
     reconnect: "Reconnect",
     previousEventsLabel: "Previous events",
     previousEventsEmpty: "No past shows yet.",
+    searchPlaceholder: "Search playlists or artists",
+    searchNoResults: "Nothing matches that search.",
   },
 
   settings: {

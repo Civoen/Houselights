@@ -1,12 +1,7 @@
 "use client";
 import { FilterType } from "@/lib/types";
 import { copy } from "@/lib/copy";
-import { haptic, HAPTIC } from "@/lib/haptics";
-
-const OPTIONS: { id: FilterType; label: string }[] = [
-  { id: "popular", label: copy.filters.popular },
-  { id: "setlist", label: copy.filters.setlist },
-];
+import { SegmentedControl } from "./SegmentedControl";
 
 // Darkens a hex color toward black by the given amount (0-1) — used to
 // build a two-stop gradient from a single artist accent color, matching
@@ -19,6 +14,11 @@ function darken(hex: string, amount: number): string {
   return `rgb(${r},${g},${b})`;
 }
 
+// Same sliding-pill visual language as the Time/Songs toggle
+// (SegmentedControl) — this used to be its own separately-styled pair of
+// buttons; now it's a thin wrapper that just supplies the per-artist
+// gradient, so both toggles share one implementation (and one fix) rather
+// than two visually-similar but structurally different controls.
 export function FilterChips({
   value,
   onChange,
@@ -31,29 +31,15 @@ export function FilterChips({
   const gradient = `linear-gradient(115deg, ${darken(artistColor, 0.35)}, ${artistColor})`;
 
   return (
-    <div className="flex gap-2 mb-3">
-      {OPTIONS.map((opt) => {
-        const active = value === opt.id;
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => {
-              if (active) return;
-              haptic(HAPTIC.tap);
-              onChange(opt.id);
-            }}
-            style={active ? { backgroundImage: gradient } : undefined}
-            className={
-              "flex-1 text-center py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 " +
-              (active ? "text-white shadow-[0_6px_16px_-6px_rgba(17,80,103,0.55)]" : "bg-surfaceAlt text-muted hover:text-accent")
-            }
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl
+      className="mb-3"
+      value={value}
+      onChange={(id) => onChange(id as FilterType)}
+      activeGradient={gradient}
+      options={[
+        { id: "popular", label: copy.filters.popular },
+        { id: "setlist", label: copy.filters.setlist },
+      ]}
+    />
   );
 }

@@ -12,6 +12,7 @@ export function SegmentedControl({
   onChange,
   className = "",
   accent = false,
+  activeGradient,
 }: {
   options: Option[];
   value: string;
@@ -21,22 +22,36 @@ export function SegmentedControl({
   // default plain raised-card look — opt-in since not every usage of this
   // component asked for it.
   accent?: boolean;
+  // Custom CSS background (e.g. a per-artist gradient string) for the
+  // active pill, overriding accent's fixed brand gradient — for callers
+  // that need the active color to vary per-instance rather than being the
+  // one fixed brand color.
+  activeGradient?: string;
 }) {
   const activeIndex = options.findIndex((o) => o.id === value);
   const segWidthPct = 100 / options.length;
+  const isColored = accent || !!activeGradient;
 
   return (
-    <div className={"relative flex bg-surfaceAlt rounded-xl p-1 " + className}>
+    // overflow-hidden matters here: the active pill's "squeeze" bounce
+    // animation deliberately overshoots past its own box (scaleX up to
+    // 1.1) for a springy feel, and without clipping, that overshoot pokes
+    // out past this container's rounded corners mid-transition — visible
+    // as the active bar briefly spilling outside the bounds box.
+    <div className={"relative flex bg-surfaceAlt rounded-xl p-1 overflow-hidden " + className}>
       {activeIndex >= 0 && (
         <div
           className={
             "absolute top-1 bottom-1 rounded-lg " +
-            (accent ? "bg-grad shadow-[0_2px_10px_-2px_rgba(17,80,103,0.45)]" : "bg-surface shadow-[0_2px_8px_-2px_rgba(10,31,38,0.18)]")
+            (isColored
+              ? "shadow-[0_2px_10px_-2px_rgba(17,80,103,0.45)] " + (accent && !activeGradient ? "bg-grad" : "")
+              : "bg-surface shadow-[0_2px_8px_-2px_rgba(10,31,38,0.18)]")
           }
           style={{
             left: `calc(${activeIndex * segWidthPct}% + 4px)`,
             width: `calc(${segWidthPct}% - 8px)`,
             transition: "left 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+            ...(activeGradient ? { backgroundImage: activeGradient } : {}),
           }}
         >
           <div key={activeIndex} className="w-full h-full rounded-lg animate-pill-squeeze" />
@@ -52,7 +67,7 @@ export function SegmentedControl({
           }}
           className={
             "relative z-10 flex-1 py-2 text-center text-xs font-bold transition-colors duration-300 " +
-            (opt.id === value ? (accent ? "text-white" : "text-ink") : "text-muted")
+            (opt.id === value ? (isColored ? "text-white" : "text-ink") : "text-muted")
           }
         >
           {opt.label}

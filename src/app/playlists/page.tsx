@@ -44,6 +44,7 @@ export default function PlaylistsPage() {
   const [previewErrorId, setPreviewErrorId] = useState<string | null>(null);
   const [previewErrorKind, setPreviewErrorKind] = useState<"scope" | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
 
   // The main list excludes anything whose event date has already passed —
@@ -54,6 +55,19 @@ export default function PlaylistsPage() {
   const visibleEvents = events
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => !(e.eventDate && e.eventDate < todayStr));
+
+  // One query drives search across the main list, Previous Events, and
+  // Drafts alike — matches on playlist name or any artist in the lineup,
+  // case-insensitively. Empty query matches everything, so this is a
+  // no-op filter until someone actually types.
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  function matchesSearch(name: string, artistNames: string[]): boolean {
+    if (!trimmedQuery) return true;
+    return name.toLowerCase().includes(trimmedQuery) || artistNames.some((a) => a.toLowerCase().includes(trimmedQuery));
+  }
+  const filteredVisibleEvents = visibleEvents.filter(({ e }) => matchesSearch(e.name, e.artistNames));
+  const filteredPastEvents = pastEvents.filter((e) => matchesSearch(e.name, e.artistNames));
+  const filteredDrafts = drafts.filter((d) => matchesSearch(d.name, d.artistNames));
 
   const [draftSavedToast, setDraftSavedToast] = useState(false);
 
@@ -415,6 +429,55 @@ export default function PlaylistsPage() {
           </div>
         )}
 
+        {(events.length > 0 || drafts.length > 0) && (
+          <div className="relative mb-1">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
+            >
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+              <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={copy.playlists.searchPlaceholder}
+              className="w-full bg-surface border border-line rounded-xl pl-10 pr-3 py-2.5 text-[16px] outline-none transition-shadow focus:ring-2 focus:ring-accent/30 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]"
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="px-6 py-5 max-w-lg mx-auto">
+        {loaded && events.length > 0 && (
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
+            {copy.playlists.title} · {filteredVisibleEvents.length}
+          </h2>
+        )}
+        {loaded && events.length === 0 && (
+          <div className="text-center py-14">
+            <p className="text-sm text-faint mb-5">
+              {copy.playlists.emptyMessage}
+            </p>
+            <Link
+              href="/lineup"
+              className="inline-block bg-grad text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-[0.96]"
+            >
+              {copy.playlists.buildLineupLink}
+            </Link>
+          </div>
+        )}
+        {loaded && events.length > 0 && trimmedQuery && filteredVisibleEvents.length === 0 && (
+          <p className="text-xs text-faint text-center py-8">{copy.playlists.searchNoResults}</p>
+        )}
+
+        {filteredVisibleEvents.map(({ e, i }) => renderPlaylistCard(e, i, true))}
+      </div>
+
+      <div className="px-6 pb-5 max-w-lg mx-auto">
         <button
           onClick={() => {
             haptic(HAPTIC.tap);
@@ -444,8 +507,12 @@ export default function PlaylistsPage() {
               <div className="bg-surface rounded-2xl px-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
                 <p className="text-xs text-faint py-4 text-center">{copy.playlists.previousEventsEmpty}</p>
               </div>
+            ) : filteredPastEvents.length === 0 ? (
+              <div className="bg-surface rounded-2xl px-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
+                <p className="text-xs text-faint py-4 text-center">{copy.playlists.searchNoResults}</p>
+              </div>
             ) : (
-              pastEvents.map((e) => {
+              filteredPastEvents.map((e) => {
                 const globalIndex = events.findIndex((ev) => ev.id === e.id && ev.createdAt === e.createdAt);
                 return renderPlaylistCard(e, globalIndex, false);
               })
@@ -454,36 +521,17 @@ export default function PlaylistsPage() {
         )}
       </div>
 
-      <div className="px-6 py-5 max-w-lg mx-auto">
-        {loaded && events.length > 0 && (
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
-            {copy.playlists.title} · {visibleEvents.length}
-          </h2>
-        )}
-        {loaded && events.length === 0 && (
-          <div className="text-center py-14">
-            <p className="text-sm text-faint mb-5">
-              {copy.playlists.emptyMessage}
-            </p>
-            <Link
-              href="/lineup"
-              className="inline-block bg-grad text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:brightness-[1.05] active:scale-[0.96]"
-            >
-              {copy.playlists.buildLineupLink}
-            </Link>
-          </div>
-        )}
-
-        {visibleEvents.map(({ e, i }) => renderPlaylistCard(e, i, true))}
-      </div>
-
       {drafts.length > 0 && (
         <div className="px-6 pb-5 max-w-lg mx-auto">
           <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
-            {copy.playlists.draftsLabel} · {drafts.length}
+            {copy.playlists.draftsLabel} · {filteredDrafts.length}
           </h2>
           <p className="text-xs text-faint mb-3">{copy.playlists.draftsNote}</p>
-          {drafts.map((d) => renderDraftCard(d))}
+          {filteredDrafts.length === 0 ? (
+            <p className="text-xs text-faint text-center py-6">{copy.playlists.searchNoResults}</p>
+          ) : (
+            filteredDrafts.map((d) => renderDraftCard(d))
+          )}
         </div>
       )}
 
