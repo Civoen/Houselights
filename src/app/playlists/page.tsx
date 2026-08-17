@@ -401,6 +401,26 @@ export default function PlaylistsPage() {
             {copy.playlists.encoreButton}
           </Link>
         )}
+        {(events.length > 0 || drafts.length > 0) && (
+          <div className="relative">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
+            >
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+              <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={copy.playlists.searchPlaceholder}
+              className="w-full bg-surface border border-line rounded-xl pl-10 pr-3 py-2.5 text-[16px] outline-none transition-shadow focus:ring-2 focus:ring-accent/30 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]"
+            />
+          </div>
+        )}
       </div>
 
       <div className="px-6 pt-2 max-w-lg mx-auto">
@@ -426,27 +446,6 @@ export default function PlaylistsPage() {
                 {formatCountdown(daysUntil(upcoming[0].eventDate!))}
               </span>
             </a>
-          </div>
-        )}
-
-        {(events.length > 0 || drafts.length > 0) && (
-          <div className="relative mb-1">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
-            >
-              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-              <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={copy.playlists.searchPlaceholder}
-              className="w-full bg-surface border border-line rounded-xl pl-10 pr-3 py-2.5 text-[16px] outline-none transition-shadow focus:ring-2 focus:ring-accent/30 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]"
-            />
           </div>
         )}
       </div>

@@ -420,8 +420,21 @@ export default function PreviewPage() {
     );
   }
 
+  // Matches the fixed bottom bar's real stacked height so scrolled content
+  // never sits underneath it — nav (72) + gap to bar (24), then each
+  // visible button's height + its own bottom margin, ending with Create's
+  // height (no margin, it's last). Guests see an extra "Save as draft"
+  // button stacked above the other two, so their bar is taller. Inline
+  // style rather than a dynamic Tailwind class — Tailwind's JIT scanner
+  // only picks up complete class strings that are literally present in
+  // source, not ones built at runtime via template literals, so a
+  // dynamic `pb-[${...}]` class would silently produce no CSS at all.
+  const bottomBarPadding = connected === false
+    ? "calc(72px + 24px + 52px + 12px + 52px + 12px + 64px + 24px + env(safe-area-inset-bottom))"
+    : "calc(72px + 24px + 52px + 12px + 64px + 24px + env(safe-area-inset-bottom))";
+
   return (
-    <main className="min-h-screen pb-40 animate-fade-slide-up">
+    <main className="min-h-screen animate-fade-slide-up" style={{ paddingBottom: bottomBarPadding }}>
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <button

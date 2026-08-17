@@ -152,6 +152,7 @@ export const copy = {
     artistsToIncludeLabel: "Artists to include",
     artistsToIncludeNote: "Up to 4 — pick one for it to appear twice, or several to line them up.",
     useThisCover: "Use this cover",
+    backToPreview: "Back to preview",
     playlistNameLabel: "Playlist name",
     descriptionLabel: "Description",
     doneButton: "Done",

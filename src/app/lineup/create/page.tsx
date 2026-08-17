@@ -329,6 +329,20 @@ export default function CreatePage() {
               </GradientButton>
             </div>
           )}
+
+          {coverTab === "upload" && (
+            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+              <button
+                onClick={() => {
+                  setCoverModalOpen(false);
+                  router.back();
+                }}
+                className="w-full py-3.5 rounded-2xl bg-surface text-muted text-sm font-bold shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] transition-all duration-150 active:scale-[0.98]"
+              >
+                {copy.create.backToPreview}
+              </button>
+            </div>
+          )}
           </div>,
           document.body
         )}
