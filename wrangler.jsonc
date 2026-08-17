@@ -1,0 +1,39 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "houselights-music",
+	"compatibility_date": "2026-08-15",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+
+	"vars": {
+		"SPOTIFY_CLIENT_ID": "ff2cc25dc5d049cfb1a927132cfc68ba",
+		"SPOTIFY_REDIRECT_URI": "https://houselights-music.adambramfitt.workers.dev/api/auth/callback",
+		"APP_URL": "https://houselights-music.adambramfitt.workers.dev"
+	},
+
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "houselights-music"
+		}
+	],
+
+	"r2_buckets": [
+		{
+			"binding": "NEXT_INC_CACHE_R2_BUCKET",
+			"bucket_name": "houselights-opennext-cache"
+		}
+	],
+
+	"images": {
+		"binding": "IMAGES"
+	}
+}
