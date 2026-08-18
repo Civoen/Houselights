@@ -38,19 +38,37 @@ async function setlistFetch(path: string): Promise<any> {
   return res.json();
 }
 
-// Resolves a Spotify artist name to a setlist.fm MBID. Prefers an exact
-// (case-insensitive) name match over setlist.fm's own result ordering,
-// since their relevance ranking doesn't always put the right act first for
-// a common name — but falls back to the top result if nothing matches
-// exactly, rather than giving up.
-export async function resolveArtistMbid(artistName: string): Promise<string | null> {
+// Resolves a Spotify artist name to setlist.fm MBID candidates, in
+// priority order. setlist.fm is a crowd-sourced database — a globally
+// famous act and a completely unrelated tribute band, cover act, or
+// different real person can share the exact same literal name, with no
+// way to tell them apart from the name string alone. An exact
+// (case-insensitive) name match is preferred over setlist.fm's own
+// relevance ranking, but multiple exact matches are all kept (rather than
+// blindly taking the first) so a caller can skip a decoy entry that
+// happens to have zero real logged shows.
+export async function resolveArtistMbidCandidates(artistName: string): Promise<string[]> {
   const params = new URLSearchParams({ artistName, sort: "relevance" });
   const json = await setlistFetch(`/search/artists?${params.toString()}`);
   const candidates: any[] = json.artist || [];
-  if (candidates.length === 0) return null;
-  const exact = candidates.find((a) => a.name?.toLowerCase() === artistName.toLowerCase());
-  return (exact || candidates[0]).mbid || null;
+  if (candidates.length === 0) return [];
+  const lower = artistName.toLowerCase();
+  const exact = candidates.filter((a) => a.name?.toLowerCase() === lower);
+  const rest = candidates.filter((a) => !exact.includes(a));
+  return [...exact, ...rest].map((a) => a.mbid).filter(Boolean);
 }
+
+// Single best-guess mbid — kept for callers that just need one candidate
+// and accept the (rare) mismatch risk described above.
+export async function resolveArtistMbid(artistName: string): Promise<string | null> {
+  const candidates = await resolveArtistMbidCandidates(artistName);
+  return candidates[0] || null;
+}
+
+// How many same-named candidates to actually try before giving up — each
+// one costs a real API call, so this bounds both latency and the free-tier
+// rate limit rather than exhausting every result setlist.fm returned.
+const MAX_CANDIDATES_TO_TRY = 3;
 
 // Song titles from the artist's most recent setlist, in original
 // performance order, patched using the next 1-2 most recent shows to
@@ -114,6 +132,21 @@ export async function getOrderedSetlistSongTitles(mbid: string, checkShows = 3):
   return patched;
 }
 
+// Same idea as getLatestSetlistSummary below, but for the actual track
+// pool the Setlist filter builds from — tries same-named candidates in
+// order and uses the first one with real logged shows, rather than
+// accepting whichever mbid setlist.fm's search happened to rank first.
+// Takes pre-resolved candidates (rather than an artist name) so a caller
+// that already needs the candidate list for another check doesn't pay for
+// a second identical search request.
+export async function findArtistSetlistTitles(candidates: string[]): Promise<string[]> {
+  for (const mbid of candidates.slice(0, MAX_CANDIDATES_TO_TRY)) {
+    const titles = await getOrderedSetlistSongTitles(mbid);
+    if (titles.length > 0) return titles;
+  }
+  return [];
+}
+
 export interface SetlistSummary {
   venue: string;
   city: string;
@@ -137,6 +170,17 @@ export async function getLatestSetlistSummary(mbid: string): Promise<SetlistSumm
       songCount,
       eventDate: setlist.eventDate || "",
     };
+  }
+  return null;
+}
+
+// Same candidate-retry idea as findArtistSetlistTitles above, for the
+// "last played X, N songs" callout on New Event. Also takes pre-resolved
+// candidates for the same reason.
+export async function findArtistSetlistSummary(candidates: string[]): Promise<SetlistSummary | null> {
+  for (const mbid of candidates.slice(0, MAX_CANDIDATES_TO_TRY)) {
+    const summary = await getLatestSetlistSummary(mbid);
+    if (summary) return summary;
   }
   return null;
 }

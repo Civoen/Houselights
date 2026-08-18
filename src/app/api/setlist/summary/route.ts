@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveArtistMbid, getLatestSetlistSummary } from "@/lib/setlistfm";
+import { resolveArtistMbidCandidates, findArtistSetlistSummary } from "@/lib/setlistfm";
 
 
 export async function GET(req: NextRequest) {
@@ -7,9 +7,9 @@ export async function GET(req: NextRequest) {
   if (!artistName) return NextResponse.json({ error: "missing_artist_name" }, { status: 400 });
 
   try {
-    const mbid = await resolveArtistMbid(artistName);
-    if (!mbid) return NextResponse.json({ summary: null, reason: "no_artist_match" });
-    const summary = await getLatestSetlistSummary(mbid);
+    const candidates = await resolveArtistMbidCandidates(artistName);
+    if (candidates.length === 0) return NextResponse.json({ summary: null, reason: "no_artist_match" });
+    const summary = await findArtistSetlistSummary(candidates);
     return NextResponse.json({ summary, reason: summary ? undefined : "no_nonempty_setlists" });
   } catch (e: any) {
     // Not configured, or setlist.fm has nothing for this artist — either

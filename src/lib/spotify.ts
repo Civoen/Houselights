@@ -1,7 +1,7 @@
 import { getTokens, setTokens, StoredTokens } from "./session";
 import { SpotifyArtist, SpotifyTrack, FilterType } from "./types";
 import { getEnv } from "./env";
-import { resolveArtistMbid, getOrderedSetlistSongTitles } from "./setlistfm";
+import { resolveArtistMbidCandidates, findArtistSetlistTitles } from "./setlistfm";
 
 // NOTE: Spotify's February 2026 Development Mode changes removed several
 // endpoints this app used to rely on (artist top-tracks, batch track/album
@@ -209,9 +209,9 @@ async function getArtistSupplementalTracks(artistId: string, artistName: string,
 // setlist.fm has but Spotify's search can't match) are just skipped
 // rather than failing the whole pool.
 async function getArtistSetlistTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
-  const mbid = await resolveArtistMbid(artistName);
-  if (!mbid) return [];
-  const titles = await getOrderedSetlistSongTitles(mbid);
+  const candidates = await resolveArtistMbidCandidates(artistName);
+  if (candidates.length === 0) return [];
+  const titles = await findArtistSetlistTitles(candidates);
   if (titles.length === 0) return [];
 
   const seen = new Set<string>();

@@ -586,12 +586,12 @@ export default function LineupPage() {
               >
                 <div
                   className={
-                    "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors " +
+                    "w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-colors " +
                     (item.selected ? "bg-grad border-transparent" : "border-lineStrong")
                   }
                 >
                   {item.selected && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                       <path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}

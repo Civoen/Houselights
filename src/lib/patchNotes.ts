@@ -22,6 +22,8 @@ export const PATCH_NOTES: PatchNoteVersion[] = [
       "Add specific songs and the song search field on New Event now match that artist's own color, instead of a fixed accent color",
       "Playlists: added a search bar, filtering the main list, Previous Events, and Drafts together by playlist name or artist",
       "Playlists: moved Previous Events to below the main list, and the new search bar above Next Up",
+      "Fixed Setlist sometimes finding zero songs for an artist that clearly has plenty logged on setlist.fm — their database can have more than one entry sharing the exact same artist name (a tribute act, a different person), and the wrong one was occasionally getting matched; now tries other same-named candidates before giving up",
+      "Poster upload: the artist checkmark buttons now match the app's standard button style, instead of a visibly different one",
     ],
   },
   {
