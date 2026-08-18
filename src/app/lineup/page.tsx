@@ -115,23 +115,39 @@ export default function LineupPage() {
   // Fetches a "last played X, N songs" summary once per artist as they
   // enter the lineup — covers every path an artist can be added (search,
   // poster upload) since it watches `lineup` itself rather than being
-  // wired into each individual add-handler separately.
+  // wired into each individual add-handler separately. Runs one artist at
+  // a time with a small stagger between them, rather than firing every
+  // artist's fetch at once — each artist's own lookup can already chain
+  // up to a few sequential requests internally (checking same-named
+  // candidates), so several artists added together in one go (poster
+  // upload especially) could otherwise burst well past setlist.fm's
+  // free-tier rate limit before any of them finish.
   useEffect(() => {
-    lineup.forEach((entry) => {
-      const id = entry.artist.id;
-      if (fetchedSummaryIds.current.has(id)) return;
-      fetchedSummaryIds.current.add(id);
-      fetch(`/api/setlist/summary?artistName=${encodeURIComponent(entry.artist.name)}`)
-        .then((res) => res.json())
-        .then((json) => {
+    const toFetch = lineup.filter((entry) => !fetchedSummaryIds.current.has(entry.artist.id));
+    if (toFetch.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      for (const entry of toFetch) {
+        if (cancelled) return;
+        const id = entry.artist.id;
+        fetchedSummaryIds.current.add(id);
+        try {
+          const res = await fetch(`/api/setlist/summary?artistName=${encodeURIComponent(entry.artist.name)}`);
+          const json = await res.json();
+          if (cancelled) return;
           setSetlistSummaries((prev) => ({ ...prev, [id]: json.summary || null }));
           setSetlistSummaryErrors((prev) => ({ ...prev, [id]: json.error || null }));
-        })
-        .catch((err: any) => {
+        } catch (err: any) {
+          if (cancelled) return;
           setSetlistSummaries((prev) => ({ ...prev, [id]: null }));
           setSetlistSummaryErrors((prev) => ({ ...prev, [id]: err?.message || "Request failed" }));
-        });
-    });
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [lineup]);
 
   // "Seen" specifically means a show whose date has already passed —

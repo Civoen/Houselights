@@ -27,11 +27,23 @@ function requireApiKey(): string {
   return key;
 }
 
-async function setlistFetch(path: string): Promise<any> {
+async function setlistFetch(path: string): Promise<any | null> {
   const apiKey = requireApiKey();
   const res = await fetch(`${BASE}${path}`, {
     headers: { "x-api-key": apiKey, Accept: "application/json" },
   });
+  if (res.status === 404) {
+    // Confirmed against setlist.fm's own forum: their API returns 404 for
+    // "nothing found" on both search and per-artist endpoints, not a 200
+    // with an empty array like most REST APIs. Treated here as a real
+    // empty result rather than a failure — critically, this means a
+    // candidate mbid with zero logged setlists doesn't throw and abort a
+    // multi-candidate retry loop before it ever reaches the next one.
+    return null;
+  }
+  if (res.status === 429) {
+    throw new Error("setlist.fm is rate-limiting requests right now — try again in a moment");
+  }
   if (!res.ok) {
     throw new Error(`setlist.fm request failed (${res.status})`);
   }
@@ -50,6 +62,7 @@ async function setlistFetch(path: string): Promise<any> {
 export async function resolveArtistMbidCandidates(artistName: string): Promise<string[]> {
   const params = new URLSearchParams({ artistName, sort: "relevance" });
   const json = await setlistFetch(`/search/artists?${params.toString()}`);
+  if (!json) return []; // 404 == no matching artists
   const candidates: any[] = json.artist || [];
   if (candidates.length === 0) return [];
   const lower = artistName.toLowerCase();
@@ -82,6 +95,7 @@ const MAX_CANDIDATES_TO_TRY = 3;
 // might be a real, current change to the set rather than an anomaly.
 export async function getOrderedSetlistSongTitles(mbid: string, checkShows = 3): Promise<string[]> {
   const json = await setlistFetch(`/artist/${mbid}/setlists?p=1`);
+  if (!json) return []; // 404 == this mbid has zero logged setlists
   const setlists: any[] = json.setlist || [];
 
   const nonEmptyShows: string[][] = [];
@@ -159,6 +173,7 @@ export interface SetlistSummary {
 // pool aggregation above (which deliberately looks across several shows).
 export async function getLatestSetlistSummary(mbid: string): Promise<SetlistSummary | null> {
   const json = await setlistFetch(`/artist/${mbid}/setlists?p=1`);
+  if (!json) return null; // 404 == this mbid has zero logged setlists
   const setlists: any[] = json.setlist || [];
   for (const setlist of setlists) {
     const sets: any[] = setlist.set || [];

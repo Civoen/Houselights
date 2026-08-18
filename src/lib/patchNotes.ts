@@ -9,6 +9,15 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.6",
+    notes: [
+      "Fixed Setlist sometimes finding zero songs for an artist that clearly has plenty logged on setlist.fm — their database can have more than one entry sharing the exact same artist name (a tribute act, a different person), and the wrong one was occasionally getting matched; now tries other same-named candidates before giving up",
+      "Fixed that fix: setlist.fm returns a 404 for \"nothing found\" rather than an empty result, which was cutting the candidate retry short after just the first attempt instead of actually trying the others",
+      "Reduced how many setlist.fm requests fire at once when several artists are added in quick succession (poster upload especially), to avoid tripping their rate limit",
+      "Poster upload: the artist checkmark buttons now match the app's standard button style, instead of a visibly different one",
+    ],
+  },
+  {
     version: "2.5",
     notes: [
       "New app icon and Home Screen icon, on the browser tab, iOS/Android install, and everywhere else it appears",
@@ -22,8 +31,6 @@ export const PATCH_NOTES: PatchNoteVersion[] = [
       "Add specific songs and the song search field on New Event now match that artist's own color, instead of a fixed accent color",
       "Playlists: added a search bar, filtering the main list, Previous Events, and Drafts together by playlist name or artist",
       "Playlists: moved Previous Events to below the main list, and the new search bar above Next Up",
-      "Fixed Setlist sometimes finding zero songs for an artist that clearly has plenty logged on setlist.fm — their database can have more than one entry sharing the exact same artist name (a tribute act, a different person), and the wrong one was occasionally getting matched; now tries other same-named candidates before giving up",
-      "Poster upload: the artist checkmark buttons now match the app's standard button style, instead of a visibly different one",
     ],
   },
   {
