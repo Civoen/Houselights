@@ -10,8 +10,8 @@
 
 	"vars": {
 		"SPOTIFY_CLIENT_ID": "ff2cc25dc5d049cfb1a927132cfc68ba",
-		"SPOTIFY_REDIRECT_URI": "https://houselights-reborn.adambramfitt.workers.dev/api/auth/callback",
-		"APP_URL": "https://houselights-reborn.adambramfitt.workers.dev"
+		"SPOTIFY_REDIRECT_URI": "https://houselights.uk/api/auth/callback",
+		"APP_URL": "https://houselights.uk"
 	},
 
 	"assets": {
