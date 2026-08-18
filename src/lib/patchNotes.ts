@@ -9,6 +9,22 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.5",
+    notes: [
+      "New app icon and Home Screen icon, on the browser tab, iOS/Android install, and everywhere else it appears",
+      "Most Popular/Setlist now uses the same sliding-pill style as the Songs/Time toggle, instead of two separately-styled buttons",
+      "Fixed the active bar on both of those toggles briefly spilling outside its rounded box during the switch animation",
+      "Preview: added an Edit Cover button; Create playlist now creates directly with a default cover and title, without detouring through the cover screen first",
+      "Fixed Preview's song list being covered by the Edit Cover/Create playlist buttons when an artist group was expanded, or in Songs view",
+      "Added a Back to Preview button on the Upload tab of the cover screen — previously the only way back was the top-of-page back arrow, which wasn't obvious",
+      "Default playlist name changed from \"Headliner — Date\" to \"Headliner, Date\"",
+      "The nav bar's active tab indicator now uses the same rounded-rectangle shape as the rest of the app's buttons, instead of a fully rounded pill",
+      "Add specific songs and the song search field on New Event now match that artist's own color, instead of a fixed accent color",
+      "Playlists: added a search bar, filtering the main list, Previous Events, and Drafts together by playlist name or artist",
+      "Playlists: moved Previous Events to below the main list, and the new search bar above Next Up",
+    ],
+  },
+  {
     version: "2.4",
     notes: [
       "Setlist now uses the actual performance order from the artist's most recent show, instead of an unordered mix of popular songs they've played live",
