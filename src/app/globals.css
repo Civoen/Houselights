@@ -3,6 +3,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hides the scrollbar's visual rendering entirely, in every browser, while
+   leaving scrolling itself completely functional via mouse wheel,
+   trackpad, or keyboard — only the track/thumb widget stops being drawn.
+   This replaces an earlier attempt at reserving consistent space for a
+   *visible* scrollbar (scrollbar-gutter + overflow-y: scroll), which
+   depended on inconsistent, OS/browser-specific scrollbar behavior — on
+   macOS in particular, and even on Windows Chrome, real-world testing
+   showed the scrollbar still visibly toggling and jittering the layout
+   regardless. Removing the scrollbar from view entirely, rather than
+   trying to make it consistently present, sidesteps that whole class of
+   cross-browser inconsistency at the source. */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* older Edge/IE */
+}
+html::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, newer Edge */
+}
+
 :root {
   --font-display: "Poppins", sans-serif;
   --font-body: "Poppins", sans-serif;

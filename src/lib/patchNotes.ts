@@ -9,6 +9,12 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.6",
+    notes: [
+      "Fixed the desktop page-jitter properly this time — earlier attempts tried to make the scrollbar consistently present (reserving its space at all times), but that depended on inconsistent scrollbar behavior across macOS and Windows Chrome alike, and the jitter kept happening regardless. The scrollbar is now hidden from view entirely instead — scrolling itself still works exactly the same via mouse wheel, trackpad, or keyboard, but with nothing left to visibly appear or disappear, there's nothing left to jitter",
+    ],
+  },
+  {
     version: "3.5",
     notes: [
       "Desktop: the bottom nav bar and the fixed action buttons (Preview playlist, Create playlist, Use this cover, etc.) now match the same width as the page content above them, instead of staying narrower — they'd looked noticeably skinnier in comparison once actually seen rendered",
