@@ -546,22 +546,18 @@ export default function LineupPage() {
                 disabled={!item.match}
                 className={"w-full flex items-center gap-3 py-2 text-left " + (!item.match ? "opacity-40" : "")}
               >
-                <div
-                  className={
-                    "w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-colors " +
-                    (item.selected ? "bg-grad border-transparent" : "border-lineStrong")
-                  }
-                >
-                  {item.selected && (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                      <path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
                 <ArtistAvatar src={item.match?.image} size={30} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold truncate">{item.match?.name || item.name}</div>
                   {!item.match && <div className="text-[10px] text-faint">{copy.lineup.posterNoMatch}</div>}
+                </div>
+                <div className="w-[44px] h-[24px] rounded-lg bg-surfaceAlt p-[3px] relative flex-shrink-0">
+                  <div
+                    className={
+                      "w-[19px] h-[18px] rounded-md absolute top-[3px] transition-all duration-200 " +
+                      (item.selected ? "right-[3px] bg-grad" : "left-[3px] bg-lineStrong")
+                    }
+                  />
                 </div>
               </button>
             ))}

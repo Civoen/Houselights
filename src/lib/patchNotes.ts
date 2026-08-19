@@ -9,6 +9,12 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.0",
+    notes: [
+      "Poster upload: replaced the checkmark selection buttons with a small sliding toggle matching the Songs/Time control's style, sized up for an easier tap target",
+    ],
+  },
+  {
     version: "2.9",
     notes: [
       "Added a desktop layout — same visual design as mobile, just wider, rather than a different interface. Kicks in above 1024px, mobile is untouched below that",
