@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLineup } from "@/lib/lineupStore";
 import { Stepper } from "@/components/Stepper";
-import { FilterChips } from "@/components/FilterChips";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
@@ -17,7 +16,6 @@ import { resizeImageToBase64 } from "@/lib/resizeImage";
 import { SpotifyArtist, PlaylistTrack, SpotifyTrack, LineupArtist, PlaylistSizeMode, PastEvent } from "@/lib/types";
 import { getAllEvents } from "@/lib/eventHistory";
 import { useConnectionStatus } from "@/lib/useConnectionStatus";
-import type { SetlistSummary } from "@/lib/setlistfm";
 import { copy } from "@/lib/copy";
 import { fmtMinutes } from "@/lib/format";
 import { getArtistColors } from "@/lib/artistColors";
@@ -79,13 +77,11 @@ export default function LineupPage() {
     removeArtist,
     restoreArtist,
     reorderArtist,
-    setFilter,
     setWeight,
     addPickedTrack,
     removePickedTrack,
     setPlaylist,
     setPreviewWarning,
-    setPreviewSetlistNote,
     editingPlaylistId,
     setEditingPlaylistId,
   } = useLineup();
@@ -104,51 +100,10 @@ export default function LineupPage() {
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const [history, setHistory] = useState<PastEvent[]>([]);
-  const [setlistSummaries, setSetlistSummaries] = useState<Record<string, SetlistSummary | null>>({});
-  const [setlistSummaryErrors, setSetlistSummaryErrors] = useState<Record<string, string | null>>({});
-  const fetchedSummaryIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setHistory(getAllEvents());
   }, []);
-
-  // Fetches a "last played X, N songs" summary once per artist as they
-  // enter the lineup — covers every path an artist can be added (search,
-  // poster upload) since it watches `lineup` itself rather than being
-  // wired into each individual add-handler separately. Runs one artist at
-  // a time with a small stagger between them, rather than firing every
-  // artist's fetch at once — each artist's own lookup can already chain
-  // up to a few sequential requests internally (checking same-named
-  // candidates), so several artists added together in one go (poster
-  // upload especially) could otherwise burst well past setlist.fm's
-  // free-tier rate limit before any of them finish.
-  useEffect(() => {
-    const toFetch = lineup.filter((entry) => !fetchedSummaryIds.current.has(entry.artist.id));
-    if (toFetch.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      for (const entry of toFetch) {
-        if (cancelled) return;
-        const id = entry.artist.id;
-        fetchedSummaryIds.current.add(id);
-        try {
-          const res = await fetch(`/api/setlist/summary?artistName=${encodeURIComponent(entry.artist.name)}`);
-          const json = await res.json();
-          if (cancelled) return;
-          setSetlistSummaries((prev) => ({ ...prev, [id]: json.summary || null }));
-          setSetlistSummaryErrors((prev) => ({ ...prev, [id]: json.error || null }));
-        } catch (err: any) {
-          if (cancelled) return;
-          setSetlistSummaries((prev) => ({ ...prev, [id]: null }));
-          setSetlistSummaryErrors((prev) => ({ ...prev, [id]: err?.message || "Request failed" }));
-        }
-        await new Promise((r) => setTimeout(r, 250));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [lineup]);
 
   // "Seen" specifically means a show whose date has already passed —
   // matching the same date-based honesty the Wristbands' "Show day" already
@@ -350,7 +305,6 @@ export default function LineupPage() {
       const params = new URLSearchParams({
         artistId: entry.artist.id,
         artistName: entry.artist.name,
-        filters: entry.filters.join(","),
         count: String(targetCount),
       });
       const res = await fetch(`/api/spotify/artist-tracks?${params.toString()}`);
@@ -438,20 +392,12 @@ export default function LineupPage() {
     // standing disclaimer above the button already sets that expectation.
     // An entirely empty result still routes through; the preview page has
     // its own empty-state message for that case.
-    const setlistOutcomes = outcomes.filter((o) => o.entry.filters.includes("setlist"));
-    const setlistFailures = setlistOutcomes.filter((o) => o.error);
-    const setlistSuccesses = setlistOutcomes.filter((o) => !o.error);
-    if (setlistFailures.length > 0) {
-      const names = setlistFailures.map((o) => o.entry.artist.name).join(", ");
-      setPreviewWarning(`${copy.lineup.setlistFilterFailedPrefix} ${names}: ${setlistFailures[0].error}`);
+    const failures = outcomes.filter((o) => o.error);
+    if (failures.length > 0) {
+      const names = failures.map((o) => o.entry.artist.name).join(", ");
+      setPreviewWarning(`${copy.lineup.trackLookupFailedPrefix} ${names}: ${failures[0].error}`);
     } else {
       setPreviewWarning(null);
-    }
-    if (setlistSuccesses.length > 0) {
-      const names = setlistSuccesses.map((o) => o.entry.artist.name).join(", ");
-      setPreviewSetlistNote(`${copy.lineup.setlistFilterWorkedPrefix} ${names}.`);
-    } else {
-      setPreviewSetlistNote(null);
     }
     setPlaylist(allTracks);
     router.push("/lineup/preview");
@@ -661,8 +607,12 @@ export default function LineupPage() {
               <Stepper value={playlistSizeValue} onChange={(v) => setPlaylistSize("songs", v)} min={5} max={300} step={5} accent />
             </div>
           ) : (
-            <div>
-              <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="text-xs text-faint block">{copy.lineup.totalTimeLabel}</span>
+                <span className="text-[11px] text-faint">≈ {totalTargetSongs} songs</span>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end">
                 {TIME_PRESETS.map((preset) => (
                   <button
                     key={preset.v}
@@ -678,7 +628,6 @@ export default function LineupPage() {
                   </button>
                 ))}
               </div>
-              <span className="text-[11px] text-faint">≈ {totalTargetSongs} songs</span>
             </div>
           )}
         </div>
@@ -767,12 +716,6 @@ export default function LineupPage() {
                 {i === 0 && lineup.length > 1 && (
                   <div className="text-[10px] font-extrabold uppercase tracking-wide text-accent">{copy.lineup.headlinerTag}</div>
                 )}
-                {setlistSummaries[entry.artist.id] && (
-                  <div className="text-[11px] text-faint truncate">
-                    {copy.lineup.lastPlayedPrefix} {setlistSummaries[entry.artist.id]!.city || setlistSummaries[entry.artist.id]!.venue} ·{" "}
-                    {setlistSummaries[entry.artist.id]!.songCount} {copy.lineup.songsSuffix}
-                  </div>
-                )}
               </div>
               <button
                 onClick={() => handleRemoveArtist(entry, i)}
@@ -781,22 +724,6 @@ export default function LineupPage() {
                 ✕
               </button>
             </div>
-            <FilterChips value={entry.filters[0] ?? "popular"} onChange={(f) => setFilter(entry.artist.id, f)} artistColor={artistColor} />
-            {entry.filters[0] === "setlist" && (
-              <p className="text-[11px] font-semibold mt-1.5 mb-3">
-                {setlistSummaries[entry.artist.id] === undefined ? (
-                  <span className="text-faint">{copy.lineup.setlistChecking}</span>
-                ) : setlistSummaryErrors[entry.artist.id] ? (
-                  <span className="text-red-600">
-                    {copy.lineup.setlistErrorPrefix} {setlistSummaryErrors[entry.artist.id]}
-                  </span>
-                ) : setlistSummaries[entry.artist.id] ? (
-                  <span className="text-green">{copy.lineup.setlistFound}</span>
-                ) : (
-                  <span className="text-faint">{copy.lineup.setlistNotFound}</span>
-                )}
-              </p>
-            )}
             {lineup.length > 1 && (
               <div className="flex items-center justify-between mb-3 animate-fade-slide-up">
                 <span className="text-xs text-faint font-semibold">

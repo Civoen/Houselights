@@ -52,20 +52,25 @@ before assuming the fix didn't work.
 
 ---
 
-## Adding a new required API key (Setlist.fm, Anthropic/poster upload, etc.)
+## Adding a new required API key (Anthropic/poster upload, or any future one)
 
 - [ ] Cloudflare dashboard → Workers & Pages → houselights-reborn →
       Settings → Variables and Secrets → **exact** variable name match
-      (case-sensitive — `SETLISTFM_API_KEY`, not `SetlistFmApiKey` or
+      (case-sensitive — `ANTHROPIC_API_KEY`, not `AnthropicApiKey` or
       similar)
 - [ ] Added as a **Secret**, not a plain-text Variable, for anything that
-      grants API billing access (Anthropic key) or could be abused if
-      leaked (setlist.fm key less critical, but same pattern either way)
+      grants API billing access or could be abused if leaked
 - [ ] Triggered a fresh deploy afterward — env var changes need a
       redeploy to actually take effect
-- [ ] Confirm the key itself is active — some third-party APIs
-      (setlist.fm in particular) require manual approval after signup;
-      a freshly-created key isn't guaranteed to work immediately
+- [ ] Confirm the key itself is active — some third-party APIs require
+      manual approval after signup; a freshly-created key isn't
+      guaranteed to work immediately
+
+(The Setlist filter, which used to be the other example here, was removed
+— see patch notes 2.7. If a similar third-party-data feature ever gets
+added again, worth remembering *why* that one got pulled: crowd-sourced
+data with no reliable way to disambiguate same-named entries kept
+surfacing new failure modes faster than they could be fixed.)
 
 Never put a real key's value directly into `.env.example` "just for a
 minute" — that file is tracked and not gitignored. If this ever happens

@@ -10,7 +10,7 @@ export function useConnectionStatus(): boolean | null {
   const [connected, setConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/status")
+    fetch("/api/auth/status", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setConnected(!!d.connected))
       .catch(() => setConnected(false));

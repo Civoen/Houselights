@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getValidAccessToken,
-  getArtistTrackPools,
-  selectTracksForFilters,
+  getArtistTracks,
+  selectTracks,
   searchTracksForArtist,
   getTracksByIds,
 } from "@/lib/spotify";
 import { getAppAccessToken } from "@/lib/spotifyAppToken";
-import { FilterType } from "@/lib/types";
 
 
 async function resolveAccessToken(): Promise<string | null> {
@@ -23,8 +22,6 @@ async function resolveAccessToken(): Promise<string | null> {
 export async function GET(req: NextRequest) {
   const artistId = req.nextUrl.searchParams.get("artistId");
   const artistName = req.nextUrl.searchParams.get("artistName") || "";
-  const filtersParam = req.nextUrl.searchParams.get("filters") || req.nextUrl.searchParams.get("filter") || "popular";
-  const filters = filtersParam.split(",").filter(Boolean) as FilterType[];
   const count = Number(req.nextUrl.searchParams.get("count") || "10");
   const pickQuery = req.nextUrl.searchParams.get("pickQuery");
   const trackIds = req.nextUrl.searchParams.get("trackIds");
@@ -51,16 +48,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ tracks: results });
     }
 
-    const { pools, supplemental, warning } = await getArtistTrackPools(artistId, artistName, accessToken);
+    const { tracks: pool, supplemental, warning } = await getArtistTracks(artistId, artistName, accessToken);
 
-    if (pools.popular.length === 0 && pools.setlist.length === 0 && supplemental.length === 0) {
+    if (pool.length === 0 && supplemental.length === 0) {
       return NextResponse.json(
         { error: warning || "No tracks found for this artist.", tracks: [] },
         { status: 200 }
       );
     }
 
-    const tracks = selectTracksForFilters(pools, filters, count, supplemental);
+    const tracks = selectTracks(pool, count, supplemental);
 
     // Surface the real reason even when some tracks did come through, so a
     // partial failure isn't silently indistinguishable from "this artist

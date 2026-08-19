@@ -9,6 +9,13 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.7",
+    notes: [
+      "Removed the Most Popular/Setlist toggle entirely — despite several rounds of real fixes (wrong-candidate matching, a setlist.fm API quirk that broke the retry logic, rate limiting), it kept surfacing new failure modes, including matching a same-named tribute act's real-but-unrelated setlist instead of the actual artist's. Every artist's tracks now come from Most Popular only",
+      "Time preset buttons on the Songs/Time size picker now sit to the right, mirroring where the song-count stepper sits in Songs mode, instead of a left-aligned row",
+    ],
+  },
+  {
     version: "2.6",
     notes: [
       "Fixed Setlist sometimes finding zero songs for an artist that clearly has plenty logged on setlist.fm — their database can have more than one entry sharing the exact same artist name (a tribute act, a different person), and the wrong one was occasionally getting matched; now tries other same-named candidates before giving up",

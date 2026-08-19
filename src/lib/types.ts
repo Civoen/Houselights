@@ -1,5 +1,3 @@
-export type FilterType = "popular" | "setlist";
-
 export interface SpotifyArtist {
   id: string;
   name: string;
@@ -25,7 +23,6 @@ export type PlaylistSizeMode = "songs" | "time";
 
 export interface LineupArtist {
   artist: SpotifyArtist;
-  filters: FilterType[];
   weight: number;
   pickedTracks: SpotifyTrack[];
 }

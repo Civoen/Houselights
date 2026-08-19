@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { LineupArtist, PlaylistTrack, SpotifyArtist, SpotifyTrack, FilterType, PlaylistSizeMode } from "./types";
+import { LineupArtist, PlaylistTrack, SpotifyArtist, SpotifyTrack, PlaylistSizeMode } from "./types";
 
 interface LineupState {
   lineup: LineupArtist[];
@@ -22,25 +22,15 @@ interface LineupState {
   removeArtist: (artistId: string) => void;
   restoreArtist: (entry: LineupArtist, index: number) => void;
   reorderArtist: (from: number, to: number) => void;
-  setFilter: (artistId: string, filter: FilterType) => void;
   setWeight: (artistId: string, weight: number) => void;
   addPickedTrack: (artistId: string, track: SpotifyTrack) => void;
   removePickedTrack: (artistId: string, trackId: string) => void;
   setPlaylist: (tracks: PlaylistTrack[]) => void;
-  // Set right before navigating to Preview when a filter someone actually
-  // chose (like Setlist) silently failed for one or more artists and fell
-  // back to other sources — without this there was no way to tell "the
-  // Setlist filter worked and happened to look similar to Popular" apart
-  // from "the Setlist filter is broken and fell back silently."
+  // Set right before navigating to Preview when the track lookup failed
+  // for one or more artists in the lineup, so that isn't silently
+  // indistinguishable from those artists genuinely having fewer tracks.
   previewWarning: string | null;
   setPreviewWarning: (msg: string | null) => void;
-  // Positive counterpart to previewWarning — set when the Setlist filter
-  // was actually used and succeeded, so there's a real "yes, this worked"
-  // signal rather than only ever hearing about it when it fails. Without
-  // this, a working integration and a silently-never-attempted one look
-  // identical: neither shows anything.
-  previewSetlistNote: string | null;
-  setPreviewSetlistNote: (msg: string | null) => void;
   // Set when a lineup was loaded by resuming a saved Draft — lets the
   // create flow know to remove the draft once it's actually sent to
   // Spotify, so it doesn't linger duplicated as both a draft and a real
@@ -78,7 +68,6 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
   const [playlistSizeValue, setPlaylistSizeValue] = useState(DEFAULT_SIZE_VALUE);
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
   const [previewWarning, setPreviewWarning] = useState<string | null>(null);
-  const [previewSetlistNote, setPreviewSetlistNote] = useState<string | null>(null);
   const [resumedDraftId, setResumedDraftId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -133,7 +122,7 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setLineup((prev) => {
       if (prev.some((a) => a.artist.id === artist.id)) return prev;
       const isFirst = prev.length === 0;
-      return [...prev, { artist, filters: ["popular"] as FilterType[], weight: isFirst ? 2 : 1, pickedTracks: [] }];
+      return [...prev, { artist, weight: isFirst ? 2 : 1, pickedTracks: [] }];
     });
   }, []);
 
@@ -161,15 +150,6 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
       next.splice(to, 0, moved);
       return next;
     });
-  }, []);
-
-  // Single-select: choosing a filter replaces whatever was selected,
-  // rather than toggling membership in a multi-select set. "Most popular"
-  // and "Setlist" pull from genuinely different, non-combinable sources
-  // (Spotify relevance vs. actual live setlists), so picking one is meant
-  // to be a real either/or choice, not a blend of both pools.
-  const setFilter = useCallback((artistId: string, filter: FilterType) => {
-    setLineup((prev) => prev.map((a) => (a.artist.id === artistId ? { ...a, filters: [filter] } : a)));
   }, []);
 
   const setWeight = useCallback((artistId: string, weight: number) => {
@@ -248,7 +228,6 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
     setPlaylistSizeValue(DEFAULT_SIZE_VALUE);
     setEditingPlaylistId(null);
     setPreviewWarning(null);
-    setPreviewSetlistNote(null);
     setResumedDraftId(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
@@ -271,7 +250,6 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         removeArtist,
         restoreArtist,
         reorderArtist,
-        setFilter,
         setWeight,
         addPickedTrack,
         removePickedTrack,
@@ -286,8 +264,6 @@ export function LineupProvider({ children }: { children: React.ReactNode }) {
         setEditingPlaylistId,
         previewWarning,
         setPreviewWarning,
-        previewSetlistNote,
-        setPreviewSetlistNote,
         resumedDraftId,
         setResumedDraftId,
         reset,

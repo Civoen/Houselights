@@ -1,7 +1,6 @@
 import { getTokens, setTokens, StoredTokens } from "./session";
-import { SpotifyArtist, SpotifyTrack, FilterType } from "./types";
+import { SpotifyArtist, SpotifyTrack } from "./types";
 import { getEnv } from "./env";
-import { resolveArtistMbidCandidates, findArtistSetlistTitles } from "./setlistfm";
 
 // NOTE: Spotify's February 2026 Development Mode changes removed several
 // endpoints this app used to rely on (artist top-tracks, batch track/album
@@ -148,9 +147,9 @@ function mapTrack(t: any, artistId: string, album?: any): SpotifyTrack {
 // cause isn't a bad parameter; Spotify has gated bulk catalog browsing
 // behind Extended Quota Mode, which requires being a registered
 // organization with 250k+ monthly active users — not achievable for a
-// personal app. So: no catalog endpoints anywhere below. Everything is
-// built from GET /search, which is confirmed working, using different
-// slices of it as proxies for "popular," "recent," and "deep cuts."
+// personal app. So: no catalog endpoints anywhere below. Track selection is
+// built entirely from GET /search, which is confirmed working, using the
+// early pages of a plain relevance-ranked search as a popularity proxy.
 async function searchArtistTrackRange(
   artistId: string,
   accessToken: string,
@@ -200,45 +199,6 @@ async function getArtistSupplementalTracks(artistId: string, artistName: string,
   return searchArtistTrackRange(artistId, accessToken, artistName, 0, 50);
 }
 
-// "Setlist" — resolves what this artist has actually been playing live
-// recently, via setlist.fm, then matches each song title back to a real
-// Spotify track, in the same order the titles arrived in (Promise.all
-// preserves input order regardless of which request actually finishes
-// first) — so if titles is in real performance order, so is this pool.
-// Titles that don't cleanly resolve (typos, live-only mashups, songs
-// setlist.fm has but Spotify's search can't match) are just skipped
-// rather than failing the whole pool.
-async function getArtistSetlistTracks(artistId: string, artistName: string, accessToken: string): Promise<SpotifyTrack[]> {
-  const candidates = await resolveArtistMbidCandidates(artistName);
-  if (candidates.length === 0) return [];
-  const titles = await findArtistSetlistTitles(candidates);
-  if (titles.length === 0) return [];
-
-  const seen = new Set<string>();
-  const tracks: SpotifyTrack[] = [];
-  const resolved = await Promise.all(
-    titles.map(async (title) => {
-      try {
-        const params = new URLSearchParams({ q: `track:${title} artist:${artistName}`, type: "track", limit: "5" });
-        const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
-        const items: any[] = json.tracks?.items || [];
-        const match = items.find((t) => t.artists?.some((a: any) => a.id === artistId));
-        return match ? mapTrack(match, artistId) : null;
-      } catch {
-        return null; // one bad title shouldn't sink the whole setlist lookup
-      }
-    })
-  );
-  for (const t of resolved) {
-    if (!t) continue;
-    const key = trackDedupeKey(t);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    tracks.push(t);
-  }
-  return tracks;
-}
-
 export async function searchTracksForArtist(
   artistId: string,
   artistName: string,
@@ -286,89 +246,59 @@ function trackDedupeKey(t: SpotifyTrack): string {
   return t.name.toLowerCase().replace(/\(.*?\)/g, "").trim() + "|" + t.artistId;
 }
 
-// Both pools already arrive in a meaningful order (relevance for popular,
-// most-recent-shows-first for setlist), so there's nothing left to re-sort
-// here — this used to re-sort "recent" by `releaseDate`, but that field
-// only ever came from the now-dead catalog path and is no longer populated.
-function sortForFilter(tracks: SpotifyTrack[], _filter: FilterType): SpotifyTrack[] {
-  return tracks;
-}
-
-export interface ArtistPoolsResult {
-  pools: Record<FilterType, SpotifyTrack[]>;
+export interface ArtistTracksResult {
+  tracks: SpotifyTrack[];
   supplemental: SpotifyTrack[];
   warning?: string;
 }
 
-export async function getArtistTrackPools(
+export async function getArtistTracks(
   artistId: string,
   artistName: string,
   accessToken: string
-): Promise<ArtistPoolsResult> {
-  const [popularResult, setlistResult, supplementalResult] = await Promise.allSettled([
+): Promise<ArtistTracksResult> {
+  const [popularResult, supplementalResult] = await Promise.allSettled([
     getArtistKnownTracks(artistId, artistName, accessToken),
-    getArtistSetlistTracks(artistId, artistName, accessToken),
     getArtistSupplementalTracks(artistId, artistName, accessToken),
   ]);
 
-  const popular = popularResult.status === "fulfilled" ? popularResult.value : [];
-  const setlist = setlistResult.status === "fulfilled" ? setlistResult.value : [];
+  const tracks = popularResult.status === "fulfilled" ? popularResult.value : [];
   const supplemental = supplementalResult.status === "fulfilled" ? supplementalResult.value : [];
 
-  const failures: string[] = [];
-  if (popularResult.status === "rejected") {
-    failures.push(`popular lookup failed (${popularResult.reason?.message || popularResult.reason})`);
-  }
-  if (setlistResult.status === "rejected") {
-    failures.push(`setlist lookup failed (${setlistResult.reason?.message || setlistResult.reason})`);
-  }
   // A failed supplemental fetch isn't worth surfacing as a warning — it was
-  // only ever a top-up source, and the primary pools already cover the
-  // actual filter selections.
+  // only ever a top-up source, and the primary pool is what actually
+  // matters for the requested track count.
+  const warning =
+    popularResult.status === "rejected"
+      ? `track lookup failed (${popularResult.reason?.message || popularResult.reason})`
+      : undefined;
 
-  return {
-    pools: { popular, setlist },
-    supplemental,
-    warning: failures.length > 0 ? failures.join("; ") : undefined,
-  };
+  return { tracks, supplemental, warning };
 }
 
-export function selectTracksForFilters(
-  poolsByFilter: Record<FilterType, SpotifyTrack[]>,
-  filters: FilterType[],
+export function selectTracks(
+  pool: SpotifyTrack[],
   count: number,
   supplemental: SpotifyTrack[] = []
 ): { tracks: SpotifyTrack[]; shortBy: number } {
-  const active = filters.length > 0 ? filters : (["popular"] as FilterType[]);
-  const base = Math.floor(count / active.length);
-  const remainder = count - base * active.length;
-
   const selected: SpotifyTrack[] = [];
   const seen = new Set<string>();
 
-  active.forEach((filter, i) => {
-    const target = base + (i < remainder ? 1 : 0);
-    const sorted = sortForFilter(poolsByFilter[filter] || [], filter);
-    let added = 0;
-    for (const t of sorted) {
-      if (added >= target) break;
-      const key = trackDedupeKey(t);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      selected.push(t);
-      added++;
-    }
-  });
+  for (const t of pool) {
+    if (selected.length >= count) break;
+    const key = trackDedupeKey(t);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selected.push(t);
+  }
 
-  // if a filter's pool ran out early, top up from whatever's left so the
-  // total still hits `count` — first from the other selected pools, then
-  // from the supplemental broader-query pool if it's still short after
-  // that. `shortBy` reports exactly how far short it still is if even that
-  // combined material genuinely doesn't have enough distinct tracks, so
-  // that can be surfaced instead of silently under-filling.
+  // If the primary pool ran out early, top up from the supplemental
+  // broader-query pool so the total still hits `count`. `shortBy` reports
+  // exactly how far short it still is if even that combined material
+  // genuinely doesn't have enough distinct tracks, so that can be surfaced
+  // instead of silently under-filling.
   if (selected.length < count) {
-    const fallback = [...poolsByFilter.popular, ...poolsByFilter.setlist, ...supplemental];
-    for (const t of fallback) {
+    for (const t of supplemental) {
       if (selected.length >= count) break;
       const key = trackDedupeKey(t);
       if (seen.has(key)) continue;

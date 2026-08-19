@@ -24,7 +24,6 @@ export const copy = {
     imageReadError: "Couldn't read that image",
     imageShrinkError: "Couldn't shrink that image enough for a Spotify cover.",
     canvasNotSupportedError: "Canvas not supported",
-    setlistNotConfiguredError: "Setlist data isn't set up yet — add a SETLISTFM_API_KEY to enable it.",
     missingSpotifyIdError: "This artist is missing its Spotify ID — try removing and re-adding them.",
   },
 
@@ -71,8 +70,7 @@ export const copy = {
     searching: "Searching...",
     searchFailedPrefix: "Search failed",
     noResults: "No artists found — try a different spelling or search.",
-    setlistFilterFailedPrefix: "Setlist filter couldn't load for",
-    setlistFilterWorkedPrefix: "Using recent setlists for",
+    trackLookupFailedPrefix: "Couldn't load tracks for",
     artistFallbackGenre: "Artist",
     seenPrefix: "You've seen them",
     editingBanner: "Editing an existing playlist — Create will save changes to it instead of making a new one.",
@@ -81,12 +79,6 @@ export const copy = {
     guestBannerAction: "Connect",
     timeSuffix: "time",
     timesSuffix: "times",
-    lastPlayedPrefix: "Last played",
-    setlistChecking: "Checking for a recent setlist...",
-    setlistFound: "Setlist found",
-    setlistErrorPrefix: "Setlist lookup failed:",
-    setlistNotFound: "No recent setlist found — using popular songs instead.",
-    songsSuffix: "songs",
 
     lineupLabel: "Your lineup",
     dragHint: "Drag to reorder — whoever's on top is the headliner.",
@@ -105,7 +97,7 @@ export const copy = {
     ctaPreview: "Preview playlist",
     shortfallDisclaimer: "A complete song list isn't always possible — some artists may come up short depending on what's available.",
     generatingPhrases: [
-      "Checking the setlist...",
+      "Digging through the catalog...",
       "Finding the openers...",
       "Warming up...",
       "Counting songs...",
@@ -114,7 +106,7 @@ export const copy = {
 
   preview: {
     title: "How's this look?",
-    emptyState: "Your lineup didn't return any tracks. Go back and adjust your filters or song counts.",
+    emptyState: "Your lineup didn't return any tracks. Go back and adjust your lineup or song counts.",
     previewHintPrefix: "Tap",
     previewHintSuffix: "next to a track to listen on Spotify before you commit to it.",
     viewArtists: "Artists",
@@ -156,7 +148,7 @@ export const copy = {
     playlistNameLabel: "Playlist name",
     descriptionLabel: "Description",
     doneButton: "Done",
-    creatingPhrases: ["Packing the setlist...", "Sending it to Spotify...", "Almost there..."],
+    creatingPhrases: ["Packing the playlist...", "Sending it to Spotify...", "Almost there..."],
   },
 
   success: {
@@ -280,10 +272,5 @@ export const copy = {
     tracksSuffix: "tracks",
     timeSuffix: "time",
     timesSuffix: "times",
-  },
-
-  filters: {
-    popular: "Most popular",
-    setlist: "Setlist",
   },
 };
