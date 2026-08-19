@@ -157,6 +157,27 @@ The real path:
 
 ---
 
+## Setting up Sync (Settings → "Sync between devices")
+
+This needs a Cloudflare KV namespace, which — like the custom domain and
+API keys — has to be created in the dashboard; it can't be set up from
+the code alone:
+
+- [ ] Cloudflare dashboard → Workers & Pages → KV → Create a namespace,
+      name it something like `houselights-sync`
+- [ ] Workers & Pages → houselights-reborn → Settings → Bindings → Add →
+      KV Namespace. Variable name **must be exactly** `HOUSELIGHTS_KV`
+      (the code looks for this exact name) → select the namespace just
+      created
+- [ ] Redeploy afterward — bindings, like env vars, need a fresh deploy
+      to take effect
+
+Until this is set up, the Sync buttons in Settings will show a clear
+"Sync isn't set up yet" message rather than failing silently or crashing
+— that's expected on a fresh deployment, not a bug.
+
+---
+
 ## Shipping a batch of changes
 
 - [ ] Update `src/lib/patchNotes.ts` — add a new entry at the **top** of

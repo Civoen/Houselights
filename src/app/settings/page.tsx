@@ -6,7 +6,8 @@ import { resetWristbandProgress } from "@/lib/wristbandTracker";
 import { useColorblindMode, ColorblindMode } from "@/lib/colorblindStore";
 import { useTheme } from "@/lib/themeStore";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { buildBackupPayload, backupFilename, parseBackup, applyBackup } from "@/lib/backup";
+import { buildBackupPayload, buildBackupData, backupFilename, parseBackup, applyBackup } from "@/lib/backup";
+import { useConnectionStatus } from "@/lib/useConnectionStatus";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { copy } from "@/lib/copy";
 import { PATCH_NOTES } from "@/lib/patchNotes";
@@ -17,7 +18,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { mode: colorblindMode, setMode: setColorblindMode } = useColorblindMode();
   const { theme, toggleTheme } = useTheme();
-  const [connected, setConnected] = useState<boolean | null>(null);
+  const connected = useConnectionStatus();
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   const [doneTarget, setDoneTarget] = useState<ConfirmTarget>(null);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -27,13 +28,12 @@ export default function SettingsPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<{ data: Record<string, string>; exportedAt: string } | null>(null);
   const [importing, setImporting] = useState(false);
+  const [syncPushing, setSyncPushing] = useState(false);
+  const [syncPulling, setSyncPulling] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncPushDoneAt, setSyncPushDoneAt] = useState<string | null>(null);
+  const [pendingSyncPull, setPendingSyncPull] = useState<{ data: Record<string, string>; syncedAt: string } | null>(null);
 
-  useEffect(() => {
-    fetch("/api/auth/status")
-      .then((r) => r.json())
-      .then((d) => setConnected(!!d.connected))
-      .catch(() => setConnected(false));
-  }, []);
 
   function handleDeleteAllPlaylists() {
     haptic(HAPTIC.remove);
@@ -118,6 +118,56 @@ export default function SettingsPage() {
     // Most pages only read localStorage once on mount, so a reload is the
     // simplest way to guarantee every page reflects the restored data
     // rather than showing a mix of old and new state.
+    setTimeout(() => window.location.reload(), 900);
+  }
+
+  async function handleSyncPush() {
+    haptic(HAPTIC.tap);
+    setSyncError(null);
+    setSyncPushDoneAt(null);
+    setSyncPushing(true);
+    try {
+      const res = await fetch("/api/sync/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ app: "houselights", data: buildBackupData() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Sync failed.");
+      setSyncPushDoneAt(json.syncedAt);
+    } catch (e: any) {
+      setSyncError(e.message || "Sync failed.");
+    } finally {
+      setSyncPushing(false);
+    }
+  }
+
+  async function handleSyncPull() {
+    haptic(HAPTIC.tap);
+    setSyncError(null);
+    setSyncPulling(true);
+    try {
+      const res = await fetch("/api/sync/pull", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Sync failed.");
+      if (!json.record) {
+        setSyncError(copy.settings.syncNoDataError);
+        return;
+      }
+      setPendingSyncPull({ data: json.record.data, syncedAt: json.record.syncedAt });
+    } catch (e: any) {
+      setSyncError(e.message || "Sync failed.");
+    } finally {
+      setSyncPulling(false);
+    }
+  }
+
+  function handleConfirmSyncPull() {
+    if (!pendingSyncPull) return;
+    haptic(HAPTIC.add);
+    applyBackup(pendingSyncPull.data);
+    setPendingSyncPull(null);
+    setImporting(true);
     setTimeout(() => window.location.reload(), 900);
   }
 
@@ -279,6 +329,59 @@ export default function SettingsPage() {
           )}
           {importing && <p className="text-xs text-faint mt-3 animate-fade-slide-up">{copy.settings.importingMessage}</p>}
         </div>
+
+        {connected && (
+          <>
+            <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2 mt-6">{copy.settings.syncLabel}</div>
+            <div className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
+              <p className="text-xs text-faint mb-3">{copy.settings.syncNote}</p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleSyncPush}
+                  disabled={syncPushing}
+                  className="w-full text-center py-3 rounded-xl bg-surfaceAlt text-muted text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
+                >
+                  {syncPushing ? copy.settings.syncPushing : copy.settings.syncPushButton}
+                </button>
+                <button
+                  onClick={handleSyncPull}
+                  disabled={syncPulling}
+                  className="w-full text-center py-3 rounded-xl bg-surfaceAlt text-muted text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
+                >
+                  {syncPulling ? copy.settings.syncPulling : copy.settings.syncPullButton}
+                </button>
+              </div>
+              {syncPushDoneAt && (
+                <p className="text-xs text-green font-bold mt-3 animate-fade-slide-up">
+                  {copy.settings.syncPushDonePrefix} {new Date(syncPushDoneAt).toLocaleTimeString()}.
+                </p>
+              )}
+              {syncError && <p className="text-xs text-red-600 mt-3 animate-fade-slide-up">{syncError}</p>}
+              {pendingSyncPull && !importing && (
+                <div className="mt-3 pt-3 border-t border-line animate-fade-slide-up">
+                  <p className="text-xs text-faint mb-2">
+                    {copy.settings.syncPullConfirmPrompt} {new Date(pendingSyncPull.syncedAt).toLocaleString()}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPendingSyncPull(null)}
+                      className="text-xs font-bold text-muted flex-1 py-2 rounded-lg bg-surfaceAlt transition-transform duration-150 active:scale-95"
+                    >
+                      {copy.settings.cancel}
+                    </button>
+                    <button
+                      onClick={handleConfirmSyncPull}
+                      className="text-xs font-bold text-white flex-1 py-2 rounded-lg bg-grad transition-transform duration-150 active:scale-95"
+                    >
+                      {copy.settings.syncConfirmButton}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {importing && <p className="text-xs text-faint mt-3 animate-fade-slide-up">{copy.settings.importingMessage}</p>}
+            </div>
+          </>
+        )}
 
         <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2 mt-6">{copy.settings.dangerLabel}</div>
         <div className="bg-surface rounded-2xl shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] overflow-hidden mb-3">

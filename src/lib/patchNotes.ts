@@ -9,6 +9,13 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.8",
+    notes: [
+      "Added manual sync between devices (Settings → Sync between devices) — push your playlists history, drafts, wristband progress, theme, and colorblind mode to the cloud from one device, then pull them on another. Not automatic — needs a tap on each side, same spirit as Export/Import but without emailing yourself a file",
+      "Settings' own connection-status check now shares the same fix as the rest of the app (no stale cached \"not connected\" state)",
+    ],
+  },
+  {
     version: "2.7",
     notes: [
       "Removed the Most Popular/Setlist toggle entirely — despite several rounds of real fixes (wrong-candidate matching, a setlist.fm API quirk that broke the retry logic, rate limiting), it kept surfacing new failure modes, including matching a same-named tribute act's real-but-unrelated setlist instead of the actual artist's. Every artist's tracks now come from Most Popular only",

@@ -18,13 +18,22 @@ interface BackupFile {
   data: Record<string, string>;
 }
 
-export function buildBackupPayload(): string {
+export function buildBackupData(): Record<string, string> {
   const data: Record<string, string> = {};
   BACKUP_KEYS.forEach((k) => {
     const v = localStorage.getItem(k);
     if (v !== null) data[k] = v;
   });
-  const file: BackupFile = { app: "houselights", exportVersion: 1, exportedAt: new Date().toISOString(), data };
+  return data;
+}
+
+export function buildBackupPayload(): string {
+  const file: BackupFile = {
+    app: "houselights",
+    exportVersion: 1,
+    exportedAt: new Date().toISOString(),
+    data: buildBackupData(),
+  };
   return JSON.stringify(file, null, 2);
 }
 

@@ -111,6 +111,17 @@ async function spotifyFetch(path: string, accessToken: string, init: RequestInit
   return res.json();
 }
 
+// The one stable, account-scoped identifier this app has for "whose data is
+// this" — used to key cross-device sync in Cloudflare KV. Nothing else in
+// the app currently stores a Spotify user ID anywhere; this fetches it
+// fresh from Spotify each time rather than caching it, since sync is a
+// deliberate, occasional action (not something firing on every request)
+// and the extra round trip is cheap in that context.
+export async function getSpotifyUserId(accessToken: string): Promise<string> {
+  const profile = await spotifyFetch("/me", accessToken);
+  return profile.id;
+}
+
 export async function searchArtists(query: string, accessToken: string): Promise<SpotifyArtist[]> {
   const params = new URLSearchParams({ q: query, type: "artist", limit: "3" });
   const json = await spotifyFetch(`/search?${params.toString()}`, accessToken);
