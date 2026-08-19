@@ -777,7 +777,7 @@ export default function PreviewPage() {
       {removeToast && <UndoToast message={removeToast.message} onUndo={undoRemoveTrack} className="bottom-[calc(72px+24px+52px+16px+env(safe-area-inset-bottom))]" />}
       {removeArtistToast && <UndoToast message={removeArtistToast.message} onUndo={undoRemoveArtistGroup} className="bottom-[calc(72px+24px+52px+16px+env(safe-area-inset-bottom))]" />}
 
-      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg lg:max-w-3xl mx-auto">
         {createError && <p className="text-xs text-red-600 mb-2 text-center">{createError}</p>}
         {connected === false && (
           <button

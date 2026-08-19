@@ -9,6 +9,25 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.5",
+    notes: [
+      "Desktop: the bottom nav bar and the fixed action buttons (Preview playlist, Create playlist, Use this cover, etc.) now match the same width as the page content above them, instead of staying narrower — they'd looked noticeably skinnier in comparison once actually seen rendered",
+    ],
+  },
+  {
+    version: "3.4",
+    notes: [
+      "First-visit toasts and wristband unlock toasts no longer show on mobile at all — desktop only now, where they have a comfortable bottom-right spot. Mobile screens are tighter and nothing has room for a toast that doesn't compete with something else on screen. The wristband unread dot on the nav tab still covers mobile users who miss an unlock; the first-visit explainers just don't have a mobile equivalent for now",
+    ],
+  },
+  {
+    version: "3.3",
+    notes: [
+      "Desktop: first-visit toasts and wristband unlock toasts now appear bottom-right instead of top-center, where they were overlapping page titles",
+      "Desktop: fixed the whole page visibly shifting left then back to center when navigating between pages of different heights — the browser's scrollbar appearing/disappearing was nudging every centered container sideways; the scrollbar's space is now always reserved so page width stays constant regardless of content height",
+    ],
+  },
+  {
     version: "3.2",
     notes: [
       "Fixed Search hanging forever on \"Searching...\" with no error, ever — if Spotify rate-limits a request, the retry logic behind the scenes had no maximum attempt count, so a sustained rate limit (not just a brief burst) could retry endlessly with no response ever coming back. Now gives up after a few tries with an honest error instead",

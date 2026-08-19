@@ -323,7 +323,7 @@ export default function CreatePage() {
           </div>
 
           {coverTab === "generate" && (
-            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg lg:max-w-3xl mx-auto">
               <GradientButton onClick={handleUseGenerated} disabled={genLoading} className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]">
                 {genLoading ? <EqSpinner /> : copy.create.useThisCover}
               </GradientButton>
@@ -331,7 +331,7 @@ export default function CreatePage() {
           )}
 
           {coverTab === "upload" && (
-            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg lg:max-w-3xl mx-auto">
               <button
                 onClick={() => {
                   setCoverModalOpen(false);
@@ -347,7 +347,7 @@ export default function CreatePage() {
           document.body
         )}
 
-      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg lg:max-w-3xl mx-auto">
         {editingPlaylistId && !submitting && (
           <button
             onClick={() => handleDone(true)}

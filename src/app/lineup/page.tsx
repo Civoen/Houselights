@@ -841,7 +841,7 @@ export default function LineupPage() {
         />
       )}
 
-      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg mx-auto">
+      <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg lg:max-w-3xl mx-auto">
         <p className="text-[11px] text-faint text-center mb-2 px-2">{copy.lineup.shortfallDisclaimer}</p>
         <GradientButton
           onClick={handlePreview}
