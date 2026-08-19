@@ -131,7 +131,7 @@ export default function CreatePage() {
 
   return (
     <main className="min-h-screen pb-40 animate-fade-slide-up">
-      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <button
           onClick={() => router.back()}
           className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
@@ -143,7 +143,7 @@ export default function CreatePage() {
         </h1>
       </div>
 
-      <div className="px-6 py-5 max-w-lg mx-auto">
+      <div className="px-6 py-5 max-w-lg lg:max-w-3xl mx-auto">
         <button
           onClick={() => setCoverModalOpen(true)}
           className="w-full flex items-center gap-3 bg-surface rounded-2xl p-3 mb-4 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.25)] transition-transform duration-150 active:scale-[0.98]"
@@ -190,7 +190,7 @@ export default function CreatePage() {
             className="fixed inset-0 z-50 bg-bg flex flex-col animate-fade-slide-up"
             style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
           >
-          <div className="px-6 pt-6 pb-2 flex items-center justify-between flex-shrink-0 max-w-lg mx-auto w-full">
+          <div className="px-6 pt-6 pb-2 flex items-center justify-between flex-shrink-0 max-w-lg lg:max-w-3xl mx-auto w-full">
             <h2 className="font-display text-xl font-bold">{copy.create.coverModalTitle}</h2>
             <button
               onClick={() => setCoverModalOpen(false)}
@@ -201,7 +201,7 @@ export default function CreatePage() {
             </button>
           </div>
 
-          <div className="px-6 pt-3 flex-shrink-0 max-w-lg mx-auto w-full">
+          <div className="px-6 pt-3 flex-shrink-0 max-w-lg lg:max-w-3xl mx-auto w-full">
             <SegmentedControl
               value={coverTab}
               onChange={(v) => setCoverTab(v as "upload" | "generate")}
@@ -213,7 +213,7 @@ export default function CreatePage() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-[calc(52px+16px+env(safe-area-inset-bottom))] max-w-lg mx-auto w-full">
+          <div className="flex-1 overflow-y-auto px-6 pb-[calc(52px+16px+env(safe-area-inset-bottom))] max-w-lg lg:max-w-3xl mx-auto w-full">
             {coverTab === "upload" && (
               <>
                 <button

@@ -118,7 +118,7 @@ export default function PlaylistsPage() {
           window.location.href = e.url;
         }}
         className={
-          "relative bg-surface rounded-2xl p-4 mb-3 cursor-pointer " +
+          "relative bg-surface rounded-2xl p-4 mb-3 cursor-pointer lg:transition-transform lg:duration-150 lg:hover:-translate-y-0.5 " +
           (isThisDragging
             ? "shadow-2xl z-20"
             : "shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up transition-all duration-150 " +
@@ -281,7 +281,7 @@ export default function PlaylistsPage() {
         <div className="grid grid-cols-2 gap-2 mt-3">
           <button
             onClick={() => resumeDraft(d)}
-            className="py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 active:scale-95"
+            className="py-2.5 rounded-xl bg-grad text-white text-[10px] font-bold transition-transform duration-150 lg:hover:brightness-105 active:scale-95"
           >
             {copy.playlists.resumeDraft}
           </button>
@@ -369,7 +369,7 @@ export default function PlaylistsPage() {
 
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
-      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.playlists.title}</h1>
         {connected === false && (
           <div className="bg-surfaceAlt border border-green rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
@@ -423,7 +423,7 @@ export default function PlaylistsPage() {
         )}
       </div>
 
-      <div className="px-6 pt-2 max-w-lg mx-auto">
+      <div className="px-6 pt-2 max-w-lg lg:max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-2 mt-1">
           <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint">{copy.nextUp.title}</h2>
         </div>
@@ -450,7 +450,7 @@ export default function PlaylistsPage() {
         )}
       </div>
 
-      <div className="px-6 py-5 max-w-lg mx-auto">
+      <div className="px-6 py-5 max-w-lg lg:max-w-3xl mx-auto">
         {loaded && events.length > 0 && (
           <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
             {copy.playlists.title} · {filteredVisibleEvents.length}
@@ -476,7 +476,7 @@ export default function PlaylistsPage() {
         {filteredVisibleEvents.map(({ e, i }) => renderPlaylistCard(e, i, true))}
       </div>
 
-      <div className="px-6 pb-5 max-w-lg mx-auto">
+      <div className="px-6 pb-5 max-w-lg lg:max-w-3xl mx-auto">
         <button
           onClick={() => {
             haptic(HAPTIC.tap);
@@ -511,17 +511,19 @@ export default function PlaylistsPage() {
                 <p className="text-xs text-faint py-4 text-center">{copy.playlists.searchNoResults}</p>
               </div>
             ) : (
-              filteredPastEvents.map((e) => {
-                const globalIndex = events.findIndex((ev) => ev.id === e.id && ev.createdAt === e.createdAt);
-                return renderPlaylistCard(e, globalIndex, false);
-              })
+              <div className="lg:grid lg:grid-cols-2 lg:gap-3">
+                {filteredPastEvents.map((e) => {
+                  const globalIndex = events.findIndex((ev) => ev.id === e.id && ev.createdAt === e.createdAt);
+                  return renderPlaylistCard(e, globalIndex, false);
+                })}
+              </div>
             )}
           </div>
         )}
       </div>
 
       {drafts.length > 0 && (
-        <div className="px-6 pb-5 max-w-lg mx-auto">
+        <div className="px-6 pb-5 max-w-lg lg:max-w-3xl mx-auto">
           <h2 className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">
             {copy.playlists.draftsLabel} · {filteredDrafts.length}
           </h2>
@@ -529,7 +531,7 @@ export default function PlaylistsPage() {
           {filteredDrafts.length === 0 ? (
             <p className="text-xs text-faint text-center py-6">{copy.playlists.searchNoResults}</p>
           ) : (
-            filteredDrafts.map((d) => renderDraftCard(d))
+            <div className="lg:grid lg:grid-cols-2 lg:gap-3">{filteredDrafts.map((d) => renderDraftCard(d))}</div>
           )}
         </div>
       )}

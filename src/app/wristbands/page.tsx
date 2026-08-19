@@ -45,15 +45,15 @@ export default function WristbandsPage() {
 
   return (
     <main className="min-h-screen pb-28 animate-fade-slide-up">
-      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.wristbands.title}</h1>
         <p className="text-sm text-muted font-medium">
           {earnedCount} of {WRISTBANDS.length} earned
         </p>
       </div>
 
-      <div className="px-6 py-4 max-w-lg mx-auto">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="px-6 py-4 max-w-lg lg:max-w-3xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {loaded &&
             sortedWristbands.map((wristband, i) => {
               const earnedOn = unlockedIds[wristband.id];
@@ -62,7 +62,7 @@ export default function WristbandsPage() {
                 <button
                   key={wristband.id}
                   onClick={() => setSelected(wristband)}
-                  className="bg-surface rounded-2xl py-4 px-2 text-center shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up transition-transform duration-150 active:scale-95"
+                  className="bg-surface rounded-2xl py-4 px-2 text-center shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up transition-transform duration-150 lg:hover:-translate-y-0.5 active:scale-95"
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
                   <div className="flex justify-center">

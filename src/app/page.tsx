@@ -1,19 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { copy } from "@/lib/copy";
 import { BrandMark } from "@/components/BrandMark";
+import { useConnectionStatus } from "@/lib/useConnectionStatus";
 
 export default function Home() {
   const router = useRouter();
-  const [connected, setConnected] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/status")
-      .then((r) => r.json())
-      .then((d) => setConnected(!!d.connected))
-      .catch(() => setConnected(false));
-  }, []);
+  const connected = useConnectionStatus();
 
   useEffect(() => {
     if (connected) router.replace("/lineup");

@@ -179,7 +179,7 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
-      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <button
           onClick={() => router.back()}
           className="w-11 h-11 rounded-xl bg-surfaceAlt text-muted text-xl flex items-center justify-center transition-transform duration-150 active:scale-90 mb-3"
@@ -189,7 +189,7 @@ export default function SettingsPage() {
         <h1 className="font-display text-3xl font-bold tracking-tight">{copy.settings.title}</h1>
       </div>
 
-      <div className="px-6 py-5 max-w-lg mx-auto">
+      <div className="px-6 py-5 max-w-lg lg:max-w-3xl mx-auto">
         <div className="text-[11px] font-extrabold uppercase tracking-wide text-faint mb-2">{copy.settings.accountLabel}</div>
         <div className="bg-surface rounded-2xl p-4 mb-3 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)]">
           <div className="flex items-center gap-2 mb-1">

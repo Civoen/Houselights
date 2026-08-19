@@ -73,7 +73,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           className="fixed left-0 right-0 z-40 pointer-events-none"
           style={{ top: "calc(env(safe-area-inset-top) + 1.5rem)" }}
         >
-          <div className="max-w-lg mx-auto px-6 flex justify-end">
+          <div className="max-w-lg lg:max-w-3xl mx-auto px-6 flex justify-end">
             <div className="flex items-center gap-2 pointer-events-auto">
               <ThemeToggle className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />
               <SettingsButton className="w-9 h-9 rounded-xl bg-surfaceAlt text-muted" />

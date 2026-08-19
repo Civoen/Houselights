@@ -42,7 +42,7 @@ export default function EncorePage() {
 
   return (
     <main className="min-h-screen pb-28 animate-fade-slide-up">
-      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <div className="flex items-center gap-1 mb-2">
           <button
             onClick={() => router.back()}
@@ -56,13 +56,13 @@ export default function EncorePage() {
       </div>
 
       {loaded && totalShows === 0 && (
-        <div className="px-6 py-14 max-w-lg mx-auto text-center">
+        <div className="px-6 py-14 max-w-lg lg:max-w-3xl mx-auto text-center">
           <p className="text-sm text-faint">{copy.encore.emptyMessage}</p>
         </div>
       )}
 
       {loaded && totalShows > 0 && (
-        <div className="px-6 py-4 max-w-lg mx-auto">
+        <div className="px-6 py-4 max-w-lg lg:max-w-3xl mx-auto">
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="bg-surface rounded-2xl p-4 shadow-[0_10px_28px_-16px_rgba(10,31,38,0.25)] animate-fade-slide-up">
               <div className="text-2xl font-extrabold">{totalShows}</div>

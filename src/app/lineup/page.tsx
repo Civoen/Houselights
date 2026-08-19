@@ -409,7 +409,7 @@ export default function LineupPage() {
 
   return (
     <main className="min-h-screen pb-52 animate-fade-slide-up">
-      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-3">{copy.lineup.title}</h1>
         {connected === false && !editingPlaylistId && (
           <div className="bg-surfaceAlt border border-green rounded-xl px-4 py-3 mb-3 flex items-center justify-between gap-3 animate-fade-slide-up">
@@ -458,7 +458,7 @@ export default function LineupPage() {
         )}
       </div>
 
-      <div className="px-6 py-4 max-w-lg mx-auto">
+      <div className="px-6 py-4 max-w-lg lg:max-w-3xl mx-auto">
         {loading && <p className="text-xs text-faint mb-2">{copy.lineup.searching}</p>}
 
         {searchError && <p className="text-xs text-red-600 mb-4">{searchError}</p>}

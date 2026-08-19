@@ -9,6 +9,17 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "2.9",
+    notes: [
+      "Added a desktop layout — same visual design as mobile, just wider, rather than a different interface. Kicks in above 1024px, mobile is untouched below that",
+      "Playlists, Previous events, and Drafts now settle into a two-column grid on wide screens instead of one long single-file list",
+      "Wristbands shows three columns on desktop instead of stretching two columns unnaturally wide",
+      "The bottom nav bar stays put (matching how it already looks on mobile) but no longer spans edge-to-edge on a wide window",
+      "Added hover feedback to playlist cards, wristband cards, and a couple of buttons that only had tap feedback before — meaningful on desktop, invisible on mobile",
+      "Fixed two more instances of the same stale \"not connected\" bug from a few versions back (Home page and Settings each had their own separate copy of the connection check)",
+    ],
+  },
+  {
     version: "2.8",
     notes: [
       "Added manual sync between devices (Settings → Sync between devices) — push your playlists history, drafts, wristband progress, theme, and colorblind mode to the cloud from one device, then pull them on another. Not automatic — needs a tap on each side, same spirit as Export/Import but without emailing yourself a file",

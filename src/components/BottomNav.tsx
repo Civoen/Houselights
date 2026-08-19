@@ -53,7 +53,7 @@ export function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-30 nav-frosted border-t border-line px-2"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="relative flex items-stretch h-[72px]">
+      <div className="relative flex items-stretch h-[72px] lg:max-w-md lg:mx-auto">
         {activeIndex >= 0 && (
           <div
             className="absolute top-[6px] h-[60px] rounded-2xl bg-grad shadow-[0_6px_16px_-6px_rgba(17,80,103,0.5)] pointer-events-none"

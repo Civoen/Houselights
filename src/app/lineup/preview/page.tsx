@@ -433,7 +433,7 @@ export default function PreviewPage() {
 
   return (
     <main className="min-h-screen animate-fade-slide-up" style={{ paddingBottom: bottomBarPadding }}>
-      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg mx-auto w-full">
+      <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={() => router.push("/lineup")}
@@ -460,7 +460,7 @@ export default function PreviewPage() {
         )}
       </div>
 
-      <div className="px-6 py-4 max-w-lg mx-auto">
+      <div className="px-6 py-4 max-w-lg lg:max-w-3xl mx-auto">
         <div
           onClick={() => {
             const el = eventDateInputRef.current;
