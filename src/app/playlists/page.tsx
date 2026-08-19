@@ -9,6 +9,9 @@ import { useConnectionStatus } from "@/lib/useConnectionStatus";
 import { PastEvent, PlaylistTrack, SpotifyTrack, DraftPlaylist } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
+import { FirstVisitToast } from "@/components/FirstVisitToast";
+import { hasSeenFirstVisit, markFirstVisitSeen } from "@/lib/firstVisitToasts";
+import { acknowledgePlaylistsSeen } from "@/lib/unreadPlaylists";
 import { EqSpinner } from "@/components/EqSpinner";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
@@ -70,6 +73,7 @@ export default function PlaylistsPage() {
   const filteredDrafts = drafts.filter((d) => matchesSearch(d.name, d.artistNames));
 
   const [draftSavedToast, setDraftSavedToast] = useState(false);
+  const [showFirstVisit, setShowFirstVisit] = useState(false);
 
   useEffect(() => {
     setEvents(getAllEvents());
@@ -77,6 +81,11 @@ export default function PlaylistsPage() {
     setPastEvents(getPastDatedEvents());
     setDrafts(getAllDrafts());
     setLoaded(true);
+    acknowledgePlaylistsSeen();
+    if (!hasSeenFirstVisit("playlists")) {
+      markFirstVisitSeen("playlists");
+      setShowFirstVisit(true);
+    }
     if (typeof window !== "undefined" && window.location.search.includes("draftSaved=1")) {
       setDraftSavedToast(true);
       window.history.replaceState({}, "", "/playlists");
@@ -369,6 +378,7 @@ export default function PlaylistsPage() {
 
   return (
     <main className="min-h-screen pb-24 animate-fade-slide-up">
+      {showFirstVisit && <FirstVisitToast message={copy.firstVisit.playlists} onDismiss={() => setShowFirstVisit(false)} />}
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.playlists.title}</h1>
         {connected === false && (

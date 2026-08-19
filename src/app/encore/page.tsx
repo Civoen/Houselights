@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { getAllEvents } from "@/lib/eventHistory";
 import { PastEvent } from "@/lib/types";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
+import { FirstVisitToast } from "@/components/FirstVisitToast";
+import { hasSeenFirstVisit, markFirstVisitSeen } from "@/lib/firstVisitToasts";
 import { fmtMinutes } from "@/lib/format";
 import { copy } from "@/lib/copy";
 
@@ -11,10 +13,15 @@ export default function EncorePage() {
   const router = useRouter();
   const [events, setEvents] = useState<PastEvent[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [showFirstVisit, setShowFirstVisit] = useState(false);
 
   useEffect(() => {
     setEvents(getAllEvents());
     setLoaded(true);
+    if (!hasSeenFirstVisit("stats")) {
+      markFirstVisitSeen("stats");
+      setShowFirstVisit(true);
+    }
   }, []);
 
   const totalShows = events.length;
@@ -42,6 +49,7 @@ export default function EncorePage() {
 
   return (
     <main className="min-h-screen pb-28 animate-fade-slide-up">
+      {showFirstVisit && <FirstVisitToast message={copy.firstVisit.stats} onDismiss={() => setShowFirstVisit(false)} />}
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <div className="flex items-center gap-1 mb-2">
           <button

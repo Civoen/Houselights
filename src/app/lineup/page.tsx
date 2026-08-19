@@ -8,6 +8,8 @@ import { GradientButton } from "@/components/GradientButton";
 import { EqSpinner } from "@/components/EqSpinner";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
+import { FirstVisitToast } from "@/components/FirstVisitToast";
+import { hasSeenFirstVisit, markFirstVisitSeen } from "@/lib/firstVisitToasts";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder } from "@/lib/useReorder";
 import { useRotatingText } from "@/lib/useRotatingText";
@@ -100,9 +102,14 @@ export default function LineupPage() {
   const [posterReview, setPosterReview] = useState<PosterMatch[] | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const [history, setHistory] = useState<PastEvent[]>([]);
+  const [showFirstVisit, setShowFirstVisit] = useState(false);
 
   useEffect(() => {
     setHistory(getAllEvents());
+    if (!hasSeenFirstVisit("newEvent")) {
+      markFirstVisitSeen("newEvent");
+      setShowFirstVisit(true);
+    }
   }, []);
 
   // "Seen" specifically means a show whose date has already passed —
@@ -409,6 +416,7 @@ export default function LineupPage() {
 
   return (
     <main className="min-h-screen pb-52 animate-fade-slide-up">
+      {showFirstVisit && <FirstVisitToast message={copy.firstVisit.newEvent} onDismiss={() => setShowFirstVisit(false)} />}
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-3">{copy.lineup.title}</h1>
         {connected === false && !editingPlaylistId && (

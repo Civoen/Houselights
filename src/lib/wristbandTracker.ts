@@ -100,12 +100,14 @@ export function checkForNewWristbands(): WristbandDef[] {
 export function resetWristbandProgress() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(EARNED_KEY);
+  localStorage.removeItem(BADGE_ACK_KEY);
   // Explicit empty array, not a removed key — removing it entirely would
   // make the very next check indistinguishable from a brand-new install,
   // which silently absorbs whatever's already true without ever popping a
   // toast. That would mean the next genuine unlock after Clear progress
   // goes silent too, defeating the point of clearing progress at all.
   saveSeenIds([]);
+  triggerWristbandCheck();
 }
 
 // Used by AppChrome — the only place that actually owns the unlock-toast
@@ -120,4 +122,38 @@ export const WRISTBAND_CHECK_EVENT = "houselights:wristband-check";
 export function triggerWristbandCheck() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(WRISTBAND_CHECK_EVENT));
+}
+
+// Separate from SEEN_KEY above on purpose. SEEN_KEY governs whether the
+// unlock pop-up toast repeats — it's marked the moment a wristband is
+// *detected* as newly earned, whether or not the toast actually got seen
+// (app closed mid-animation, etc.). This tracks something different: has
+// the Wristbands *page itself* actually been visited since that unlock —
+// which is exactly the case the unread nav dot exists for, precisely
+// because a missed toast is possible even though SEEN_KEY already
+// considers that wristband "shown."
+const BADGE_ACK_KEY = "houselights_wristbands_badge_ack_v1";
+
+function getAcknowledgedBadgeIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(BADGE_ACK_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function hasUnseenWristbands(): boolean {
+  const earnedIds = getUnlockedWristbands().map((u) => u.def.id);
+  if (earnedIds.length === 0) return false;
+  const acknowledged = new Set(getAcknowledgedBadgeIds());
+  return earnedIds.some((id) => !acknowledged.has(id));
+}
+
+export function acknowledgeWristbandsSeen() {
+  if (typeof window === "undefined") return;
+  const earnedIds = getUnlockedWristbands().map((u) => u.def.id);
+  localStorage.setItem(BADGE_ACK_KEY, JSON.stringify(earnedIds));
+  triggerWristbandCheck();
 }

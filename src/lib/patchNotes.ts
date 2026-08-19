@@ -9,6 +9,13 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.1",
+    notes: [
+      "Added a one-time explainer toast the first time you visit New Event, Preview, Playlists, Wristbands, or Stats — quietly gone for good after that first visit",
+      "Added an unread dot on the Playlists and Wristbands nav tabs when there's something new there — a fresh playlist or draft, or a wristband unlock you might have missed the pop-up toast for. Clears the moment you actually visit that tab",
+    ],
+  },
+  {
     version: "3.0",
     notes: [
       "Poster upload: replaced the checkmark selection buttons with a small sliding toggle matching the Songs/Time control's style, sized up for an easier tap target",

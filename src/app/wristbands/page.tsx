@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { WRISTBANDS, WristbandDef, colorForWristband } from "@/lib/wristbands";
 import { useColorblindMode } from "@/lib/colorblindStore";
-import { getUnlockedWristbands } from "@/lib/wristbandTracker";
+import { getUnlockedWristbands, acknowledgeWristbandsSeen } from "@/lib/wristbandTracker";
 import { WristbandIcon } from "@/components/WristbandIcon";
+import { FirstVisitToast } from "@/components/FirstVisitToast";
+import { hasSeenFirstVisit, markFirstVisitSeen } from "@/lib/firstVisitToasts";
 import { copy } from "@/lib/copy";
 
 function formatEarnedDate(dateStr: string) {
@@ -18,6 +20,7 @@ export default function WristbandsPage() {
   const [unlockedIds, setUnlockedIds] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<WristbandDef | null>(null);
+  const [showFirstVisit, setShowFirstVisit] = useState(false);
 
   useEffect(() => {
     const unlocked = getUnlockedWristbands();
@@ -27,6 +30,11 @@ export default function WristbandsPage() {
     });
     setUnlockedIds(map);
     setLoaded(true);
+    acknowledgeWristbandsSeen();
+    if (!hasSeenFirstVisit("wristbands")) {
+      markFirstVisitSeen("wristbands");
+      setShowFirstVisit(true);
+    }
   }, []);
 
   const earnedCount = Object.keys(unlockedIds).length;
@@ -45,6 +53,7 @@ export default function WristbandsPage() {
 
   return (
     <main className="min-h-screen pb-28 animate-fade-slide-up">
+      {showFirstVisit && <FirstVisitToast message={copy.firstVisit.wristbands} onDismiss={() => setShowFirstVisit(false)} />}
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-2">{copy.wristbands.title}</h1>
         <p className="text-sm text-muted font-medium">

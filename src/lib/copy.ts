@@ -283,4 +283,12 @@ export const copy = {
     timeSuffix: "time",
     timesSuffix: "times",
   },
+
+  firstVisit: {
+    newEvent: "Add each artist, then adjust their weight below their card to control how much of the playlist they get.",
+    preview: "Switch between Artists and Songs view, or drag any track to reorder it before you commit.",
+    playlists: "Search your playlists, and any drafts you've saved along the way live in their own section further down.",
+    wristbands: "Unlocked by real activity — building lineups, going to shows. Once earned, they're yours for good.",
+    stats: "A running tally of every artist and show you've prepped with Houselights.",
+  },
 };

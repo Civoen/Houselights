@@ -1,4 +1,5 @@
 import { PastEvent } from "./types";
+import { dispatchPlaylistsChanged } from "./playlistsChangedEvent";
 
 const KEY = "houselights_events_v1";
 
@@ -20,6 +21,7 @@ export function addEvent(event: PastEvent) {
   const events = getAllEvents();
   const next = [event, ...events].slice(0, 50);
   localStorage.setItem(KEY, JSON.stringify(next));
+  dispatchPlaylistsChanged();
 }
 
 // Updates an existing history entry in place — used when "Save changes" on
@@ -38,6 +40,7 @@ export function updateEvent(id: string, updates: Omit<PastEvent, "id" | "created
 export function saveAllEvents(events: PastEvent[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(events));
+  dispatchPlaylistsChanged();
 }
 
 export function getUpcomingEvents(): PastEvent[] {

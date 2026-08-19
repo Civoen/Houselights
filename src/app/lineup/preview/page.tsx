@@ -6,6 +6,8 @@ import { GradientButton } from "@/components/GradientButton";
 import { AlbumArt } from "@/components/AlbumArt";
 import { ArtistAvatar } from "@/components/ArtistAvatar";
 import { UndoToast } from "@/components/UndoToast";
+import { FirstVisitToast } from "@/components/FirstVisitToast";
+import { hasSeenFirstVisit, markFirstVisitSeen } from "@/lib/firstVisitToasts";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { haptic, HAPTIC } from "@/lib/haptics";
 import { useReorder, useGroupedReorder } from "@/lib/useReorder";
@@ -75,6 +77,14 @@ export default function PreviewPage() {
   const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
   const [groupOrder, setGroupOrder] = useState<"hype" | "headliner">("headliner");
   const [expandedArtists, setExpandedArtists] = useState<Set<string>>(new Set());
+  const [showFirstVisit, setShowFirstVisit] = useState(false);
+
+  useEffect(() => {
+    if (!hasSeenFirstVisit("preview")) {
+      markFirstVisitSeen("preview");
+      setShowFirstVisit(true);
+    }
+  }, []);
 
   const { toast: removeToast, show: showRemoveToast, dismiss: dismissRemoveToast } = useUndoToast<{
     track: PlaylistTrack;
@@ -433,6 +443,7 @@ export default function PreviewPage() {
 
   return (
     <main className="min-h-screen animate-fade-slide-up" style={{ paddingBottom: bottomBarPadding }}>
+      {showFirstVisit && <FirstVisitToast message={copy.firstVisit.preview} onDismiss={() => setShowFirstVisit(false)} />}
       <div className="px-6 pb-2 pt-[calc(env(safe-area-inset-top)+1.5rem)] max-w-lg lg:max-w-3xl mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <button

@@ -1,8 +1,11 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { copy } from "@/lib/copy";
 import { haptic, HAPTIC } from "@/lib/haptics";
+import { hasUnseenPlaylists, PLAYLISTS_CHANGED_EVENT } from "@/lib/unreadPlaylists";
+import { hasUnseenWristbands, WRISTBAND_CHECK_EVENT } from "@/lib/wristbandTracker";
 
 const TABS = [
   {
@@ -47,6 +50,29 @@ export function BottomNav() {
   const pathname = usePathname();
   const activeIndex = TABS.findIndex((t) => t.match(pathname));
   const tabWidthPct = 100 / TABS.length;
+  const [unreadPlaylists, setUnreadPlaylists] = useState(false);
+  const [unreadWristbands, setUnreadWristbands] = useState(false);
+
+  // Recomputes on every navigation (the page just navigated to may have
+  // just acknowledged its own badge, e.g. Playlists/Wristbands clearing
+  // themselves on mount) and also listens for both change events directly,
+  // rather than relying only on effect ordering between this component and
+  // whichever page fired the acknowledgment — a new playlist created while
+  // sitting on New Event, for instance, should light up the Playlists dot
+  // immediately, with no navigation involved at all.
+  useEffect(() => {
+    function recompute() {
+      setUnreadPlaylists(hasUnseenPlaylists());
+      setUnreadWristbands(hasUnseenWristbands());
+    }
+    recompute();
+    window.addEventListener(PLAYLISTS_CHANGED_EVENT, recompute);
+    window.addEventListener(WRISTBAND_CHECK_EVENT, recompute);
+    return () => {
+      window.removeEventListener(PLAYLISTS_CHANGED_EVENT, recompute);
+      window.removeEventListener(WRISTBAND_CHECK_EVENT, recompute);
+    };
+  }, [pathname]);
 
   return (
     <nav
@@ -69,6 +95,7 @@ export function BottomNav() {
 
         {TABS.map((tab, i) => {
           const active = i === activeIndex;
+          const showDot = (tab.key === "playlists" && unreadPlaylists) || (tab.key === "wristbands" && unreadWristbands);
           return (
             <Link
               key={tab.key}
@@ -79,8 +106,14 @@ export function BottomNav() {
                 (active ? "text-white" : "text-faint")
               }
             >
-              <span key={active ? `${tab.key}-on` : `${tab.key}-off`} className={active ? "animate-pop-in" : ""}>
+              <span key={active ? `${tab.key}-on` : `${tab.key}-off`} className={"relative " + (active ? "animate-pop-in" : "")}>
                 {tab.icon}
+                {showDot && (
+                  <span
+                    className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-green border border-navy"
+                    aria-hidden="true"
+                  />
+                )}
               </span>
               {tab.label}
             </Link>

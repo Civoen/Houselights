@@ -1,4 +1,5 @@
 import { DraftPlaylist } from "./types";
+import { dispatchPlaylistsChanged } from "./playlistsChangedEvent";
 
 const KEY = "houselights_drafts_v1";
 
@@ -21,12 +22,14 @@ export function addDraft(draft: DraftPlaylist) {
   const drafts = getAllDrafts();
   const next = [draft, ...drafts].slice(0, 50);
   localStorage.setItem(KEY, JSON.stringify(next));
+  dispatchPlaylistsChanged();
 }
 
 export function removeDraft(id: string) {
   if (typeof window === "undefined") return;
   const drafts = getAllDrafts();
   localStorage.setItem(KEY, JSON.stringify(drafts.filter((d) => d.id !== id)));
+  dispatchPlaylistsChanged();
 }
 
 // Updates a draft in place — used when someone resumes an existing draft,
