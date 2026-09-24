@@ -2,6 +2,7 @@ import { addEvent, updateEvent, getAllEvents } from "@/lib/eventHistory";
 import { removeDraft } from "@/lib/drafts";
 import { triggerWristbandCheck } from "@/lib/wristbandTracker";
 import { LineupArtist, PlaylistTrack } from "@/lib/types";
+import { formatEventDateShort } from "@/lib/format";
 
 interface CreateOrUpdatePlaylistParams {
   name: string;
@@ -93,9 +94,14 @@ export async function createOrUpdatePlaylist(params: CreateOrUpdatePlaylistParam
 // both Preview (draft save + direct create) and the Create page, so a
 // draft resumed later and a playlist created fresh both land on the same
 // default rather than two formats drifting apart.
-export function defaultPlaylistName(headlinerName: string | undefined): string {
-  const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  return headlinerName ? `${headlinerName}, ${today}` : `My playlist, ${today}`;
+//
+// Uses the event's own date (the optional field set on Preview) when one
+// has been set, falling back to today's date otherwise — so a playlist
+// prepped weeks ahead of a show is named for the show, not for whenever
+// it happened to be built.
+export function defaultPlaylistName(headlinerName: string | undefined, eventDate?: string): string {
+  const date = formatEventDateShort(eventDate) ?? new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return headlinerName ? `${headlinerName}, ${date}` : `My playlist, ${date}`;
 }
 
 export function defaultPlaylistDescription(artistNames: string[]): string {

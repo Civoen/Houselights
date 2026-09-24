@@ -8,7 +8,16 @@ import { EqSpinner } from "@/components/EqSpinner";
 import { useRotatingText } from "@/lib/useRotatingText";
 import { createOrUpdatePlaylist, defaultPlaylistName, defaultPlaylistDescription } from "@/lib/createPlaylist";
 import { resizeImageForSpotifyCover } from "@/lib/resizeImage";
-import { generateWordmarkCover, COVER_BACKGROUND_SWATCHES } from "@/lib/coverGenerator";
+import {
+  generateStatCover,
+  formatSupportLine,
+  COVER_PALETTES,
+  COVER_TEXTURES,
+  CoverPaletteId,
+  CoverAppearance,
+  CoverTexture,
+} from "@/lib/coverGenerator";
+import { fmtMinutes, formatEventDateShort } from "@/lib/format";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { copy } from "@/lib/copy";
 
@@ -36,17 +45,26 @@ export default function CreatePage() {
   const [coverError, setCoverError] = useState<string | null>(null);
   const [coverModalOpen, setCoverModalOpen] = useState(false);
   const [coverTab, setCoverTab] = useState<"upload" | "generate">("upload");
-  const [genBackground, setGenBackground] = useState(COVER_BACKGROUND_SWATCHES[0].color);
-  const [genArtistIds, setGenArtistIds] = useState<string[]>([]);
+  const [genPalette, setGenPalette] = useState<CoverPaletteId>("default");
+  const [genAppearance, setGenAppearance] = useState<CoverAppearance>("dark");
+  const [genTexture, setGenTexture] = useState<CoverTexture>("rings");
+  // The headliner (lineup[0]) is always shown; this holds which of the
+  // *other* artists are named in the smaller support line below it —
+  // defaults to the next couple so the first preview isn't empty.
+  const [genArtistIds, setGenArtistIds] = useState<string[]>(() => lineup.slice(1, 3).map((a) => a.artist.id));
   const [genPreview, setGenPreview] = useState<string | null>(null);
   const [genLoading, setGenLoading] = useState(false);
 
   const creatingText = useRotatingText(submitting, CREATING_PHRASES, 1200);
+  const headlinerName = lineup[0]?.artist.name || "";
+  const supportCandidates = lineup.slice(1);
+  const totalMin = Math.round(playlist.reduce((s, t) => s + t.durationMs, 0) / 60000);
+  const coverDateLabel = formatEventDateShort(eventDate) ?? copy.create.coverDateUnset;
 
   useEffect(() => {
     const artists = lineup.map((a) => a.artist.name);
     if (!name) {
-      setName(defaultPlaylistName(artists[0]));
+      setName(defaultPlaylistName(artists[0], eventDate));
     }
     if (!description) {
       setDescription(defaultPlaylistDescription(artists));
@@ -55,27 +73,46 @@ export default function CreatePage() {
   }, []);
 
   useEffect(() => {
-    if (!coverModalOpen || coverTab !== "generate") return;
+    if (!coverModalOpen || coverTab !== "generate" || !headlinerName) return;
     let cancelled = false;
-    const names = genArtistIds
-      .map((id) => lineup.find((a) => a.artist.id === id)?.artist.name)
-      .filter((n): n is string => !!n);
-    generateWordmarkCover({ backgroundColor: genBackground, lines: names }).then((base64) => {
+    const supportNames = supportCandidates
+      .filter((a) => genArtistIds.includes(a.artist.id))
+      .map((a) => a.artist.name);
+    generateStatCover({
+      headliner: headlinerName,
+      supportNames,
+      dateLabel: coverDateLabel,
+      songCount: playlist.length,
+      totalMinutesLabel: fmtMinutes(totalMin),
+      palette: genPalette,
+      appearance: genAppearance,
+      texture: genTexture,
+    }).then((base64) => {
       if (!cancelled) setGenPreview(base64);
     });
     return () => {
       cancelled = true;
     };
-  }, [coverModalOpen, coverTab, genBackground, genArtistIds, lineup]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coverModalOpen, coverTab, genPalette, genAppearance, genTexture, genArtistIds, headlinerName, playlist.length, totalMin, coverDateLabel]);
 
   async function handleUseGenerated() {
     setGenLoading(true);
     setCoverError(null);
     try {
-      const names = genArtistIds
-        .map((id) => lineup.find((a) => a.artist.id === id)?.artist.name)
-        .filter((n): n is string => !!n);
-      const base64 = await generateWordmarkCover({ backgroundColor: genBackground, lines: names });
+      const supportNames = supportCandidates
+        .filter((a) => genArtistIds.includes(a.artist.id))
+        .map((a) => a.artist.name);
+      const base64 = await generateStatCover({
+        headliner: headlinerName,
+        supportNames,
+        dateLabel: coverDateLabel,
+        songCount: playlist.length,
+        totalMinutesLabel: fmtMinutes(totalMin),
+        palette: genPalette,
+        appearance: genAppearance,
+        texture: genTexture,
+      });
       setCoverImage(base64);
       setCoverModalOpen(false);
     } catch {
@@ -252,70 +289,113 @@ export default function CreatePage() {
             {coverTab === "generate" && (
               <>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)]">
-                    {genPreview ? (
-                      <img src={`data:image/jpeg;base64,${genPreview}`} className="w-full h-full object-cover" alt="" />
-                    ) : (
-                      <div className="w-full h-full" style={{ background: genBackground }} />
-                    )}
+                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-[0_10px_24px_-16px_rgba(10,31,38,0.3)] bg-surfaceAlt">
+                    {genPreview && <img src={`data:image/jpeg;base64,${genPreview}`} className="w-full h-full object-cover" alt="" />}
                   </div>
                   <p className="text-xs text-faint flex-1">{copy.create.generatePreviewNote}</p>
                 </div>
 
-                <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">{copy.create.backgroundLabel}</div>
-                <div className="grid grid-cols-8 gap-1.5 mb-4">
-                  {COVER_BACKGROUND_SWATCHES.map((sw) => (
-                    <button
-                      key={sw.id}
-                      onClick={() => setGenBackground(sw.color)}
-                      aria-label={sw.label}
-                      className="aspect-square rounded-lg transition-transform duration-150 active:scale-95"
-                      style={{
-                        background: sw.color,
-                        boxShadow: genBackground === sw.color ? "0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent)" : "none",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-1">{copy.create.artistsToIncludeLabel}</div>
-                <p className="text-xs text-faint mb-2">{copy.create.artistsToIncludeNote}</p>
-                <div className="flex flex-col gap-2.5">
-                  {lineup.map((entry) => {
-                    const selected = genArtistIds.includes(entry.artist.id);
-                    const disabled = !selected && genArtistIds.length >= 4;
+                <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">{copy.create.paletteLabel}</div>
+                <div className="flex flex-col gap-2 mb-4">
+                  {COVER_PALETTES.map((p) => {
+                    const active = genPalette === p.id;
                     return (
                       <button
-                        key={entry.artist.id}
-                        disabled={disabled}
-                        onClick={() =>
-                          setGenArtistIds((prev) =>
-                            selected ? prev.filter((id) => id !== entry.artist.id) : [...prev, entry.artist.id]
-                          )
-                        }
+                        key={p.id}
+                        onClick={() => setGenPalette(p.id)}
                         className={
-                          "flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
-                          (selected ? "bg-grad text-white" : "bg-surface text-ink") +
-                          (disabled ? " opacity-40" : "")
+                          "flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
+                          (active ? "bg-grad text-white" : "bg-surface text-ink")
                         }
                       >
-                        <div
-                          className={
-                            "w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0 " +
-                            (selected ? "bg-white/25 border-white" : "border-lineStrong")
-                          }
-                        >
-                          {selected && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                              <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-base font-bold truncate">{entry.artist.name}</span>
+                        <span>
+                          <span className="block text-sm font-bold">{p.label}</span>
+                          <span className={"block text-xs mt-0.5 " + (active ? "text-white/75" : "text-faint")}>{p.note}</span>
+                        </span>
+                        {active && (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+                            <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
                       </button>
                     );
                   })}
                 </div>
+
+                <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">{copy.create.backgroundLabel}</div>
+                <SegmentedControl
+                  value={genAppearance}
+                  onChange={(v) => setGenAppearance(v as CoverAppearance)}
+                  options={[
+                    { id: "light", label: copy.create.appearanceLight },
+                    { id: "dark", label: copy.create.appearanceDark },
+                  ]}
+                  className="mb-4"
+                />
+
+                <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">{copy.create.textureLabel}</div>
+                <div className="grid grid-cols-4 gap-1.5 mb-4">
+                  {COVER_TEXTURES.map((t) => {
+                    const active = genTexture === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setGenTexture(t.id)}
+                        className={
+                          "py-2.5 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 " +
+                          (active ? "bg-grad text-white" : "bg-surface text-muted")
+                        }
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-1">{copy.create.headlinerLabel}</div>
+                <div className="px-4 py-3 rounded-xl bg-surfaceAlt text-sm font-bold mb-4 truncate">
+                  {headlinerName || copy.create.artistsToIncludeLabel}
+                </div>
+
+                {supportCandidates.length > 0 && (
+                  <>
+                    <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-1">{copy.create.supportArtistsLabel}</div>
+                    <p className="text-xs text-faint mb-2">{copy.create.supportArtistsNote}</p>
+                    <div className="flex flex-col gap-2.5">
+                      {supportCandidates.map((entry) => {
+                        const selected = genArtistIds.includes(entry.artist.id);
+                        return (
+                          <button
+                            key={entry.artist.id}
+                            onClick={() =>
+                              setGenArtistIds((prev) =>
+                                selected ? prev.filter((id) => id !== entry.artist.id) : [...prev, entry.artist.id]
+                              )
+                            }
+                            className={
+                              "flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
+                              (selected ? "bg-grad text-white" : "bg-surface text-ink")
+                            }
+                          >
+                            <div
+                              className={
+                                "w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0 " +
+                                (selected ? "bg-white/25 border-white" : "border-lineStrong")
+                              }
+                            >
+                              {selected && (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-base font-bold truncate">{entry.artist.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
             )}
 

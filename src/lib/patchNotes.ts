@@ -9,6 +9,21 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.8",
+    notes: [
+      "Replaced the generated-cover style with a new headliner-led design: the headliner's name up top, supporting artists folded into a \"+ N more\" line, and a Date/Songs/Length stat row along the bottom",
+      "Generated covers now use one of the app's own colour palettes (Default, Red-green or Blue-yellow — the same three as Colour vision in Settings), in either a light or dark background",
+      "Added an optional faint background pattern for generated covers — rings, a soft glow, a dot grid, or flat",
+      "Generated covers now carry the Houselights logo mark in the corner, tinted to match the chosen palette",
+    ],
+  },
+  {
+    version: "3.7",
+    notes: [
+      "The default playlist name now uses the event's own date (if one's been set on Preview) instead of today's date — so a playlist prepped weeks before a show is named for the show, not for whenever it was built",
+    ],
+  },
+  {
     version: "3.6",
     notes: [
       "Fixed the desktop page-jitter properly this time — earlier attempts tried to make the scrollbar consistently present (reserving its space at all times), but that depended on inconsistent scrollbar behavior across macOS and Windows Chrome alike, and the jitter kept happening regardless. The scrollbar is now hidden from view entirely instead — scrolling itself still works exactly the same via mouse wheel, trackpad, or keyboard, but with nothing left to visibly appear or disappear, there's nothing left to jitter",
