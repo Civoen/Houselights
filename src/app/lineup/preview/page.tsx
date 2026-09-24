@@ -163,7 +163,7 @@ export default function PreviewPage() {
     haptic(HAPTIC.add);
     const headliner = lineup[0].artist;
     const draftFields = {
-      name: defaultPlaylistName(headliner.name),
+      name: defaultPlaylistName(headliner.name, eventDate),
       artistNames: lineup.map((a) => a.artist.name),
       headliner,
       trackCount: playlist.length,
@@ -208,7 +208,7 @@ export default function PreviewPage() {
     }
     setCreateSubmitting(true);
     setCreateError(null);
-    const name = defaultPlaylistName(lineup[0]?.artist.name);
+    const name = defaultPlaylistName(lineup[0]?.artist.name, eventDate);
     const description = defaultPlaylistDescription(lineup.map((a) => a.artist.name));
     setPlaylistMeta(name, description);
     try {
