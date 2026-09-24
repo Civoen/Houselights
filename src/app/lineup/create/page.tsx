@@ -67,7 +67,7 @@ export default function CreatePage() {
       setName(defaultPlaylistName(artists[0], eventDate));
     }
     if (!description) {
-      setDescription(defaultPlaylistDescription(artists));
+      setDescription(defaultPlaylistDescription(artists, eventDate));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -250,7 +250,7 @@ export default function CreatePage() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-[calc(52px+16px+env(safe-area-inset-bottom))] max-w-lg lg:max-w-3xl mx-auto w-full">
+          <div className="flex-1 overflow-y-auto px-6 pb-4 max-w-lg lg:max-w-3xl mx-auto w-full">
             {coverTab === "upload" && (
               <>
                 <button
@@ -296,7 +296,7 @@ export default function CreatePage() {
                 </div>
 
                 <div className="text-xs font-extrabold uppercase tracking-wide text-faint mb-2">{copy.create.paletteLabel}</div>
-                <div className="flex flex-col gap-2 mb-4">
+                <div className="grid grid-cols-5 gap-1.5 mb-4">
                   {COVER_PALETTES.map((p) => {
                     const active = genPalette === p.id;
                     return (
@@ -304,19 +304,11 @@ export default function CreatePage() {
                         key={p.id}
                         onClick={() => setGenPalette(p.id)}
                         className={
-                          "flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all duration-150 active:scale-[0.98] " +
-                          (active ? "bg-grad text-white" : "bg-surface text-ink")
+                          "py-2.5 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 " +
+                          (active ? "bg-grad text-white" : "bg-surface text-muted")
                         }
                       >
-                        <span>
-                          <span className="block text-sm font-bold">{p.label}</span>
-                          <span className={"block text-xs mt-0.5 " + (active ? "text-white/75" : "text-faint")}>{p.note}</span>
-                        </span>
-                        {active && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
-                            <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
+                        {p.label}
                       </button>
                     );
                   })}
@@ -402,16 +394,17 @@ export default function CreatePage() {
             {coverError && <p className="text-xs text-red-600 mt-3">{coverError}</p>}
           </div>
 
-          {coverTab === "generate" && (
-            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg lg:max-w-3xl mx-auto">
+          <div
+            className="flex-shrink-0 px-6 pt-3 max-w-lg lg:max-w-3xl mx-auto w-full"
+            style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+          >
+            {coverTab === "generate" && (
               <GradientButton onClick={handleUseGenerated} disabled={genLoading} className="shadow-[0_16px_36px_-12px_rgba(17,80,103,0.55)]">
                 {genLoading ? <EqSpinner /> : copy.create.useThisCover}
               </GradientButton>
-            </div>
-          )}
+            )}
 
-          {coverTab === "upload" && (
-            <div className="fixed left-6 right-6 bottom-[calc(72px+24px+env(safe-area-inset-bottom))] z-20 max-w-lg lg:max-w-3xl mx-auto">
+            {coverTab === "upload" && (
               <button
                 onClick={() => {
                   setCoverModalOpen(false);
@@ -421,8 +414,8 @@ export default function CreatePage() {
               >
                 {copy.create.backToPreview}
               </button>
-            </div>
-          )}
+            )}
+          </div>
           </div>,
           document.body
         )}

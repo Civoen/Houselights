@@ -140,14 +140,16 @@ export async function generateWordmarkCover(options: WordmarkCoverOptions): Prom
 // Date/Songs/Length stat row, in one of the app's own colour palettes.
 // ---------------------------------------------------------------------
 
-export type CoverPaletteId = "default" | "redGreen" | "blueYellow";
+export type CoverPaletteId = "default" | "red" | "blue" | "mono" | "gold";
 export type CoverAppearance = "light" | "dark";
 export type CoverTexture = "rings" | "glow" | "dotGrid" | "flat";
 
-export const COVER_PALETTES: { id: CoverPaletteId; label: string; note: string }[] = [
-  { id: "default", label: "Default", note: "The app's standard colours" },
-  { id: "redGreen", label: "Red-green", note: "For protanopia and deuteranopia" },
-  { id: "blueYellow", label: "Blue-yellow", note: "For tritanopia, a rarer type" },
+export const COVER_PALETTES: { id: CoverPaletteId; label: string }[] = [
+  { id: "default", label: "Default" },
+  { id: "red", label: "Red" },
+  { id: "blue", label: "Blue" },
+  { id: "mono", label: "Mono" },
+  { id: "gold", label: "Gold" },
 ];
 
 export const COVER_TEXTURES: { id: CoverTexture; label: string }[] = [
@@ -157,17 +159,32 @@ export const COVER_TEXTURES: { id: CoverTexture; label: string }[] = [
   { id: "flat", label: "Flat" },
 ];
 
-// Mirrors the CSS custom properties in globals.css exactly — the
-// :root/.dark accent swap for "default", and the [data-cb=…] overrides
-// (one accent shared by both appearances) for the colourblind-safe
-// palettes — so a palette here always matches what the rest of the app
-// calls by that name. Only --color-accent varies by palette; --color-bg
-// and --color-ink don't change under a [data-cb] override, so light/dark
-// alone decides the background here regardless of palette.
+// Default/Red/Blue share the app's own neutral light/dark backgrounds —
+// only the accent changes, one fixed hue per palette regardless of
+// appearance, the same way it worked before this palette was widened.
+// Mono and Gold get their own background pairs so they read as genuinely
+// distinct, named-appropriately palettes rather than "default with a
+// different dot": Mono is black/white throughout (bg, ink and accent all
+// monochrome), Gold is a black background with a gold accent in dark
+// mode — literally "black and gold" — and a warm ivory background with a
+// deeper bronze accent in light mode, so the Light/Dark toggle still
+// means something for it too.
 function paletteColors(palette: CoverPaletteId, appearance: CoverAppearance) {
   const dark = appearance === "dark";
-  const accent =
-    palette === "redGreen" ? "#0072B2" : palette === "blueYellow" ? "#2F9E44" : dark ? "#2EDCB0" : "#115067";
+
+  if (palette === "mono") {
+    return dark
+      ? { accent: "#FFFFFF", bgFrom: "#000000", bgTo: "#0D0D0D", ink: "#FFFFFF" }
+      : { accent: "#0A0A0A", bgFrom: "#FFFFFF", bgTo: "#F2F2F2", ink: "#0A0A0A" };
+  }
+
+  if (palette === "gold") {
+    return dark
+      ? { accent: "#D4AF37", bgFrom: "#000000", bgTo: "#14100A", ink: "#F8EFDD" }
+      : { accent: "#8A6420", bgFrom: "#FBF6EA", bgTo: "#F1E6C8", ink: "#241C08" };
+  }
+
+  const accent = palette === "red" ? "#E5484D" : palette === "blue" ? "#3B82F6" : dark ? "#2EDCB0" : "#115067";
   return {
     accent,
     bgFrom: dark ? "#021A23" : "#F6F7F5",

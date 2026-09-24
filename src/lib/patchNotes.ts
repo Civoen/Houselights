@@ -9,6 +9,14 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.9",
+    notes: [
+      "Fixed the \"Use this cover\" button in Generate Cover overlapping the support-artist list — it now sits docked at the bottom of the screen instead of floating over the content",
+      "Replaced the generated-cover colour palette with five options — Default, Red, Blue, Mono (black & white) and Gold (black & gold) — styled as a compact button grid to match the Pattern section",
+      "The default playlist description now includes the event date alongside the artist names, matching how the default playlist name already works",
+    ],
+  },
+  {
     version: "3.8",
     notes: [
       "Replaced the generated-cover style with a new headliner-led design: the headliner's name up top, supporting artists folded into a \"+ N more\" line, and a Date/Songs/Length stat row along the bottom",

@@ -209,7 +209,7 @@ export default function PreviewPage() {
     setCreateSubmitting(true);
     setCreateError(null);
     const name = defaultPlaylistName(lineup[0]?.artist.name, eventDate);
-    const description = defaultPlaylistDescription(lineup.map((a) => a.artist.name));
+    const description = defaultPlaylistDescription(lineup.map((a) => a.artist.name), eventDate);
     setPlaylistMeta(name, description);
     try {
       const successPath = await createOrUpdatePlaylist({

@@ -104,6 +104,8 @@ export function defaultPlaylistName(headlinerName: string | undefined, eventDate
   return headlinerName ? `${headlinerName}, ${date}` : `My playlist, ${date}`;
 }
 
-export function defaultPlaylistDescription(artistNames: string[]): string {
-  return `${artistNames.join(", ")} · Prepped with Houselights`;
+export function defaultPlaylistDescription(artistNames: string[], eventDate?: string): string {
+  const date = formatEventDateShort(eventDate);
+  const names = artistNames.join(", ");
+  return date ? `${names} · ${date} · Prepped with Houselights` : `${names} · Prepped with Houselights`;
 }
