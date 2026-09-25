@@ -57,6 +57,59 @@ function fitFontSizeToWidth(
   return Math.min(max, Math.max(min, fitted));
 }
 
+// Fits the headliner to one line at a large size when it can; when the
+// name is long enough that fitting it on one line would shrink it past
+// SINGLE_LINE_MIN, it wraps onto two lines instead (split at the word
+// boundary that balances the two lines best) and fits the wider of the
+// two lines to the target width — so a long name stays big by breaking,
+// rather than by shrinking small enough to look like an afterthought.
+interface HeadlinerLayout {
+  lines: string[];
+  size: number;
+}
+
+function layoutHeadliner(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  targetWidth: number,
+  weight = 900,
+  singleLineMin = 46,
+  singleLineMax = 92,
+  twoLineMin = 30,
+  twoLineMax = 84
+): HeadlinerLayout {
+  const reference = 100;
+  ctx.font = `${weight} ${reference}px Poppins`;
+  const naturalSingleWidth = ctx.measureText(text).width || 1;
+  const naturalSingleSize = (targetWidth / naturalSingleWidth) * reference;
+
+  const words = text.split(" ").filter(Boolean);
+  if (naturalSingleSize >= singleLineMin || words.length < 2) {
+    return { lines: [text], size: Math.min(singleLineMax, Math.max(singleLineMin, naturalSingleSize)) };
+  }
+
+  // Try every word-boundary split and keep the one whose two lines are
+  // closest in rendered width (measured at the same reference size) —
+  // that's the split that lets both lines sit at the largest shared size.
+  let bestSplit = 1;
+  let bestDiff = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const w1 = ctx.measureText(words.slice(0, i).join(" ")).width;
+    const w2 = ctx.measureText(words.slice(i).join(" ")).width;
+    const diff = Math.abs(w1 - w2);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestSplit = i;
+    }
+  }
+
+  const line1 = words.slice(0, bestSplit).join(" ");
+  const line2 = words.slice(bestSplit).join(" ");
+  const widestLine = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) || 1;
+  const naturalTwoLineSize = (targetWidth / widestLine) * reference;
+  return { lines: [line1, line2], size: Math.min(twoLineMax, Math.max(twoLineMin, naturalTwoLineSize)) };
+}
+
 // Shrinks (never grows) a font from `startSize` until `text` fits within
 // `maxWidth` — used for the smaller support-artist line, where we want a
 // fixed comfortable size for the common case and only shrink for a long
@@ -255,7 +308,7 @@ function hexToRgb(hex: string): [number, number, number] {
 function drawTexture(ctx: CanvasRenderingContext2D, texture: CoverTexture, accent: string) {
   const [r, g, b] = hexToRgb(accent);
   const cx = CANVAS_SIZE / 2;
-  const cy = CANVAS_SIZE * 0.46;
+  const cy = CANVAS_SIZE * 0.48;
 
   if (texture === "glow") {
     const glow = ctx.createRadialGradient(CANVAS_SIZE * 0.15, CANVAS_SIZE * 0.08, 0, CANVAS_SIZE * 0.15, CANVAS_SIZE * 0.08, CANVAS_SIZE * 0.55);
@@ -336,17 +389,35 @@ export async function generateStatCover(options: StatCoverOptions): Promise<stri
 
   drawTexture(ctx, options.texture, accent);
 
-  if (iconImg) drawTintedIcon(ctx, iconImg, accent, 28, 28, 40);
+  // The top margin above the logo and the bottom margin below the stat
+  // row/play-dot are kept equal (rather than the stat row sitting much
+  // closer to the edge) so the whole card reads as evenly framed.
+  const EDGE_MARGIN = 28;
 
-  // Headline (the headliner's name)
+  if (iconImg) drawTintedIcon(ctx, iconImg, accent, EDGE_MARGIN, EDGE_MARGIN, 40);
+
+  // Headline (the headliner's name) — sized as large as the space allows
+  // and centred at the vertical midpoint between the logo and the stat
+  // row. A long name wraps onto two lines instead of shrinking to fit
+  // one, so it stays visually big rather than looking like an
+  // afterthought — layoutHeadliner decides which, and how big.
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   const headliner = options.headliner.toUpperCase();
-  const headlinerSize = fitFontSizeToWidth(ctx, headliner, CANVAS_SIZE - 112, 900, 34, 72);
+  const headlinerLayout = layoutHeadliner(ctx, headliner, CANVAS_SIZE - 112);
+  const headlinerSize = headlinerLayout.size;
   ctx.font = `900 ${headlinerSize}px Poppins`;
   ctx.fillStyle = ink;
-  const headlineY = CANVAS_SIZE * 0.44;
-  ctx.fillText(headliner, CANVAS_SIZE / 2, headlineY);
+  const blockCenterY = CANVAS_SIZE * 0.48;
+  const headlineLineGap = headlinerSize * 0.98;
+  // One line sits exactly at the block's centre; two lines straddle it
+  // symmetrically so the wrap grows the block evenly, not downward only.
+  const headlineLineYs =
+    headlinerLayout.lines.length === 1
+      ? [blockCenterY]
+      : [blockCenterY - headlineLineGap / 2, blockCenterY + headlineLineGap / 2];
+  headlinerLayout.lines.forEach((line, i) => ctx.fillText(line, CANVAS_SIZE / 2, headlineLineYs[i]));
+  const headlineY = headlineLineYs[headlineLineYs.length - 1];
 
   // Support artists, with a small rule on either side
   const supportLine = formatSupportLine(options.supportNames);
@@ -355,7 +426,10 @@ export async function generateStatCover(options: StatCoverOptions): Promise<stri
     const supportSize = shrinkFontToFit(ctx, supportLine, supportMaxWidth, 17, 600, 12);
     ctx.font = `600 ${supportSize}px Poppins`;
     const textWidth = ctx.measureText(supportLine).width;
-    const supportY = headlineY + 44;
+    // Gap below the last headline line scales a little with its size so
+    // a big single-line name and a smaller two-line name both keep a
+    // proportionate, not cramped or overly loose, gap to the line below.
+    const supportY = headlineY + Math.max(36, headlinerSize * 0.42);
     ctx.fillStyle = accent;
     ctx.fillText(supportLine, CANVAS_SIZE / 2, supportY);
 
@@ -376,8 +450,13 @@ export async function generateStatCover(options: StatCoverOptions): Promise<stri
     ctx.globalAlpha = 1;
   }
 
-  // Bottom stat row: Date / Songs / Length, plus a play-button dot
-  const rowY = CANVAS_SIZE - 84;
+  // Bottom stat row: Date / Songs / Length, plus a play-button dot.
+  // The play-dot is the lowest-drawn element, so it's the one pinned to
+  // EDGE_MARGIN above the canvas edge — the row's other elements are
+  // then positioned relative to it, same as before.
+  const dotR = 20;
+  const dotY = CANVAS_SIZE - EDGE_MARGIN - dotR;
+  const rowY = dotY + 6;
   const labelY = rowY - 20;
   const valueY = rowY + 4;
   const stats = [
@@ -399,10 +478,9 @@ export async function generateStatCover(options: StatCoverOptions): Promise<stri
     colX += Math.max(ctx.measureText(stat.value).width, 60) + 26;
   });
 
-  // Play-button dot, bottom-right
-  const dotR = 20;
+  // Play-button dot, bottom-right (dotR/dotY already set above, pinned
+  // to EDGE_MARGIN from the bottom edge)
   const dotX = CANVAS_SIZE - 40 - dotR;
-  const dotY = rowY - 6;
   ctx.beginPath();
   ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
   ctx.fillStyle = accent;

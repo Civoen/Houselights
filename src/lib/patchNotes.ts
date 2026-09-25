@@ -9,6 +9,19 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.11",
+    notes: [
+      "Generated cover: a long headliner name now wraps onto two lines instead of shrinking to fit one — it stays big and readable rather than shrinking away for longer band names",
+    ],
+  },
+  {
+    version: "3.10",
+    notes: [
+      "Generated cover: the headliner's name is now bigger and sits at the vertical centre of the card instead of high and small",
+      "Generated cover: the bottom margin below the stat row now matches the top margin above the logo, instead of being noticeably larger",
+    ],
+  },
+  {
     version: "3.9",
     notes: [
       "Fixed the \"Use this cover\" button in Generate Cover overlapping the support-artist list — it now sits docked at the bottom of the screen instead of floating over the content",
