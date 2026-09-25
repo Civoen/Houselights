@@ -9,6 +9,18 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.13",
+    notes: [
+      "Generated cover: the headliner's name now sits properly centred using its actual rendered shape (not just its text baseline), which was quietly making it look higher than it measured as — it now sits noticeably further down and reads as genuinely centred",
+    ],
+  },
+  {
+    version: "3.12",
+    notes: [
+      "Fixed the default playlist title and description on Create sometimes showing a previous playlist's name instead of the one actually being built — they now stay in sync with whichever artists and date are currently in the lineup, for as long as you haven't typed your own title or description",
+    ],
+  },
+  {
     version: "3.11",
     notes: [
       "Generated cover: a long headliner name now wraps onto two lines instead of shrinking to fit one — it stays big and readable rather than shrinking away for longer band names",

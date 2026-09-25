@@ -396,40 +396,89 @@ export async function generateStatCover(options: StatCoverOptions): Promise<stri
 
   if (iconImg) drawTintedIcon(ctx, iconImg, accent, EDGE_MARGIN, EDGE_MARGIN, 40);
 
-  // Headline (the headliner's name) — sized as large as the space allows
-  // and centred at the vertical midpoint between the logo and the stat
-  // row. A long name wraps onto two lines instead of shrinking to fit
-  // one, so it stays visually big rather than looking like an
-  // afterthought — layoutHeadliner decides which, and how big.
+  // Bottom stat row geometry, worked out now (before any drawing) purely
+  // so its top edge can bound the "safe area" the headline block gets
+  // centred in below — the row itself is still drawn later, in its
+  // original place in the file.
+  const dotR = 20;
+  const dotY = CANVAS_SIZE - EDGE_MARGIN - dotR;
+  const rowY = dotY + 6;
+  const labelY = rowY - 20;
+  const valueY = rowY + 4;
+
+  // Headline (the headliner's name) — sized as large as the space allows.
+  // A long name wraps onto two lines instead of shrinking to fit one, so
+  // it stays visually big rather than looking like an afterthought —
+  // layoutHeadliner decides which, and how big.
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   const headliner = options.headliner.toUpperCase();
   const headlinerLayout = layoutHeadliner(ctx, headliner, CANVAS_SIZE - 112);
   const headlinerSize = headlinerLayout.size;
-  ctx.font = `900 ${headlinerSize}px Poppins`;
-  ctx.fillStyle = ink;
-  const blockCenterY = CANVAS_SIZE * 0.48;
   const headlineLineGap = headlinerSize * 0.98;
-  // One line sits exactly at the block's centre; two lines straddle it
-  // symmetrically so the wrap grows the block evenly, not downward only.
-  const headlineLineYs =
-    headlinerLayout.lines.length === 1
-      ? [blockCenterY]
-      : [blockCenterY - headlineLineGap / 2, blockCenterY + headlineLineGap / 2];
+  const supportLine = formatSupportLine(options.supportNames);
+  const supportMaxWidth = CANVAS_SIZE - 200;
+  ctx.font = `600 17px Poppins`;
+  const supportSize = supportLine ? shrinkFontToFit(ctx, supportLine, supportMaxWidth, 17, 600, 12) : 0;
+  const supportGap = Math.max(36, headlinerSize * 0.42);
+
+  // A baseline puts most of a glyph's visible ink *above* it, so
+  // centring purely by baseline position makes a text block look higher
+  // than its true visual centre — this reads the font's own ascent/
+  // descent metrics (falling back to a size-based estimate on engines
+  // that don't report them) to find where the block's ink actually
+  // starts and ends, then centres THAT in the space between the logo
+  // and the stat row, rather than centring the baseline math instead.
+  function verticalExtent(text: string, font: string): { ascent: number; descent: number } {
+    ctx!.font = font;
+    const m = ctx!.measureText(text);
+    const ascent = m.actualBoundingBoxAscent || parseInt(font, 10) * 0.75;
+    const descent = m.actualBoundingBoxDescent || parseInt(font, 10) * 0.08;
+    return { ascent, descent };
+  }
+
+  const headlineFont = `900 ${headlinerSize}px Poppins`;
+  const headlineExtents = headlinerLayout.lines.map((line) => verticalExtent(line, headlineFont));
+  const relativeHeadlineYs =
+    headlinerLayout.lines.length === 1 ? [0] : [-headlineLineGap / 2, headlineLineGap / 2];
+  const supportFont = `600 ${supportSize}px Poppins`;
+  const relativeSupportY = relativeHeadlineYs[relativeHeadlineYs.length - 1] + supportGap;
+  const supportExtent = supportLine ? verticalExtent(supportLine, supportFont) : { ascent: 0, descent: 0 };
+
+  // Centred on the headliner's own ink, not the combined headline +
+  // support block — the support line is comparatively small, so
+  // including it in the centring math pulled the headline itself back
+  // up above true centre. The support line still just trails below it,
+  // at supportGap, same as before.
+  const blockTop = Math.min(...relativeHeadlineYs.map((y, i) => y - headlineExtents[i].ascent));
+  const blockBottom = Math.max(...relativeHeadlineYs.map((y, i) => y + headlineExtents[i].descent));
+
+  const safeTop = EDGE_MARGIN + 40 + 24; // below the logo, with breathing room
+  const safeBottom = labelY - 24; // above the stat row, with breathing room
+  const safeCenter = (safeTop + safeBottom) / 2;
+  let shift = safeCenter - (blockTop + blockBottom) / 2;
+
+  // Safety clamp: if the support line (which sits below the now-centred
+  // headline) would run into the stat row for an unusually large
+  // headline + long support line combination, pull the whole block back
+  // up just enough to keep the support line clear of it.
+  if (supportLine) {
+    const supportBottom = relativeSupportY + shift + supportExtent.descent;
+    if (supportBottom > safeBottom) {
+      shift -= supportBottom - safeBottom;
+    }
+  }
+
+  const headlineLineYs = relativeHeadlineYs.map((y) => y + shift);
+  ctx.font = headlineFont;
+  ctx.fillStyle = ink;
   headlinerLayout.lines.forEach((line, i) => ctx.fillText(line, CANVAS_SIZE / 2, headlineLineYs[i]));
-  const headlineY = headlineLineYs[headlineLineYs.length - 1];
 
   // Support artists, with a small rule on either side
-  const supportLine = formatSupportLine(options.supportNames);
   if (supportLine) {
-    const supportMaxWidth = CANVAS_SIZE - 200;
-    const supportSize = shrinkFontToFit(ctx, supportLine, supportMaxWidth, 17, 600, 12);
-    ctx.font = `600 ${supportSize}px Poppins`;
+    const supportY = relativeSupportY + shift;
+    ctx.font = supportFont;
     const textWidth = ctx.measureText(supportLine).width;
-    // Gap below the last headline line scales a little with its size so
-    // a big single-line name and a smaller two-line name both keep a
-    // proportionate, not cramped or overly loose, gap to the line below.
-    const supportY = headlineY + Math.max(36, headlinerSize * 0.42);
     ctx.fillStyle = accent;
     ctx.fillText(supportLine, CANVAS_SIZE / 2, supportY);
 
@@ -450,15 +499,8 @@ export async function generateStatCover(options: StatCoverOptions): Promise<stri
     ctx.globalAlpha = 1;
   }
 
-  // Bottom stat row: Date / Songs / Length, plus a play-button dot.
-  // The play-dot is the lowest-drawn element, so it's the one pinned to
-  // EDGE_MARGIN above the canvas edge — the row's other elements are
-  // then positioned relative to it, same as before.
-  const dotR = 20;
-  const dotY = CANVAS_SIZE - EDGE_MARGIN - dotR;
-  const rowY = dotY + 6;
-  const labelY = rowY - 20;
-  const valueY = rowY + 4;
+  // Bottom stat row: Date / Songs / Length, plus a play-button dot
+  // (dotR/dotY/rowY/labelY/valueY were already computed above).
   const stats = [
     { label: "Date", value: options.dateLabel },
     { label: "Songs", value: String(options.songCount) },
