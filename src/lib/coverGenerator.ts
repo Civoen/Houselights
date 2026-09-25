@@ -455,7 +455,16 @@ export async function generateStatCover(options: StatCoverOptions): Promise<stri
 
   const safeTop = EDGE_MARGIN + 40 + 24; // below the logo, with breathing room
   const safeBottom = labelY - 24; // above the stat row, with breathing room
-  const safeCenter = (safeTop + safeBottom) / 2;
+  // Splits the difference between the two earlier attempts at this: the
+  // original baseline-anchored position (CANVAS_SIZE * 0.48, which read
+  // as too high because a baseline sits below most of a word's ink) and
+  // the fully ink-centred position (the safe area's true midpoint, which
+  // read as too low once corrected for that). Averaging the two targets
+  // keeps the accurate ink-based centring method but lands the result
+  // between the two, rather than re-introducing the baseline bug.
+  const baselineTarget = CANVAS_SIZE * 0.48;
+  const inkCenterTarget = (safeTop + safeBottom) / 2;
+  const safeCenter = (baselineTarget + inkCenterTarget) / 2;
   let shift = safeCenter - (blockTop + blockBottom) / 2;
 
   // Safety clamp: if the support line (which sits below the now-centred

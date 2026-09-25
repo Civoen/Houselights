@@ -9,6 +9,12 @@ export interface PatchNoteVersion {
 // into that first entry rather than reconstructed after the fact.
 export const PATCH_NOTES: PatchNoteVersion[] = [
   {
+    version: "3.14",
+    notes: [
+      "Generated cover: the headliner's name now sits between the last two positions tried — lower than the original placement, but not as low as the fully centred version, which read as a bit too low",
+    ],
+  },
+  {
     version: "3.13",
     notes: [
       "Generated cover: the headliner's name now sits properly centred using its actual rendered shape (not just its text baseline), which was quietly making it look higher than it measured as — it now sits noticeably further down and reads as genuinely centred",
